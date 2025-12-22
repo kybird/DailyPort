@@ -15,7 +15,7 @@ interface MarketIndexChartProps {
 export default function MarketIndexChart({ index }: MarketIndexChartProps) {
     const chartContainerRef = useRef<HTMLDivElement>(null)
     const chartRef = useRef<any>(null)
-    const [data, setData] = useState<{time: string, price: number}[]>([])
+    const [data, setData] = useState<{ time: string, price: number }[]>([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState('')
 
@@ -82,7 +82,7 @@ export default function MarketIndexChart({ index }: MarketIndexChartProps) {
             },
         })
 
-        const lineSeries = chart.addLineSeries({
+        const lineSeries = chart.addSeries(LineSeries, {
             color: index === 'KOSPI' ? '#dc2626' : '#2563eb', // Red for KOSPI, Blue for KOSDAQ
             lineWidth: 2,
         })

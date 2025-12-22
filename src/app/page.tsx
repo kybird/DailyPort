@@ -8,8 +8,8 @@ export default function LandingPage() {
                 <div className="w-full max-w-4xl flex justify-between items-center p-3 text-sm">
                     <div className="font-bold text-xl">DailyPort</div>
                     <div className="flex gap-4">
-                        <Link href="/auth/login" className="py-2 px-3 flex rounded-md no-underline hover:bg-btn-background-hover">Log In</Link>
-                        <Link href="/auth/signup" className="py-2 px-3 flex rounded-md no-underline bg-foreground text-background hover:bg-foreground/80">Sign Up</Link>
+                        <Link href="/login" className="py-2 px-3 flex rounded-md no-underline hover:bg-btn-background-hover">Log In</Link>
+                        <Link href="/signup" className="py-2 px-3 flex rounded-md no-underline bg-foreground text-background hover:bg-foreground/80">Sign Up</Link>
                     </div>
                 </div>
             </nav>
@@ -26,7 +26,7 @@ export default function LandingPage() {
                             민감한 정보는 로컬에, 분석과 관리는 편리한 웹에서 경험하세요.
                         </p>
                         <div className="flex justify-center gap-4">
-                            <Link href="/auth/signup" className="px-8 py-3 text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 md:py-4 md:text-lg">
+                            <Link href="/signup" className="px-8 py-3 text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 md:py-4 md:text-lg">
                                 무료로 시작하기
                             </Link>
                             <a href="https://github.com/kybird/daily-port" target="_blank" rel="noreferrer" className="px-8 py-3 text-base font-medium rounded-md text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 md:py-4 md:text-lg">

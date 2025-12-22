@@ -3,11 +3,14 @@
     "version": "1.0.0",
     "description": "Local admin scripts",
     "main": "kis-pump.js",
-  "scripts": {
-    "setup": "node setup-db.js",
-    "pump": "node kis-pump.js",
-    "preload": "node kis-pump.js --preload"
-  },
+    "scripts": {
+        "setup": "node setup-db.js",
+        "pump": "node kis-pump.js",
+        "preload": "node kis-pump.js --preload",
+        "sync": "node krx-sync.js",
+        "gen-list": "cd ../stock-data-service && conda run -n stock-data-service python generate_stock_list.py",
+        "sync-all-stocks": "cd ../stock-data-service && conda run -n stock-data-service python main.py --sync-all"
+    },
     "dependencies": {
         "axios": "^1.6.0",
         "dotenv": "^16.3.0",

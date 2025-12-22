@@ -1,5 +1,7 @@
+'use server'
+
 // Intraday data for charts (1-hour intervals for current trading day)
-export async function getKOSPIIntradayData(): Promise<{time: string, price: number}[]> {
+export async function getKOSPIIntradayData(): Promise<{ time: string, price: number }[]> {
     try {
         // Get today's start and end timestamps
         const today = new Date()
@@ -24,7 +26,7 @@ export async function getKOSPIIntradayData(): Promise<{time: string, price: numb
         return timestamps.map((timestamp: number, index: number) => ({
             time: new Date(timestamp * 1000).toISOString(),
             price: closes[index] || 0
-        })).filter(item => item.price > 0) // Filter out null values
+        })).filter((item: { time: string, price: number }) => item.price > 0) // Filter out null values
     } catch (error) {
         console.error('KOSPI Intraday fetch error:', error)
         // Return empty array instead of throwing to prevent client-side crashes
@@ -32,7 +34,7 @@ export async function getKOSPIIntradayData(): Promise<{time: string, price: numb
     }
 }
 
-export async function getKOSDAQIntradayData(): Promise<{time: string, price: number}[]> {
+export async function getKOSDAQIntradayData(): Promise<{ time: string, price: number }[]> {
     try {
         // Get today's start and end timestamps
         const today = new Date()
@@ -57,7 +59,7 @@ export async function getKOSDAQIntradayData(): Promise<{time: string, price: num
         return timestamps.map((timestamp: number, index: number) => ({
             time: new Date(timestamp * 1000).toISOString(),
             price: closes[index] || 0
-        })).filter(item => item.price > 0) // Filter out null values
+        })).filter((item: { time: string, price: number }) => item.price > 0) // Filter out null values
     } catch (error) {
         console.error('KOSDAQ Intraday fetch error:', error)
         // Return empty array instead of throwing to prevent client-side crashes

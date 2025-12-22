@@ -1,6 +1,9 @@
 
-import yahooFinance from 'yahoo-finance2'
+import YahooFinance from 'yahoo-finance2'
 import { createClient } from '@/utils/supabase/server'
+
+const yahooFinance = new YahooFinance()
+
 
 export interface MarketData {
     ticker: string
@@ -13,6 +16,10 @@ export interface MarketData {
     changePercent?: number
     currency?: string
     nav?: number // For ETFs: Net Asset Value
+    // Investor Supply Data (Net Buying)
+    investor_individual?: number
+    investor_foreign?: number
+    investor_institution?: number
     historical?: {
         date: string
         open: number
@@ -43,136 +50,9 @@ const CACHE_TTL_MINUTES = 10
 // Simple delay function for rate limiting
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
 
-// KRX Fallback function for stocks
-async function getKRXData(ticker: string): Promise<MarketData | null> {
-    const isKospi = ticker.endsWith('.KS')
-    const isKosdaq = ticker.endsWith('.KQ')
-    if (!isKospi && !isKosdaq) return null
 
-    const code = ticker.replace('.KS', '').replace('.KQ', '')
-    const endpoint = isKospi
-        ? 'https://data-dbg.krx.co.kr/svc/apis/sto/stk_bydd_trd'
-        : 'https://data-dbg.krx.co.kr/svc/apis/sto/ksq_bydd_trd'
 
-    const today = new Date().toISOString().split('T')[0].replace(/-/g, '')
 
-    try {
-        const response = await fetch(endpoint, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'AUTH_KEY': process.env.KRX_OPEN_API_KEY || ''
-            },
-            body: JSON.stringify({ basDd: today })
-        })
-
-        if (!response.ok) {
-            console.error(`KRX API error: ${response.status}`)
-            return null
-        }
-
-        const data = await response.json()
-        const stockData = data.OutBlock_1?.find((item: any) => item.ISU_CD === code)
-
-        if (!stockData) {
-            console.warn(`Stock ${code} not found in KRX data`)
-            return null
-        }
-
-        // Convert BAS_DD to ISO date
-        const basDd = stockData.BAS_DD
-        const year = basDd.slice(0, 4)
-        const month = basDd.slice(4, 6)
-        const day = basDd.slice(6, 8)
-        const dateStr = `${year}-${month}-${day}T00:00:00.000Z`
-
-        const marketData: MarketData = {
-            ticker,
-            currentPrice: parseFloat(stockData.TDD_CLSPRC) || 0,
-            marketCap: parseFloat(stockData.MKTCAP) || undefined,
-            changePercent: parseFloat(stockData.FLUC_RT) || undefined,
-            currency: 'KRW',
-            historical: [{
-                date: dateStr,
-                open: parseFloat(stockData.TDD_OPNPRC) || 0,
-                high: parseFloat(stockData.TDD_HGPRC) || 0,
-                low: parseFloat(stockData.TDD_LWPRC) || 0,
-                close: parseFloat(stockData.TDD_CLSPRC) || 0,
-                volume: parseInt(stockData.ACC_TRDVOL) || 0
-            }]
-        }
-
-        return marketData
-    } catch (error) {
-        console.error('KRX fetch error:', error)
-        return null
-    }
-}
-
-// KRX ETF Fallback function
-async function getKRXETFData(ticker: string): Promise<MarketData | null> {
-    const isKospi = ticker.endsWith('.KS')
-    const isKosdaq = ticker.endsWith('.KQ')
-    if (!isKospi && !isKosdaq) return null
-
-    const code = ticker.replace('.KS', '').replace('.KQ', '')
-    const endpoint = 'https://data-dbg.krx.co.kr/svc/apis/etp/etf_bydd_trd'
-
-    const today = new Date().toISOString().split('T')[0].replace(/-/g, '')
-
-    try {
-        const response = await fetch(endpoint, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'AUTH_KEY': process.env.KRX_OPEN_API_KEY || ''
-            },
-            body: JSON.stringify({ basDd: today })
-        })
-
-        if (!response.ok) {
-            console.error(`KRX ETF API error: ${response.status}`)
-            return null
-        }
-
-        const data = await response.json()
-        const etfData = data.OutBlock_1?.find((item: any) => item.ISU_CD === code)
-
-        if (!etfData) {
-            console.warn(`ETF ${code} not found in KRX data`)
-            return null
-        }
-
-        // Convert BAS_DD to ISO date
-        const basDd = etfData.BAS_DD
-        const year = basDd.slice(0, 4)
-        const month = basDd.slice(4, 6)
-        const day = basDd.slice(6, 8)
-        const dateStr = `${year}-${month}-${day}T00:00:00.000Z`
-
-        const marketData: MarketData = {
-            ticker,
-            currentPrice: parseFloat(etfData.TDD_CLSPRC) || 0,
-            marketCap: parseFloat(etfData.MKTCAP) || undefined,
-            changePercent: parseFloat(etfData.FLUC_RT) || undefined,
-            nav: parseFloat(etfData.NAV) || undefined,
-            currency: 'KRW',
-            historical: [{
-                date: dateStr,
-                open: parseFloat(etfData.TDD_OPNPRC) || 0,
-                high: parseFloat(etfData.TDD_HGPRC) || 0,
-                low: parseFloat(etfData.TDD_LWPRC) || 0,
-                close: parseFloat(etfData.TDD_CLSPRC) || 0,
-                volume: parseInt(etfData.ACC_TRDVOL) || 0
-            }]
-        }
-
-        return marketData
-    } catch (error) {
-        console.error('KRX ETF fetch error:', error)
-        return null
-    }
-}
 
 // KRX Index data functions
 export async function getKOSPIIndexData(): Promise<IndexData[]> {
@@ -314,6 +194,7 @@ export async function getMarketData(ticker: string): Promise<MarketData | null> 
 
         const historical = await yahooFinance.historical(ticker, {
             period1: startDate.toISOString().split('T')[0],
+            period2: new Date().toISOString().split('T')[0],
             interval: '1d'
         }) as any[]
 
@@ -348,33 +229,7 @@ export async function getMarketData(ticker: string): Promise<MarketData | null> 
         return marketData
     } catch (error) {
         console.error(`Yahoo Finance fetch error for ${ticker}:`, error)
-        // Fallback to KRX (try stock first, then ETF)
-        const krxData = await getKRXData(ticker)
-        if (krxData) {
-            // Save to Cache
-            await supabase.from('analysis_cache').upsert({
-                ticker,
-                data: krxData,
-                generated_at: new Date().toISOString(),
-                source: 'KRX'
-            })
-            return krxData
-        }
-
-        // Try ETF API
-        const etfData = await getKRXETFData(ticker)
-        if (etfData) {
-            // Save to Cache
-            await supabase.from('analysis_cache').upsert({
-                ticker,
-                data: etfData,
-                generated_at: new Date().toISOString(),
-                source: 'KRX_ETF'
-            })
-            return etfData
-        }
-
-        // If both KRX APIs fail, return stale cache if available
+        // If Yahoo fails, return stale cache if available, otherwise null
         if (cache) {
             console.warn(`Returning stale cache for ${ticker}`)
             return cache.data as MarketData
