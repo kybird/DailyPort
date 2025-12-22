@@ -1,0 +1,38 @@
+[
+    {
+        "ticker": "005930.KS",
+        "name": "삼성전자",
+        "market": "KOSPI",
+        "chosung": "ㅅㅅㅈㅈ"
+    },
+    {
+        "ticker": "000660.KS",
+        "name": "SK하이닉스",
+        "market": "KOSPI",
+        "chosung": "에스케이하이닉스"
+    },
+    {
+        "ticker": "373220.KS",
+        "name": "LG에너지솔루션",
+        "market": "KOSPI",
+        "chosung": "엘지에너지솔루션"
+    },
+    {
+        "ticker": "207940.KS",
+        "name": "삼성바이오로직스",
+        "market": "KOSPI",
+        "chosung": "ㅅㅅㅂㅇㅇㄹㅈㅅ"
+    },
+    {
+        "ticker": "035420.KS",
+        "name": "NAVER",
+        "market": "KOSPI",
+        "chosung": "ㄴㅇㅂ"
+    },
+    {
+        "ticker": "035720.KS",
+        "name": "카카오",
+        "market": "KOSPI",
+        "chosung": "ㅋㅋㅇ"
+    }
+]

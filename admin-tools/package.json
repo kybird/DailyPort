@@ -1,0 +1,16 @@
+{
+    "name": "dailyport-admin-tools",
+    "version": "1.0.0",
+    "description": "Local admin scripts",
+    "main": "kis-pump.js",
+  "scripts": {
+    "setup": "node setup-db.js",
+    "pump": "node kis-pump.js",
+    "preload": "node kis-pump.js --preload"
+  },
+    "dependencies": {
+        "axios": "^1.6.0",
+        "dotenv": "^16.3.0",
+        "@supabase/supabase-js": "^2.39.0"
+    }
+}
