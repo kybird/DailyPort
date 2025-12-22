@@ -2,11 +2,11 @@
     "rewrites": [
         {
             "source": "/api/stock-sync",
-            "destination": "/stock-data-service/main.py"
+            "destination": "/admin-tools/stock-data-service/main.py"
         }
     ],
     "functions": {
-        "stock-data-service/main.py": {
+        "admin-tools/stock-data-service/main.py": {
             "maxDuration": 60,
             "runtime": "python3.11"
         }

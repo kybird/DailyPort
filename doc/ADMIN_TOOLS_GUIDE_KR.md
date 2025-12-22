@@ -22,6 +22,7 @@ npm run setup
 ### 2. 주식 목록 생성 (Truth Source 생성)
 ```bash
 npm run gen-list
+# 또는 배치 파일 실행: admin-tools/1_update_list.bat
 ```
 - **기능**: 한국거래소(KRX)의 최신 전 종목 리스트(KOSPI, KOSDAQ)를 가져와 `src/data/stocks.json`을 생성합니다.
 - **특징**: 초성 검색 데이터(`chosung`)를 자동으로 포함합니다.
@@ -30,6 +31,7 @@ npm run gen-list
 ### 3. 주식 데이터 전체 동기화 (Batch Sync)
 ```bash
 npm run sync-all-stocks
+# 또는 배치 파일 실행: admin-tools/2_sync_prices.bat
 ```
 - **기능**: `src/data/stocks.json`에 있는 **모든 종목**을 순회하며 최신 시세 및 투자자별 수급 데이터(개인/외국인/기관)를 Supabase에 저장합니다.
 - **주의**: 약 2,700개 종목을 처리하므로 시간이 오래 걸립니다. 장 마감 후 실행을 권장합니다.

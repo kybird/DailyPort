@@ -58,13 +58,13 @@ export default function PortfolioList({ items }: { items: PortfolioItem[] }) {
                                         </button>
                                     </div>
                                 </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-500">
+                                <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-900">
                                     {item.quantity}
                                 </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-500">
+                                <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-900">
                                     {item.entry_price.toLocaleString()} {item.currency}
                                 </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-500">
+                                <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-900">
                                     {(item.quantity * item.entry_price).toLocaleString()}
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">

@@ -70,8 +70,8 @@ def generate_stock_list():
     
     # Save to src/data/stocks.json for the Next.js App to use
     
-    # Calculate path relative to this script: ../src/data/stocks.json
-    output_dir = os.path.join(os.path.dirname(__file__), '../src/data')
+    # Calculate path relative to this script: ../../src/data/stocks.json
+    output_dir = os.path.join(os.path.dirname(__file__), '../../src/data')
     os.makedirs(output_dir, exist_ok=True)
     output_file = os.path.join(output_dir, 'stocks.json')
 

@@ -8,8 +8,8 @@
         "pump": "node kis-pump.js",
         "preload": "node kis-pump.js --preload",
         "sync": "node krx-sync.js",
-        "gen-list": "cd ../stock-data-service && conda run -n stock-data-service python generate_stock_list.py",
-        "sync-all-stocks": "cd ../stock-data-service && conda run -n stock-data-service python main.py --sync-all"
+        "gen-list": "node update-stock-list.js",
+        "sync-all-stocks": "node sync-stocks.js"
     },
     "dependencies": {
         "axios": "^1.6.0",

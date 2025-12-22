@@ -64,66 +64,28 @@ npm run dev
 
 ## Stock Data Service 상세 가이드
 
-Stock Data Service는 `pykrx` 라이브러리를 사용하여 한국 주식 시장의 데이터를 실시간(또는 일별)으로 수집하고, 분석된 데이터를 Supabase 데이터베이스에 저장하는 역할을 합니다.
+## Stock Data Service 상세 및 관리 (Admin Tools)
 
-### 1. 주요 파일 및 구성
+Stock Data Service는 `admin-tools/stock-data-service/` 디렉토리로 이동되었습니다.
 
-*   **`main.py`**: 서비스의 진입점입니다. 주가 데이터 수집, 데이터 가공, Supabase 업로드(Upsert) 로직을 담당합니다.
-*   **`generate_stock_list.py`**: KOSPI 및 KOSDAQ 전 종목의 목록을 가져와 `src/data/stocks.json` 파일을 생성합니다. 종목명 검색을 위한 한글 초성(Choseong) 데이터도 함께 생성합니다.
-*   **`environment.yml`**: Python 종속성(`pykrx`, `supabase`, `pandas`, `python-dotenv`)을 정의한 Conda 설정 파일입니다.
+> **[주의] 로컬 개발 환경의 차이점**
+> *   **로컬 (`npm run dev`)**: Next.js 서버만 실행되므로, `/api/stock-sync` 주소로 요청해도 Python 스크립트가 실행되지 않습니다. (404 에러)
+> *   **배포 환경 (Vercel)**: Vercel이 Python 런타임을 함께 띄워주므로 `/api/stock-sync` 호출 시 Python이 실행됩니다.
+> *   **해결책**: 로컬에서는 웹 앱이 Python을 자동 호출할 수 없으므로, **Admin Tools (배치 파일)**를 사용하여 수동으로 데이터를 갱신해야 합니다.
 
-### 2. 데이터 수집 프로세스 (`fetch_stock_data`)
+### 1. 주요 관리 스크립트
 
-`main.py`는 `pykrx`를 통해 다음 두 가지 핵심 데이터를 조회합니다:
+관리 편의를 위해 `admin-tools` 폴더 내에 배치 파일(`*.bat`)과 Node.js 래퍼가 준비되어 있습니다.
 
-1.  **OHLCV (가격 정보)**:
-    *   `stock.get_market_ohlcv` 함수를 사용하여 최근 5일간의 시가, 고가, 저가, 종가, 거래량을 가져옵니다.
-    *   가장 최신 날짜의 데이터를 현재가(`currentPrice`), 등락률(`changePercent`) 등으로 매핑합니다.
-    *   과거 5일간의 데이터는 `historical` 배열에 담아 차트나 추세 분석에 활용할 수 있게 합니다.
+**A. 종목 리스트 생성 (Update Stock List)**
+`src/data/stocks.json` 파일을 최신 상태(KRX 기준)로 갱신합니다.
+*   **실행**: `admin-tools/1_update_list.bat` 클릭
+*   **CLI**: `node admin-tools/update-stock-list.js`
 
-2.  **투자자별 거래 실적 (Investor Data)**:
-    *   `stock.get_market_trading_value_by_date` 함수를 사용하여 개인, 외국인, 기관의 순매수 거래량을 가져옵니다.
-    *   이 데이터는 `investor_individual`, `investor_foreign`, `investor_institution` 필드로 저장되어 투자 주체별 수급 현황을 보여줍니다.
-
-### 3. 실행 모드 및 명령어
-
-이 서비스는 두 가지 모드로 실행할 수 있습니다:
-
-**A. 단일 종목 동기화 (Single Sync)**
-특정 종목의 데이터를 갱신할 때 사용합니다. 디버깅이나 긴급 업데이트 시 유용합니다.
-```bash
-python main.py 005930.KS
-```
-*(여기서 `005930.KS`는 삼성전자의 티커입니다)*
-
-**B. 전체 종목 동기화 (Batch Sync)**
-`src/data/stocks.json`에 정의된 모든 종목을 순회하며 동기화합니다.
-```bash
-python main.py --sync-all
-```
-
-**[참고] 종목 리스트 생성 (`stocks.json`)**
-동기화를 수행하기 전에 대상 종목 리스트(`stocks.json`)가 필요합니다. 루트 디렉토리에 있는 배치 파일을 실행하면 편리하게 생성할 수 있습니다.
-
-1.  탐색기에서 `generate_stock.bat` 실행
-2.  또는 터미널에서:
-    ```bash
-    ./generate_stock.bat
-    ```
-    *   이 스크립트는 자동으로 `stock-data-service` 폴더로 이동하여 Conda 환경을 활성화하고 리스트를 생성합니다.
-
-
-**C. 데몬 모드 (Continuous Sync)**
-서비스를 계속 실행시켜두고 주기적으로 데이터를 갱신하려면 `--daemon` 옵션을 사용합니다. (기본 주기: 60초 대기 후 재시작)
-```bash
-python main.py --daemon
-```
-
-**[참고] 데몬 실행 스크립트**
-루트 디렉토리의 `run_service_daemon.bat` 파일을 실행하면 편리하게 데몬 모드로 시작할 수 있습니다.
-```bash
-./run_service_daemon.bat
-```
+**B. 전체 가격 동기화 (Sync All Prices)**
+전체 종목의 가격 및 수급 데이터를 갱신하여 DB에 저장합니다. (시간이 오래 걸릴 수 있음)
+*   **실행**: `admin-tools/2_sync_prices.bat` 클릭
+*   **CLI**: `node admin-tools/sync-stocks.js`
 
 ### 4. 데이터 저장 (Supabase Upsert)
 
@@ -216,10 +178,34 @@ DailyPort의 Stock Data Service는 Vercel의 Serverless Function(Python Runtime)
 ---
 
 ### 3. Data Service (서버 / 데몬 배포 - 대역폭 집중형)
-서버리스 함수는 실행 시간 제한(10~60초)이 있으므로, **2000개 전 종목을 한 번에 동기화**하려면 이 방법이 더 적합합니다.
-실시간성이나 전체 종목의 안정적인 동기화가 중요하다면 VPS나 로컬 서버에서 데몬 모드로 실행하세요.
+실시간성이나 전체 종목의 안정적인 동기화가 중요하다면 VPS나 로컬 서버에서 데몬 모드로 실행하는 것을 권장합니다.
 
 *   **옵션 A: VPS / VM (EC2, DigitalOcean 등)** (가장 일반적)
+    1.  서버에 레포지토리를 클론(Clone)합니다.
+    2.  `environment.yml`을 사용하여 Conda 환경을 구축합니다.
+    3.  `crontab` 등 스케줄러를 등록하거나, `run_service_daemon.bat`와 같이 무한 루프로 실행합니다.
+
+---
+
+## [중요] 실행 모델 비교 (Execution Models)
+
+사용하려는 목적에 따라 적절한 배포 방식을 선택해야 합니다.
+
+| 특징 | **데몬 모드 (Daemon/Loop)** | **API 서버리스 모드 (Vercel)** |
+| :--- | :--- | :--- |
+| **작동 방식** | 프로그램이 계속 켜져 있음 (메모리 상주) | 요청이 올 때만 잠시 켜졌다가 꺼짐 |
+| **데이터 갱신** | `while True` 루프를 통해 스스로 계속 갱신 | 누군가(User/Cron)가 호출해야 갱신됨 |
+| **처리량** | 전체 종목(2000+) 순차적 무한 동기화 가능 | **한 번에 1개 종목** 동기화 권장 (시간 제한 때문) |
+| **비유** | "스스로 움직이는 로봇 청소기" | "버튼을 눌러야 작동하는 믹서기" |
+| **추천 상황** | **전체 데이터**를 항상 최신으로 유지해야 할 때 | **비용 절감**이 중요하거나, 필요한 종목만 그때그때 갱신할 때 |
+
+> **선생님의 질문에 대한 답변**:
+> Vercel 배포 방식은 **"한 번에 하나씩(또는 요청받은 만큼만)"** 실행되는 것이 맞습니다.
+> 스스로 계속 도는 것이 아니므로, 전체 종목을 다 갱신하려면 Vercel Cron으로 수백 번 요청을 보내거나, 사용자가 조회할 때마다 해당 종목을 업데이트하는 방식(On-Demand)을 사용해야 합니다.
+
+---
+
+## 주요 파일 및 구성
     1.  서버에 레포지토리를 클론(Clone)합니다.
     2.  `environment.yml`을 사용하여 Conda 환경을 구축합니다.
     3.  `crontab` (Linux) 또는 작업 스케줄러 (Windows)를 사용하여 주기적으로 실행합니다.

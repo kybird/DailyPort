@@ -86,7 +86,7 @@ export default function AnalysisPanel({ ticker, onClose }: AnalysisPanelProps) {
                                     <div className="font-bold text-lg">
                                         {report.technical.rsi.value.toFixed(1)}
                                         <span className={`text-xs ml-2 px-2 py-0.5 rounded ${report.technical.rsi.status === 'OVERBOUGHT' ? 'bg-red-100 text-red-600' :
-                                            report.technical.rsi.status === 'OVERSOLD' ? 'bg-blue-100 text-blue-600' : 'bg-gray-200 text-gray-600'
+                                            report.technical.rsi.status === 'OVERSOLD' ? 'bg-blue-100 text-blue-600' : 'bg-gray-200 text-gray-800'
                                             }`}>
                                             {report.technical.rsi.status}
                                         </span>
@@ -118,12 +118,12 @@ export default function AnalysisPanel({ ticker, onClose }: AnalysisPanelProps) {
                                             {report.supplyDemand.instNetBuy.toLocaleString()}
                                         </span>
                                     </div>
-                                    <div className="text-xs text-right text-gray-400 mt-2">
+                                    <div className="text-xs text-right text-gray-500 mt-2">
                                         Source: {report.supplyDemand.source} ({new Date(report.supplyDemand.updatedAt).toLocaleDateString()})
                                     </div>
                                 </div>
                             ) : (
-                                <div className="text-sm text-gray-400 italic">
+                                <div className="text-sm text-gray-500 italic">
                                     No supply data available. Run admin tool.
                                 </div>
                             )}
@@ -153,7 +153,7 @@ export default function AnalysisPanel({ ticker, onClose }: AnalysisPanelProps) {
                                     <span>✈️ Send to Telegram</span>
                                 </button>
                             </div>
-                            <div className="flex gap-2 text-gray-400 text-xs">
+                            <div className="flex gap-2 text-gray-500 text-xs">
                                 <AlertTriangle size={16} className="shrink-0" />
                                 <p>
                                     This report is for informational purposes only and does not constitute financial advice.
