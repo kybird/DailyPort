@@ -140,62 +140,8 @@ def sync_ticker(ticker):
         logger.warning(f"Failed to get data for {ticker}")
 
 # Vercel Serverless Function Handler
-def handler(request):
-    """
-    Entry point for Vercel Serverless Function.
-    Expecting query params: ?ticker=005930.KS or ?mode=sync-all (beware timeouts)
-    """
-    from urllib.parse import urlparse, parse_qs
-    import json
-
-    # Very basic parsing for Vercel python runtime (which passes a Flask-like Request object usually, 
-    # but the raw signature can vary based on framework. 
-    # Standard Vercel Python runtime: def handler(request): return Response(...)
-    # For simplicity in this demo, we assume we just run a quick sync of a target.
-    
-    # NOTE: In a real Vercel environment, 'request' is a serverless Request object.
-    # We will try to parse query parameters.
-    
-    try:
-        # If request has .args or .query_params (Flask/Starlette)
-        if hasattr(request, 'args'):
-            params = request.args
-        elif hasattr(request, 'query_params'):
-            params = request.query_params
-        else:
-             # Fallback/Mock
-            params = {}
-            
-        ticker = params.get('ticker')
-        
-        if ticker:
-            logger.info(f"Vercel Handler: Syncing {ticker}")
-            data = fetch_stock_data(ticker)
-            if data:
-                # Upsert logic is inside sync_ticker, but we called fetch_stock_data to just get return val?
-                # sync_ticker does the upsert.
-                sync_ticker(ticker)
-                return {
-                    "statusCode": 200,
-                    "body": json.dumps({"status": "success", "message": f"Synced {ticker}", "data": data}, default=str)
-                }
-            else:
-                return {
-                    "statusCode": 404,
-                    "body": json.dumps({"status": "error", "message": "Ticker not found or data error"})
-                }
-        else:
-            return {
-                "statusCode": 400,
-                "body": json.dumps({"status": "error", "message": "Missing 'ticker' query parameter"})
-            }
-
-    except Exception as e:
-        logger.error(f"Handler Error: {e}")
-        return {
-            "statusCode": 500,
-            "body": json.dumps({"status": "error", "message": str(e)})
-        }
+# NOTE: Vercel now uses api/sync.py as the entry point, which imports sync_ticker from here.
+# The legacy handler function has been removed to avoid confusion.
 
 
 
