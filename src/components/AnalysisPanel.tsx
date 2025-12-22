@@ -34,7 +34,7 @@ export default function AnalysisPanel({ ticker, onClose }: AnalysisPanelProps) {
         <div className="fixed inset-y-0 right-0 z-50 w-full md:w-96 bg-white shadow-2xl animate-in slide-in-from-right duration-300 border-l overflow-y-auto">
             <div className="p-6">
                 <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-xl font-bold flex items-center gap-2">
+                    <h2 className="text-xl font-bold flex items-center gap-2 text-gray-900">
                         <Activity className="text-blue-600" />
                         Analysis: {ticker}
                     </h2>
@@ -60,7 +60,7 @@ export default function AnalysisPanel({ ticker, onClose }: AnalysisPanelProps) {
                     <div className="space-y-6">
                         {/* 1. Price Summary */}
                         <div className="flex items-end gap-3 pb-4 border-b">
-                            <span className="text-3xl font-bold">
+                            <span className="text-3xl font-bold text-gray-900">
                                 {report.price.current.toLocaleString()}
                             </span>
                             <span className={`text-lg font-medium flex items-center ${report.price.changePercent >= 0 ? 'text-red-500' : 'text-blue-500'}`}>
@@ -82,7 +82,7 @@ export default function AnalysisPanel({ ticker, onClose }: AnalysisPanelProps) {
                             <h3 className="font-bold text-gray-700 mb-3">Technical Indicators</h3>
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="bg-gray-50 p-3 rounded-md">
-                                    <div className="text-xs text-gray-500">RSI (14)</div>
+                                    <div className="text-xs text-gray-700">RSI (14)</div>
                                     <div className="font-bold text-lg">
                                         {report.technical.rsi.value.toFixed(1)}
                                         <span className={`text-xs ml-2 px-2 py-0.5 rounded ${report.technical.rsi.status === 'OVERBOUGHT' ? 'bg-red-100 text-red-600' :
@@ -93,7 +93,7 @@ export default function AnalysisPanel({ ticker, onClose }: AnalysisPanelProps) {
                                     </div>
                                 </div>
                                 <div className="bg-gray-50 p-3 rounded-md">
-                                    <div className="text-xs text-gray-500">Trend (EMA)</div>
+                                    <div className="text-xs text-gray-700">Trend (EMA)</div>
                                     <div className="font-bold text-sm mt-1">
                                         {report.technical.trend.status}
                                     </div>
@@ -123,8 +123,8 @@ export default function AnalysisPanel({ ticker, onClose }: AnalysisPanelProps) {
                                     </div>
                                 </div>
                             ) : (
-                                <div className="text-sm text-gray-500 italic">
-                                    No supply data available. Run admin tool.
+                                <div className="text-sm text-gray-600 italic">
+                                    No supply data available. Run admin tool or click 'Sync Data'.
                                 </div>
                             )}
                         </div>

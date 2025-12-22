@@ -60,18 +60,27 @@ def fetch_stock_data(ticker):
         last_date = df_ohlcv.index[-1].strftime("%Y-%m-%d")
 
         # 2. Get Investor Trading Value (Individual, Foreigner, Institution)
-        # get_market_trading_value_by_date returns DataFrame
-        # columns: ['기관합계', '기타법인', '개인', '외국인합계', '전체']
-        df_investor = stock.get_market_trading_value_by_date(start_date, today, code)
+        # Wrap in try/except because pykrx can fail on specific tickers/dates (ValueError: Length mismatch)
+        investor_data = {
+            'investor_individual': 0,
+            'investor_foreign': 0,
+            'investor_institution': 0
+        }
         
-        investor_data = {}
-        if not df_investor.empty:
-            latest_investor = df_investor.iloc[-1]
-            investor_data = {
-                'investor_individual': int(latest_investor['개인']),
-                'investor_foreign': int(latest_investor['외국인합계']),
-                'investor_institution': int(latest_investor['기관합계'])
-            }
+        try:
+            # get_market_trading_value_by_date returns DataFrame
+            # columns: ['기관합계', '기타법인', '개인', '외국인합계', '전체']
+            df_investor = stock.get_market_trading_value_by_date(start_date, today, code)
+            
+            if not df_investor.empty:
+                latest_investor = df_investor.iloc[-1]
+                investor_data = {
+                    'investor_individual': int(latest_investor['개인']),
+                    'investor_foreign': int(latest_investor['외국인합계']),
+                    'investor_institution': int(latest_investor['기관합계'])
+                }
+        except Exception as inv_err:
+            logger.warning(f"Investor data fetch failed for {ticker} (using 0): {inv_err}")
 
         # Construct payload
         market_data = {

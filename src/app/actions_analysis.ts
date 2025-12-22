@@ -29,10 +29,11 @@ export async function getAnalysis(ticker: string): Promise<AnalysisReport | { er
 
     const technical = analyzeTechnical(marketData)
 
-    // 2. Fetch Supply/Demand (Insights) from DB
+    // 2. Fetch Supply/Demand from 'analysis_cache' (Synced by Admin Tool)
+    // The previous code queried 'ticker_insights' which is deprecated or empty.
     const supabase = await createClient()
-    const { data: insights } = await supabase
-        .from('ticker_insights')
+    const { data: cachedData } = await supabase
+        .from('analysis_cache')
         .select('*')
         .eq('ticker', ticker)
         .single()
@@ -51,21 +52,34 @@ export async function getAnalysis(ticker: string): Promise<AnalysisReport | { er
 
     // Supply/Demand
     let supplyInfo = undefined
-    if (insights) {
-        supplyInfo = {
-            foreignNetBuy: insights.foreign_net_buy,
-            instNetBuy: insights.inst_net_buy,
-            source: insights.source,
-            updatedAt: insights.generated_at
-        }
 
-        if (insights.foreign_net_buy > 0 && insights.inst_net_buy > 0) {
-            summaries.push('외국인과 기관의 양매수가 유입되고 있습니다.') // Double/Twin buy
-        } else if (insights.foreign_net_buy > 0) {
-            summaries.push('외국인 순매수가 강세입니다.')
+    if (cachedData && cachedData.data) {
+        // Safe access to nested JSON properties
+        const d = cachedData.data
+        const hasInvestorData = 'investor_foreign' in d && 'investor_institution' in d
+
+        if (hasInvestorData) {
+            supplyInfo = {
+                foreignNetBuy: d.investor_foreign || 0,
+                instNetBuy: d.investor_institution || 0,
+                source: cachedData.source || 'AdminTool',
+                updatedAt: cachedData.generated_at
+            }
+
+            if (supplyInfo.foreignNetBuy > 0 && supplyInfo.instNetBuy > 0) {
+                summaries.push('외국인과 기관의 양매수가 유입되고 있습니다.')
+            } else if (supplyInfo.foreignNetBuy > 0) {
+                summaries.push('외국인 순매수가 강세입니다.')
+            } else if (supplyInfo.instNetBuy > 0) {
+                summaries.push('기관 순매수가 강세입니다.')
+            } else if (supplyInfo.foreignNetBuy < 0 && supplyInfo.instNetBuy < 0) {
+                summaries.push('외국인과 기관이 동반 매도 중입니다.')
+            }
         }
-    } else {
-        summaries.push('수급 데이터는 아직 집계되지 않았습니다 (로컬 펌프 필요).')
+    }
+
+    if (!supplyInfo) {
+        summaries.push('수급 데이터는 아직 집계되지 않았습니다 (로컬 Admin Tool 실행 필요).')
     }
 
     return {
