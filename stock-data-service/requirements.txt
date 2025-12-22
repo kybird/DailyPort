@@ -1,0 +1,5 @@
+pykrx
+supabase
+python-dotenv
+pandas
+requests

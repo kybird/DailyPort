@@ -139,9 +139,107 @@ def sync_ticker(ticker):
     else:
         logger.warning(f"Failed to get data for {ticker}")
 
+# Vercel Serverless Function Handler
+def handler(request):
+    """
+    Entry point for Vercel Serverless Function.
+    Expecting query params: ?ticker=005930.KS or ?mode=sync-all (beware timeouts)
+    """
+    from urllib.parse import urlparse, parse_qs
+    import json
+
+    # Very basic parsing for Vercel python runtime (which passes a Flask-like Request object usually, 
+    # but the raw signature can vary based on framework. 
+    # Standard Vercel Python runtime: def handler(request): return Response(...)
+    # For simplicity in this demo, we assume we just run a quick sync of a target.
+    
+    # NOTE: In a real Vercel environment, 'request' is a serverless Request object.
+    # We will try to parse query parameters.
+    
+    try:
+        # If request has .args or .query_params (Flask/Starlette)
+        if hasattr(request, 'args'):
+            params = request.args
+        elif hasattr(request, 'query_params'):
+            params = request.query_params
+        else:
+             # Fallback/Mock
+            params = {}
+            
+        ticker = params.get('ticker')
+        
+        if ticker:
+            logger.info(f"Vercel Handler: Syncing {ticker}")
+            data = fetch_stock_data(ticker)
+            if data:
+                # Upsert logic is inside sync_ticker, but we called fetch_stock_data to just get return val?
+                # sync_ticker does the upsert.
+                sync_ticker(ticker)
+                return {
+                    "statusCode": 200,
+                    "body": json.dumps({"status": "success", "message": f"Synced {ticker}", "data": data}, default=str)
+                }
+            else:
+                return {
+                    "statusCode": 404,
+                    "body": json.dumps({"status": "error", "message": "Ticker not found or data error"})
+                }
+        else:
+            return {
+                "statusCode": 400,
+                "body": json.dumps({"status": "error", "message": "Missing 'ticker' query parameter"})
+            }
+
+    except Exception as e:
+        logger.error(f"Handler Error: {e}")
+        return {
+            "statusCode": 500,
+            "body": json.dumps({"status": "error", "message": str(e)})
+        }
+
+
+def run_daemon(interval_seconds=60):
+    """
+    Run the sync process in a continuous loop.
+    """
+    logger.info(f"Starting Stock Data Service in DAEMON mode (Interval: {interval_seconds}s)")
+    
+    # Load ticker list once
+    json_path = os.path.join(os.path.dirname(__file__), '../src/data/stocks.json')
+    try:
+        with open(json_path, 'r', encoding='utf-8') as f:
+            stocks_list = json.load(f)
+    except FileNotFoundError:
+        logger.error(f"Stocks file not found at {json_path}. Run generate_stock_list.py first.")
+        return
+
+    import time
+    
+    while True:
+        logger.info("Starting batch sync...")
+        start_time = datetime.now()
+        
+        for idx, stock_item in enumerate(stocks_list):
+            ticker = stock_item['ticker']
+             # Optional: detailed logging or keep it quiet
+            if idx % 50 == 0:
+                logger.info(f"[{idx}/{len(stocks_list)}] Syncing {stock_item['name']}...")
+            
+            sync_ticker(ticker)
+            
+            # Small sleep to be polite to the source if needed, though sequential is already slow enough
+            # time.sleep(0.1) 
+        
+        duration = datetime.now() - start_time
+        logger.info(f"Batch sync completed in {duration}. Sleeping for {interval_seconds} seconds...")
+        time.sleep(interval_seconds)
+
+
 if __name__ == "__main__":
     if len(sys.argv) > 1:
-        if sys.argv[1] == '--sync-all':
+        arg = sys.argv[1]
+        
+        if arg == '--sync-all':
             # Load ticker list from ../src/data/stocks.json
             json_path = os.path.join(os.path.dirname(__file__), '../src/data/stocks.json')
             try:
@@ -160,9 +258,14 @@ if __name__ == "__main__":
                     
             except FileNotFoundError:
                 logger.error(f"Stocks file not found at {json_path}. Run generate_stock_list.py first.")
+        
+        elif arg == '--daemon':
+            # Run in daemon mode
+            run_daemon()
+            
         else:
             # CLI usage: python main.py 005930.KS
             ticker_arg = sys.argv[1]
             sync_ticker(ticker_arg)
     else:
-        print("Usage: python main.py <ticker> OR python main.py --sync-all")
+        print("Usage: python main.py <ticker> | --sync-all | --daemon")

@@ -1,0 +1,14 @@
+{
+    "rewrites": [
+        {
+            "source": "/api/stock-sync",
+            "destination": "/stock-data-service/main.py"
+        }
+    ],
+    "functions": {
+        "stock-data-service/main.py": {
+            "maxDuration": 60,
+            "runtime": "python3.11"
+        }
+    }
+}
