@@ -35,11 +35,11 @@ export default function StockSearch({ onSelect }: StockSearchProps) {
     return (
         <div className="relative w-full">
             <div className="relative">
-                <Search className="absolute left-3 top-3 h-4 w-4 text-gray-500" />
+                <Search className="absolute left-3 top-3 h-4 w-4 text-zinc-400" />
                 <input
                     type="text"
-                    placeholder="Search stock (Name, Ticker, Chosung)"
-                    className="w-full pl-10 pr-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="종목명, 티커, 또는 초성으로 검색"
+                    className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-zinc-900 dark:text-white font-medium"
                     value={query}
                     onChange={(e) => {
                         setQuery(e.target.value)
@@ -50,22 +50,27 @@ export default function StockSearch({ onSelect }: StockSearchProps) {
             </div>
 
             {isOpen && filteredStocks.length > 0 && (
-                <ul className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-auto">
+                <ul className="absolute z-[250] w-full mt-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-2xl max-h-60 overflow-auto transition-colors">
                     {filteredStocks.map((stock) => (
                         <li
                             key={stock.ticker}
-                            className="px-4 py-2 hover:bg-gray-100 cursor-pointer flex justify-between items-center"
+                            className="px-4 py-3 hover:bg-zinc-50 dark:hover:bg-zinc-950 cursor-pointer flex justify-between items-center transition-colors"
                             onClick={() => {
                                 onSelect(stock)
                                 setQuery(stock.name)
                                 setIsOpen(false)
                             }}
                         >
-                            <div>
-                                <span className="font-medium">{stock.name}</span>
-                                <span className="text-gray-400 text-xs ml-2">{stock.market}</span>
+                            <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-full bg-blue-50 dark:bg-blue-950/30 flex items-center justify-center text-blue-600 dark:text-blue-400 font-black text-xs">
+                                    {stock.name[0]}
+                                </div>
+                                <div className="flex flex-col">
+                                    <span className="font-bold text-zinc-900 dark:text-white leading-tight">{stock.name}</span>
+                                    <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-tighter">{stock.market}</span>
+                                </div>
                             </div>
-                            <span className="text-sm text-gray-600 font-mono">{stock.ticker}</span>
+                            <span className="text-xs text-zinc-500 dark:text-zinc-500 font-mono font-bold bg-zinc-100 dark:bg-zinc-800 px-2 py-1 rounded-md">{stock.ticker}</span>
                         </li>
                     ))}
                 </ul>

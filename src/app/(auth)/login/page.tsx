@@ -1,7 +1,5 @@
-
 import Link from 'next/link'
 import { login } from '../actions'
-import { DevLoginShortcut } from '@/components/auth/DevLoginShortcut'
 
 export default async function Login({
     searchParams,
@@ -11,8 +9,7 @@ export default async function Login({
     const message = (await searchParams).message
 
     return (
-        <div className="min-h-screen flex flex-col md:flex-row w-full bg-white dark:bg-zinc-950">
-            <DevLoginShortcut />
+        <div className="flex flex-col md:flex-row min-h-[calc(100vh-64px)] bg-background transition-colors duration-300">
 
             {/* Left Side: Hero Section (Gido-meta) */}
             <div className="hidden md:flex md:w-1/2 relative overflow-hidden bg-zinc-900 items-center justify-center p-12">

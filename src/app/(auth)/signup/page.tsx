@@ -10,7 +10,7 @@ export default async function Signup({
     const message = (await searchParams).message
 
     return (
-        <div className="min-h-screen flex flex-col items-center justify-center w-full px-8">
+        <div className="flex flex-col md:flex-row min-h-[calc(100vh-64px)] bg-background flex flex-col items-center justify-center w-full px-8">
             <div className="w-full sm:max-w-md flex flex-col gap-2">
                 <Link
                     href="/"

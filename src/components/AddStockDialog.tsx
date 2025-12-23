@@ -59,8 +59,8 @@ export default function AddStockDialog() {
     }
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-            <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6 relative animate-in fade-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+            <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl w-full max-w-md p-8 relative animate-in fade-in zoom-in-95 duration-200 border border-zinc-200 dark:border-zinc-800 transition-colors">
                 <button
                     onClick={() => setIsOpen(false)}
                     className="absolute right-4 top-4 text-gray-400 hover:text-gray-600"
@@ -68,11 +68,11 @@ export default function AddStockDialog() {
                     <X size={20} />
                 </button>
 
-                <h2 className="text-xl font-bold mb-4">Add Portfolio Item</h2>
+                <h2 className="text-2xl font-black mb-6 text-zinc-900 dark:text-white">종목 추가</h2>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Stock</label>
+                        <label className="block text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1.5 ml-1">종목 검색</label>
                         <StockSearch onSelect={setSelectedStock} />
                         {selectedStock && (
                             <div className="mt-2 text-sm text-blue-600 font-medium">
@@ -83,22 +83,22 @@ export default function AddStockDialog() {
 
                     <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Quantity</label>
+                            <label className="block text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1.5 ml-1">수량</label>
                             <input
                                 type="number"
                                 step="0.01"
                                 required
-                                className="w-full px-3 py-2 border rounded-md"
+                                className="w-full px-4 py-2.5 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-zinc-900 dark:text-white font-medium"
                                 value={quantity}
                                 onChange={(e) => setQuantity(e.target.value)}
                             />
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Avg Price (KRW)</label>
+                            <label className="block text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1.5 ml-1">평균 단가 (KRW)</label>
                             <input
                                 type="number"
                                 step="1"
-                                className="w-full px-3 py-2 border rounded-md"
+                                className="w-full px-4 py-2.5 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-zinc-900 dark:text-white font-medium"
                                 value={price}
                                 onChange={(e) => setPrice(e.target.value)}
                             />
@@ -107,20 +107,20 @@ export default function AddStockDialog() {
 
                     {error && <p className="text-red-500 text-sm">{error}</p>}
 
-                    <div className="flex justify-end gap-2 mt-6">
+                    <div className="flex justify-end gap-3 mt-8">
                         <button
                             type="button"
                             onClick={() => setIsOpen(false)}
-                            className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-md"
+                            className="px-6 py-2.5 text-zinc-600 dark:text-zinc-400 font-bold hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-xl transition-colors"
                         >
-                            Cancel
+                            취소
                         </button>
                         <button
                             type="submit"
                             disabled={loading || !selectedStock}
-                            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+                            className="px-6 py-2.5 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 disabled:opacity-50 shadow-lg shadow-blue-500/20 active:scale-95 transition-all"
                         >
-                            {loading ? 'Adding...' : 'Add'}
+                            {loading ? '추가 중...' : '확인'}
                         </button>
                     </div>
                 </form>

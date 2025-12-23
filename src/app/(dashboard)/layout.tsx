@@ -2,6 +2,7 @@
 import Link from 'next/link'
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
+import { LayoutDashboard, User } from 'lucide-react'
 
 export default async function DashboardLayout({
     children,
@@ -26,28 +27,30 @@ export default async function DashboardLayout({
     }
 
     return (
-        <div className="flex h-screen bg-gray-100">
+        <div className="flex min-h-screen bg-zinc-50 dark:bg-zinc-950 transition-colors duration-300">
             {/* Sidebar - Mobile hidden for now, simple implementation */}
-            <aside className="w-64 bg-white shadow-md hidden md:block">
-                <div className="p-6 border-b">
-                    <h1 className="text-2xl font-bold text-gray-800">DailyPort</h1>
-                </div>
-                <nav className="p-4 space-y-2">
+            <aside className="w-64 bg-white dark:bg-zinc-900 border-r border-zinc-200 dark:border-zinc-800 hidden md:block transition-colors">
+                <nav className="p-4 space-y-2 mt-4">
                     <Link
                         href="/dashboard"
-                        className="block px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-md bg-gray-50"
+                        className="flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors bg-zinc-100 dark:bg-zinc-800"
                     >
-                        Dashboard
+                        <LayoutDashboard size={18} className="text-blue-600" />
+                        대시보드
                     </Link>
-                    <div className="pt-4 border-t mt-4">
-                        {/* Future Nav Items */}
-                    </div>
+                    <Link
+                        href="/mypage"
+                        className="flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-zinc-200 rounded-lg transition-colors"
+                    >
+                        <User size={18} />
+                        마이페이지
+                    </Link>
                 </nav>
-                <div className="absolute bottom-0 w-64 p-4 border-t bg-gray-50">
+                <div className="absolute bottom-0 w-64 p-4 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50">
                     <div className="flex items-center justify-between">
-                        <span className="text-sm text-gray-600 truncate max-w-[100px]">{user.email}</span>
+                        <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400 truncate max-w-[120px]">{user.email}</span>
                         <form action={signOut}>
-                            <button className="text-sm text-red-600 hover:text-red-800">Sign Out</button>
+                            <button className="text-xs font-bold text-red-600 hover:text-red-700 transition-colors">로그아웃</button>
                         </form>
                     </div>
                 </div>
@@ -55,13 +58,13 @@ export default async function DashboardLayout({
 
             {/* Main Content */}
             <main className="flex-1 overflow-auto">
-                <header className="bg-white shadow-sm p-4 md:hidden flex justify-between items-center">
-                    <span className="font-bold">DailyPort</span>
+                <header className="bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 p-4 md:hidden flex justify-between items-center transition-colors">
+                    <span className="font-black text-zinc-900 dark:text-white text-lg">Menu</span>
                     <form action={signOut}>
-                        <button className="text-sm text-red-600">Sign Out</button>
+                        <button className="text-sm font-bold text-red-600">로그아웃</button>
                     </form>
                 </header>
-                <div className="p-8">
+                <div className="p-4 md:p-8">
                     {children}
                 </div>
             </main>

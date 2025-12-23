@@ -13,6 +13,7 @@ export interface MarketData {
     eps?: number
     high52Week?: number
     low52Week?: number
+    changePrice?: number
     changePercent?: number
     currency?: string
     nav?: number // For ETFs: Net Asset Value
@@ -206,6 +207,7 @@ export async function getMarketData(ticker: string): Promise<MarketData | null> 
             eps: quote.epsTrailingTwelveMonths,
             high52Week: quote.fiftyTwoWeekHigh,
             low52Week: quote.fiftyTwoWeekLow,
+            changePrice: quote.regularMarketChange,
             changePercent: quote.regularMarketChangePercent,
             currency: quote.currency,
             historical: historical.map((h: any) => ({

@@ -62,24 +62,29 @@ export default function MarketIndexChart({ index }: MarketIndexChartProps) {
     useEffect(() => {
         if (!chartContainerRef.current || !createChart || !LineSeries || data.length === 0) return
 
+        const isDark = document.documentElement.classList.contains('dark')
+
         const chart = createChart(chartContainerRef.current, {
             layout: {
-                background: { color: '#ffffff' },
-                textColor: '#333333',
+                background: { color: isDark ? '#18181b' : '#ffffff' }, // zinc-900 or white
+                textColor: isDark ? '#a1a1aa' : '#333333',         // zinc-400 or gray-800
             },
             grid: {
-                vertLines: { color: '#f0f0f0' },
-                horzLines: { color: '#f0f0f0' },
+                vertLines: { color: isDark ? '#27272a' : '#f0f0f0' }, // zinc-800 or light gray
+                horzLines: { color: isDark ? '#27272a' : '#f0f0f0' },
             },
             width: chartContainerRef.current.clientWidth,
             height: 200,
             timeScale: {
                 timeVisible: true,
                 secondsVisible: false,
+                borderColor: isDark ? '#27272a' : '#cccccc',
             },
             rightPriceScale: {
-                borderColor: '#cccccc',
+                borderColor: isDark ? '#27272a' : '#cccccc',
             },
+            handleScroll: false,
+            handleScale: false,
         })
 
         const lineSeries = chart.addSeries(LineSeries, {
@@ -123,21 +128,11 @@ export default function MarketIndexChart({ index }: MarketIndexChartProps) {
     const changePercent = previousPrice > 0 ? (change / previousPrice) * 100 : 0
 
     return (
-        <div className="bg-white p-4 rounded-lg shadow-sm">
-            <div className="flex justify-between items-center mb-2">
-                <h3 className="text-lg font-semibold text-gray-800">
-                    {index === 'KOSPI' ? '코스피' : '코스닥'}
-                </h3>
-                <div className="text-right">
-                    <div className="text-xl font-bold">
-                        {currentPrice.toLocaleString()}
-                    </div>
-                    <div className={`flex items-center text-sm ${change >= 0 ? 'text-red-500' : 'text-blue-500'}`}>
-                        {change >= 0 ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
-                        <span className="ml-1">
-                            {change >= 0 ? '+' : ''}{change.toFixed(2)} ({changePercent >= 0 ? '+' : ''}{changePercent.toFixed(2)}%)
-                        </span>
-                    </div>
+        <div className="bg-white dark:bg-zinc-900 p-6 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm transition-colors">
+            <div className="flex justify-between items-center mb-4">
+                <h3 className="text-sm font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">{index} Index</h3>
+                <div className="text-xl font-black text-zinc-900 dark:text-white">
+                    {data.length > 0 ? data[data.length - 1].price.toLocaleString(undefined, { minimumFractionDigits: 2 }) : '-'}
                 </div>
             </div>
 
