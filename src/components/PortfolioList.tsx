@@ -1,3 +1,5 @@
+'use client'
+
 import { useState } from 'react'
 import { Trash2, Activity } from 'lucide-react'
 import { removeTicker } from '@/app/actions'
