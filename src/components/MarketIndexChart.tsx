@@ -73,12 +73,32 @@ export default function MarketIndexChart({ index }: MarketIndexChartProps) {
                 vertLines: { color: isDark ? '#27272a' : '#f0f0f0' }, // zinc-800 or light gray
                 horzLines: { color: isDark ? '#27272a' : '#f0f0f0' },
             },
+            localization: {
+                timeFormatter: (time: number) => {
+                    return new Intl.DateTimeFormat('ko-KR', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: false,
+                        timeZone: 'Asia/Seoul',
+                    }).format(new Date(time * 1000));
+                },
+                priceFormatter: (price: number) => price.toLocaleString(undefined, { minimumFractionDigits: 2 }),
+            },
             width: chartContainerRef.current.clientWidth,
             height: 200,
             timeScale: {
                 timeVisible: true,
                 secondsVisible: false,
                 borderColor: isDark ? '#27272a' : '#cccccc',
+                tickMarkFormatter: (time: number) => {
+                    const date = new Date(time * 1000);
+                    return new Intl.DateTimeFormat('ko-KR', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: false,
+                        timeZone: 'Asia/Seoul',
+                    }).format(date);
+                },
             },
             rightPriceScale: {
                 borderColor: isDark ? '#27272a' : '#cccccc',
