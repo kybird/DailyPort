@@ -3,7 +3,7 @@
 
 import { useState } from 'react'
 
-import { Activity, X, AlertTriangle, TrendingUp, TrendingDown, RefreshCw, Star } from 'lucide-react'
+import { Activity, X, AlertTriangle, TrendingUp, TrendingDown, RefreshCw, Star, Target } from 'lucide-react'
 import { getAnalysis, AnalysisReport } from '@/app/actions_analysis'
 import { getStockName } from '@/utils/stockUtils'
 import { addToWatchlist, removeFromWatchlist, getWatchlist } from '@/app/actions'
@@ -133,6 +133,43 @@ export default function AnalysisPanel({ ticker, onClose }: AnalysisPanelProps) {
                             </div>
                         </div>
 
+                        {/* 3.5. Suggested Objectives */}
+                        {report.technical.objectives && (
+                            <div className="bg-zinc-900 dark:bg-black p-5 rounded-2xl border border-zinc-800 shadow-xl overflow-hidden relative">
+                                <div className="absolute top-0 right-0 p-3 opacity-10">
+                                    <Target size={40} className="text-white" />
+                                </div>
+                                <h3 className="font-black text-white mb-4 text-xs uppercase tracking-[0.2em] flex items-center gap-2">
+                                    <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse" />
+                                    Suggested Objectives
+                                </h3>
+                                <div className="space-y-4">
+                                    {[
+                                        { label: 'Short-term', data: report.technical.objectives.short, color: 'text-zinc-400' },
+                                        { label: 'Mid-term', data: report.technical.objectives.mid, color: 'text-zinc-200' },
+                                        { label: 'Long-term', data: report.technical.objectives.long, color: 'text-blue-400' }
+                                    ].map((group) => (
+                                        <div key={group.label} className="grid grid-cols-1 gap-2">
+                                            <div className={`text-[10px] font-black uppercase tracking-widest ${group.color}`}>{group.label}</div>
+                                            <div className="grid grid-cols-3 gap-2">
+                                                <div className="bg-zinc-800/50 p-2 rounded-lg border border-zinc-700/50">
+                                                    <div className="text-[8px] font-bold text-zinc-500 uppercase">Entry</div>
+                                                    <div className="text-xs font-mono font-bold text-zinc-300">₩{group.data.entry.toLocaleString()}</div>
+                                                </div>
+                                                <div className="bg-rose-900/20 p-2 rounded-lg border border-rose-900/30">
+                                                    <div className="text-[8px] font-bold text-rose-500 uppercase">Stop</div>
+                                                    <div className="text-xs font-mono font-bold text-rose-400">₩{group.data.stop.toLocaleString()}</div>
+                                                </div>
+                                                <div className="bg-emerald-900/20 p-2 rounded-lg border border-emerald-900/30">
+                                                    <div className="text-[8px] font-bold text-emerald-500 uppercase">Target</div>
+                                                    <div className="text-xs font-mono font-bold text-emerald-400">₩{group.data.target.toLocaleString()}</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                         {/* 4. Supply & Demand */}
                         <div>
                             <h3 className="font-bold text-zinc-700 dark:text-zinc-300 mb-3 text-sm">수급 현황 (Supply & Demand)</h3>

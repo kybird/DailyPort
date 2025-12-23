@@ -2,7 +2,7 @@
 'use server'
 
 import { getMarketData } from '@/utils/market-data'
-import { analyzeTechnical, TechnicalAnalysisResult } from '@/utils/technical-analysis'
+import { analyzeTechnical, TechnicalAnalysisResult, calculateObjectives } from '@/utils/technical-analysis'
 import { createClient } from '@/utils/supabase/server'
 
 export interface AnalysisReport {
@@ -81,6 +81,10 @@ export async function getAnalysis(ticker: string): Promise<AnalysisReport | { er
     if (!supplyInfo) {
         summaries.push('수급 데이터는 아직 집계되지 않았습니다 (로컬 Admin Tool 실행 필요).')
     }
+
+    // 4. Calculate Suggested Objectives
+    const objectives = calculateObjectives(marketData.currentPrice)
+    technical.objectives = objectives
 
     return {
         ticker,

@@ -18,6 +18,31 @@ export interface TechnicalAnalysisResult {
         emaLong: number  // 60
         status: 'GOLDEN_CROSS' | 'DEAD_CROSS' | 'UP_TREND' | 'DOWN_TREND' | 'NEUTRAL'
     }
+    objectives?: {
+        short: { entry: number; stop: number; target: number }
+        mid: { entry: number; stop: number; target: number }
+        long: { entry: number; stop: number; target: number }
+    }
+}
+
+export function calculateObjectives(currentPrice: number) {
+    return {
+        short: {
+            entry: currentPrice,
+            stop: Math.floor(currentPrice * 0.97),
+            target: Math.floor(currentPrice * 1.05)
+        },
+        mid: {
+            entry: currentPrice,
+            stop: Math.floor(currentPrice * 0.93),
+            target: Math.floor(currentPrice * 1.15)
+        },
+        long: {
+            entry: currentPrice,
+            stop: Math.floor(currentPrice * 0.85),
+            target: Math.floor(currentPrice * 1.30)
+        }
+    }
 }
 
 export function analyzeTechnical(marketData: MarketData): TechnicalAnalysisResult {
