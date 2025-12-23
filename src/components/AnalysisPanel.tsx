@@ -4,6 +4,7 @@
 import { useState } from 'react'
 import { Activity, X, AlertTriangle, TrendingUp, TrendingDown, RefreshCw } from 'lucide-react'
 import { getAnalysis, AnalysisReport } from '@/app/actions_analysis'
+import { getStockName } from '@/utils/stockUtils'
 
 interface AnalysisPanelProps {
     ticker: string
@@ -34,9 +35,10 @@ export default function AnalysisPanel({ ticker, onClose }: AnalysisPanelProps) {
         <div className="fixed inset-y-0 right-0 z-50 w-full md:w-96 bg-white shadow-2xl animate-in slide-in-from-right duration-300 border-l overflow-y-auto">
             <div className="p-6">
                 <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-xl font-bold flex items-center gap-2 text-gray-900">
+                    <h2 className="text-xl font-black flex items-center gap-2 text-zinc-900 dark:text-white">
                         <Activity className="text-blue-600" />
-                        Analysis: {ticker}
+                        분석: {getStockName(ticker)}
+                        <span className="text-xs font-mono text-zinc-400 ml-1">({ticker})</span>
                     </h2>
                     <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
                         <X />
