@@ -1,4 +1,5 @@
 
+import Link from 'next/link'
 import { ArrowLeft, DollarSign, Zap, Box, CheckCircle2, Target, BarChart3, LineChart, ArrowRight } from 'lucide-react'
 
 export default function GuruAboutPage() {
