@@ -122,22 +122,22 @@ export default function Watchlist({ items }: { items: WatchlistItem[] }) {
                                             ₩{item.marketData.currentPrice.toLocaleString()}
                                         </div>
                                         <div className="flex items-center gap-2">
-                                            <span className={`inline-flex items-center gap-1 text-sm font-bold px-3 py-1 rounded-full ${item.marketData.changePrice > 0
+                                            <span className={`inline-flex items-center gap-1 text-sm font-bold px-3 py-1 rounded-full ${(item.marketData.changePrice || 0) > 0
                                                 ? 'bg-rose-100 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400'
-                                                : item.marketData.changePrice < 0
+                                                : (item.marketData.changePrice || 0) < 0
                                                     ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'
                                                     : 'bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400'
                                                 }`}>
-                                                {item.marketData.changePrice > 0 ? '▲' : item.marketData.changePrice < 0 ? '▼' : '─'}
-                                                <span>{Math.abs(item.marketData.changePercent).toFixed(2)}%</span>
+                                                {(item.marketData.changePrice || 0) > 0 ? '▲' : (item.marketData.changePrice || 0) < 0 ? '▼' : '─'}
+                                                <span>{Math.abs(item.marketData.changePercent || 0).toFixed(2)}%</span>
                                             </span>
-                                            <span className={`text-sm font-semibold ${item.marketData.changePrice > 0
+                                            <span className={`text-sm font-semibold ${(item.marketData.changePrice || 0) > 0
                                                 ? 'text-rose-600 dark:text-rose-400'
-                                                : item.marketData.changePrice < 0
+                                                : (item.marketData.changePrice || 0) < 0
                                                     ? 'text-blue-600 dark:text-blue-400'
                                                     : 'text-zinc-500 dark:text-zinc-400'
                                                 }`}>
-                                                {item.marketData.changePrice > 0 ? '+' : ''}{item.marketData.changePrice.toLocaleString()}원
+                                                {(item.marketData.changePrice || 0) > 0 ? '+' : ''}{(item.marketData.changePrice || 0).toLocaleString()}원
                                             </span>
                                         </div>
                                     </div>
