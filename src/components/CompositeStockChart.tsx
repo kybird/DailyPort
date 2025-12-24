@@ -59,6 +59,18 @@ export default function CompositeStockChart({ priceData, supplyData }: Composite
             },
         }
 
+        const formatDate = (date: string) => {
+            if (!date) return ''
+            // Handle ISO string (YYYY-MM-DDTHH:mm:SS...)
+            if (date.includes('T')) return date.split('T')[0]
+            // Handle YYYYMMDD (Python Analyzer format: 20250925)
+            if (date.length === 8 && !date.includes('-')) {
+                return `${date.slice(0, 4)}-${date.slice(4, 6)}-${date.slice(6, 8)}`
+            }
+            // Already YYYY-MM-DD or other format
+            return date
+        }
+
         // 1. Main Price Chart (Candlesticks)
         mainChartRef.current = createChart(mainContainerRef.current, {
             ...commonOptions,
@@ -87,7 +99,7 @@ export default function CompositeStockChart({ priceData, supplyData }: Composite
 
         const formattedPrice = priceData
             .map(d => ({
-                time: d.date.split('T')[0] as Time,
+                time: formatDate(d.date) as Time,
                 open: d.open,
                 high: d.high,
                 low: d.low,
@@ -133,12 +145,12 @@ export default function CompositeStockChart({ priceData, supplyData }: Composite
 
         if (supplyData && supplyData.length > 0) {
             const formattedForeign = supplyData.map(d => ({
-                time: d.date as Time,
+                time: formatDate(d.date) as Time,
                 value: d.foreigner,
                 color: d.foreigner >= 0 ? 'rgba(239, 68, 68, 0.8)' : 'rgba(59, 130, 246, 0.8)',
             }))
             const formattedInst = supplyData.map(d => ({
-                time: d.date as Time,
+                time: formatDate(d.date) as Time,
                 value: d.institution,
                 color: d.institution >= 0 ? 'rgba(245, 158, 11, 0.8)' : 'rgba(99, 102, 241, 0.8)',
             }))
