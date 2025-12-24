@@ -21,6 +21,8 @@ TODAY_DB = datetime.now().strftime("%Y%m%d") # SQLite Format
 env_path = os.path.join(os.path.dirname(__file__), '.env')
 if not os.path.exists(env_path):
     env_path = os.path.join(os.path.dirname(__file__), '../.env.local')
+if not os.path.exists(env_path):
+    env_path = os.path.join(os.path.dirname(__file__), '../../.env.local')
 load_dotenv(env_path)
 
 SUPABASE_URL = os.getenv("NEXT_PUBLIC_SUPABASE_URL")

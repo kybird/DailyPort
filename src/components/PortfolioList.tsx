@@ -7,6 +7,7 @@ import { removeTicker } from '@/app/actions'
 import AnalysisPanel from './AnalysisPanel'
 import TransactionDialog from './TransactionDialog'
 import { getStockName } from '@/utils/stockUtils'
+import { useAnalysis } from '@/context/AnalysisContext'
 
 interface PortfolioItem {
     id: string
@@ -18,8 +19,8 @@ interface PortfolioItem {
 }
 
 export default function PortfolioList({ items }: { items: PortfolioItem[] }) {
+    const { openAnalysis } = useAnalysis()
     const [deleting, setDeleting] = useState<string | null>(null)
-    const [analyzingTicker, setAnalyzingTicker] = useState<string | null>(null)
     const [tradingItem, setTradingItem] = useState<PortfolioItem | null>(null)
 
     const handleDelete = async (ticker: string) => {
@@ -59,7 +60,7 @@ export default function PortfolioList({ items }: { items: PortfolioItem[] }) {
                                         <div className="text-sm font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
                                             {getStockName(item.ticker)}
                                             <button
-                                                onClick={() => setAnalyzingTicker(item.ticker)}
+                                                onClick={() => openAnalysis(item.ticker, 'portfolio', { quantity: item.quantity, entryPrice: item.entry_price })}
                                                 className="text-blue-500 hover:text-blue-700 transition-colors" title="분석하기">
                                                 <Activity size={14} />
                                             </button>
@@ -106,17 +107,6 @@ export default function PortfolioList({ items }: { items: PortfolioItem[] }) {
                 </table>
             </div>
 
-            {analyzingTicker && (
-                <AnalysisPanel
-                    ticker={analyzingTicker}
-                    onClose={() => setAnalyzingTicker(null)}
-                    mode="portfolio"
-                    portfolioData={(() => {
-                        const item = items.find(i => i.ticker === analyzingTicker);
-                        return item ? { quantity: item.quantity, entryPrice: item.entry_price } : undefined;
-                    })()}
-                />
-            )}
 
             {tradingItem && (
                 <TransactionDialog

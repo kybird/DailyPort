@@ -31,38 +31,35 @@ export default function AnalysisPanel({ ticker, onClose, mode = 'portfolio', por
     const [showTradeDialog, setShowTradeDialog] = useState(false)
     const [tradeType, setTradeType] = useState<'BUY' | 'SELL'>('BUY')
 
-    // Fetch on mount
-    // Fetch on mount
+    // Fetch on mount and when ticker changes
     useEffect(() => {
-        let mounted = true
         const fetch = async () => {
             setLoading(true)
-            const result = await getAnalysis(ticker)
-            if (!mounted) return
+            setError('') // Clear previous errors
 
-            if ('error' in result) {
-                setError(result.error)
+            const analysisResult = await getAnalysis(ticker)
+            if ('error' in analysisResult) {
+                setError(analysisResult.error)
+                setReport(null)
             } else {
-                setReport(result)
+                setReport(analysisResult)
             }
 
             // Check if already in watchlist
             const watchlist = await getWatchlist()
-            if (!mounted) return
             setIsWatched(watchlist?.some((item: any) => item.ticker === ticker) || false)
 
             // Check telegram settings
             const settings = await getSettings()
-            if (!mounted) return
             if (settings.data?.telegram_bot_token && settings.data?.telegram_chat_id) {
                 setHasTelegramSettings(true)
+            } else {
+                setHasTelegramSettings(false)
             }
 
             setLoading(false)
         }
         fetch()
-
-        return () => { mounted = false }
     }, [ticker])
 
 
@@ -334,65 +331,64 @@ export default function AnalysisPanel({ ticker, onClose, mode = 'portfolio', por
                                         </div>
                                     </div>
                                 </div>
+                            ) : (
+                                <div className="text-xs text-zinc-500 italic bg-zinc-50 dark:bg-zinc-950 p-4 rounded-xl border border-dashed border-zinc-200 dark:border-zinc-800 text-center">
+                                    분석 데이터가 없습니다 (Admin Tool 미실행).
                                 </div>
-                        ) : (
-                        <div className="text-xs text-zinc-500 italic bg-zinc-50 dark:bg-zinc-950 p-4 rounded-xl border border-dashed border-zinc-200 dark:border-zinc-800 text-center">
-                            분석 데이터가 없습니다 (Admin Tool 미실행).
-                        </div>
                             )}
-                    </div>
+                        </div>
 
                         {/* Disclaimer */}
-                <div className="mt-8 pt-4 border-t border-gray-100 dark:border-zinc-800">
-                    <div className="flex justify-end mb-4">
-                        <button
-                            disabled={!hasTelegramSettings}
-                            title={hasTelegramSettings ? "현재 분석 리포트를 텔레그램으로 전송합니다." : "마이페이지에서 텔레그램 설정을 완료해주세요."}
-                            onClick={async () => {
-                                if (!report || !hasTelegramSettings) return
-                                const btn = document.getElementById('btn-telegram') as HTMLButtonElement
-                                if (btn) btn.disabled = true;
-                                if (btn) btn.innerHTML = 'Sending...';
+                        <div className="mt-8 pt-4 border-t border-gray-100 dark:border-zinc-800">
+                            <div className="flex justify-end mb-4">
+                                <button
+                                    disabled={!hasTelegramSettings}
+                                    title={hasTelegramSettings ? "현재 분석 리포트를 텔레그램으로 전송합니다." : "마이페이지에서 텔레그램 설정을 완료해주세요."}
+                                    onClick={async () => {
+                                        if (!report || !hasTelegramSettings) return
+                                        const btn = document.getElementById('btn-telegram') as HTMLButtonElement
+                                        if (btn) btn.disabled = true;
+                                        if (btn) btn.innerHTML = 'Sending...';
 
-                                const res = await import('@/app/actions_notification').then(m => m.sendAnalysisToTelegram(report))
+                                        const res = await import('@/app/actions_notification').then(m => m.sendAnalysisToTelegram(report))
 
-                                if (res.success) alert('Sent to Telegram!')
-                                else alert('Failed: ' + res.error)
+                                        if (res.success) alert('Sent to Telegram!')
+                                        else alert('Failed: ' + res.error)
 
-                                if (btn) {
-                                    btn.disabled = false;
-                                    btn.innerHTML = '<span>✈️ Send to Telegram</span>';
-                                }
-                            }}
-                            id="btn-telegram"
-                            className="bg-blue-500 hover:bg-blue-600 disabled:bg-zinc-300 dark:disabled:bg-zinc-700 disabled:cursor-not-allowed text-white px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition-colors"
-                        >
-                            <span>✈️ Send to Telegram</span>
-                        </button>
+                                        if (btn) {
+                                            btn.disabled = false;
+                                            btn.innerHTML = '<span>✈️ Send to Telegram</span>';
+                                        }
+                                    }}
+                                    id="btn-telegram"
+                                    className="bg-blue-500 hover:bg-blue-600 disabled:bg-zinc-300 dark:disabled:bg-zinc-700 disabled:cursor-not-allowed text-white px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition-colors"
+                                >
+                                    <span>✈️ Send to Telegram</span>
+                                </button>
+                            </div>
+                            <div className="flex gap-2 text-gray-500 dark:text-zinc-500 text-xs">
+                                <AlertTriangle size={16} className="shrink-0" />
+                                <p>
+                                    본 정보는 투자 참고 자료일 뿐, 투자 권유가 아닙니다. 투자 판단과 그 결과에 대한 책임은 투자자 본인에게 있습니다.
+                                    {mode === 'portfolio' && ' 데이터는 최소 15분 지연될 수 있습니다 (Yahoo Finance).'}
+                                </p>
+                            </div>
+                        </div>
                     </div>
-                    <div className="flex gap-2 text-gray-500 dark:text-zinc-500 text-xs">
-                        <AlertTriangle size={16} className="shrink-0" />
-                        <p>
-                            본 정보는 투자 참고 자료일 뿐, 투자 권유가 아닙니다. 투자 판단과 그 결과에 대한 책임은 투자자 본인에게 있습니다.
-                            {mode === 'portfolio' && ' 데이터는 최소 15분 지연될 수 있습니다 (Yahoo Finance).'}
-                        </p>
-                    </div>
-                </div>
-            </div>
                 )}
 
-        </div>
+            </div>
 
             {
-        showTradeDialog && (
-            <TransactionDialog
-                ticker={ticker}
-                currentQuantity={portfolioData?.quantity || 0}
-                onClose={() => setShowTradeDialog(false)}
-                initialType={tradeType}
-            />
-        )
-    }
+                showTradeDialog && (
+                    <TransactionDialog
+                        ticker={ticker}
+                        currentQuantity={portfolioData?.quantity || 0}
+                        onClose={() => setShowTradeDialog(false)}
+                        initialType={tradeType}
+                    />
+                )
+            }
         </div >
     )
 }

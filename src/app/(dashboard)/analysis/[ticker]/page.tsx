@@ -207,13 +207,14 @@ export default async function AnalysisPage({ params }: { params: Promise<{ ticke
                                     </div>
                                 </div>
                             </div>
-                            ) : (
-                            <div className="p-6 bg-zinc-50 dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 text-zinc-500 text-center">
-                                No supply data available. Run the daily analyzer.
-                            </div>
-                    )}
                         </div>
+                    ) : (
+                        <div className="p-6 bg-zinc-50 dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 text-zinc-500 text-center">
+                            No supply data available. Run the daily analyzer.
+                        </div>
+                    )}
+                </div>
             </div>
-            </div>
-            )
+        </div>
+    )
 }

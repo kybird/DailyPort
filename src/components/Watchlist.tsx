@@ -3,16 +3,25 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Trash2, Activity, PlusCircle, Search } from 'lucide-react'
+import { Trash2, Activity, PlusCircle, Search, Target, ShieldAlert, ArrowRightCircle } from 'lucide-react'
 import { removeFromWatchlist, addToWatchlist } from '@/app/actions'
 import { getStockName } from '@/utils/stockUtils'
-import StockSearch from './StockSearch'
 import AnalysisPanel from './AnalysisPanel'
-
+import StockSearch from './StockSearch'
+import { useAnalysis } from '@/context/AnalysisContext'
 
 interface WatchlistItem {
     id: string
     ticker: string
+    short_entry?: number
+    short_stop?: number
+    short_target?: number
+    mid_entry?: number
+    mid_stop?: number
+    mid_target?: number
+    long_entry?: number
+    long_stop?: number
+    long_target?: number
     marketData?: {
         currentPrice: number
         changePrice: number
@@ -22,33 +31,26 @@ interface WatchlistItem {
 
 export default function Watchlist({ items }: { items: WatchlistItem[] }) {
     const router = useRouter()
+    const { openAnalysis } = useAnalysis()
     const [removing, setRemoving] = useState<string | null>(null)
-    const [analyzingTicker, setAnalyzingTicker] = useState<string | null>(null)
     const [isSearchOpen, setIsSearchOpen] = useState(false)
 
     const handleRemove = async (ticker: string) => {
         if (!confirm('관심종목에서 삭제할까요?')) return
         setRemoving(ticker)
         await removeFromWatchlist(ticker)
-        setRemoving(null)
         router.refresh()
+        setRemoving(null)
     }
 
     const handleAddStock = async (stock: { ticker: string }) => {
-        console.log('handleAddStock called with:', stock)
         const res = await addToWatchlist(stock.ticker)
-        console.log('addToWatchlist response:', res)
-        if (res.error) {
-            console.error('Error adding to watchlist:', res.error)
-            alert(res.error)
-        }
+        if (res.error) alert(res.error)
         else {
-            console.log('Successfully added to watchlist, closing search and refreshing')
             setIsSearchOpen(false)
             router.refresh()
         }
     }
-
 
     return (
         <section className="space-y-6">
@@ -90,26 +92,27 @@ export default function Watchlist({ items }: { items: WatchlistItem[] }) {
                     {items.map((item) => (
                         <div key={item.ticker} className="bg-white dark:bg-zinc-900 p-5 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm transition-all hover:shadow-xl hover:-translate-y-1 group relative overflow-hidden">
                             <div className="flex justify-between items-start mb-4">
-                                <div className="text-base font-black text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
-                                    {getStockName(item.ticker)}
-                                    <button
-                                        onClick={() => setAnalyzingTicker(item.ticker)}
-                                        className="p-1.5 rounded-lg text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-all"
-                                        title="분석하기"
-                                    >
-                                        <Activity size={16} />
-                                    </button>
+                                <div>
+                                    <div className="text-base font-black text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
+                                        {getStockName(item.ticker)}
+                                        <button
+                                            onClick={() => openAnalysis(item.ticker, 'watchlist')}
+                                            className="p-1.5 rounded-lg text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-all"
+                                            title="분석하기"
+                                        >
+                                            <Activity size={16} />
+                                        </button>
+                                    </div>
+                                    <div className="text-[10px] font-mono font-bold text-zinc-400 uppercase tracking-widest">{item.ticker}</div>
                                 </div>
-                                <div className="text-[10px] font-mono font-bold text-zinc-400 uppercase tracking-widest">{item.ticker}</div>
+                                <button
+                                    onClick={() => handleRemove(item.ticker)}
+                                    disabled={removing === item.ticker}
+                                    className="p-1.5 text-zinc-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-lg transition-all disabled:opacity-30"
+                                >
+                                    <Trash2 size={16} />
+                                </button>
                             </div>
-                            <button
-                                onClick={() => handleRemove(item.ticker)}
-                                disabled={removing === item.ticker}
-                                className="p-1.5 text-zinc-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-lg transition-all disabled:opacity-30"
-                            >
-                                <Trash2 size={16} />
-                            </button>
-
 
                             <div className="mb-6">
                                 {item.marketData ? (
@@ -125,20 +128,34 @@ export default function Watchlist({ items }: { items: WatchlistItem[] }) {
                                     <div className="h-8 bg-zinc-50 dark:bg-zinc-800 animate-pulse rounded-lg w-32" />
                                 )}
                             </div>
+
+                            {/* Price Objectives Mini Table */}
+                            <div className="space-y-2 border-t border-zinc-50 dark:border-zinc-800 pt-4">
+                                <div className="grid grid-cols-4 text-[10px] font-black text-zinc-400 uppercase tracking-wider mb-1">
+                                    <span>관점</span>
+                                    <span className="text-center flex items-center justify-center gap-1"><ArrowRightCircle size={10} className="text-blue-500" />진입</span>
+                                    <span className="text-center flex items-center justify-center gap-1"><ShieldAlert size={10} className="text-rose-500" />손절</span>
+                                    <span className="text-center flex items-center justify-center gap-1"><Target size={10} className="text-emerald-500" />목표</span>
+                                </div>
+
+                                {[
+                                    { label: '단기', entry: item.short_entry, stop: item.short_stop, target: item.short_target, color: 'text-zinc-500' },
+                                    { label: '중기', entry: item.mid_entry, stop: item.mid_stop, target: item.mid_target, color: 'text-zinc-700 dark:text-zinc-300' },
+                                    { label: '장기', entry: item.long_entry, stop: item.long_stop, target: item.long_target, color: 'text-zinc-900 dark:text-zinc-100' }
+                                ].map((row) => (
+                                    <div key={row.label} className="grid grid-cols-4 text-xs font-bold py-1 items-center border-b border-zinc-50/50 dark:border-zinc-800/50 last:border-0">
+                                        <span className={`${row.color} font-black`}>{row.label}</span>
+                                        <span className="text-center font-mono text-blue-600 dark:text-blue-400">{row.entry?.toLocaleString() || '-'}</span>
+                                        <span className="text-center font-mono text-rose-500">{row.stop?.toLocaleString() || '-'}</span>
+                                        <span className="text-center font-mono text-emerald-500">{row.target?.toLocaleString() || '-'}</span>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
-                    ))
-                    }
+                    ))}
                 </div>
             )}
 
-            {analyzingTicker && (
-                <AnalysisPanel
-                    ticker={analyzingTicker}
-                    onClose={() => setAnalyzingTicker(null)}
-                    mode="watchlist"
-                />
-            )}
         </section>
     )
 }
-
