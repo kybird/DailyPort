@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { Github, LayoutDashboard, User } from 'lucide-react'
+import { Github, LayoutDashboard, User, MessageCircle } from 'lucide-react'
 
 import ThemeToggle from './ThemeToggle'
 
@@ -16,6 +16,14 @@ export default function TopPanel() {
 
 
                     <div className="flex items-center gap-3">
+                        <Link
+                            href="/support"
+                            className="p-2 rounded-lg text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors"
+                            aria-label="Support & Feedback"
+                        >
+                            <MessageCircle size={20} />
+                        </Link>
+
                         <Link
                             href="/mypage"
                             className="p-2 rounded-lg text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors"

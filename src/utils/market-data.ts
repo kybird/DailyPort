@@ -2,7 +2,7 @@
 import YahooFinance from 'yahoo-finance2'
 import { createClient } from '@/utils/supabase/server'
 
-const yahooFinance = new YahooFinance()
+const yahooFinance = new YahooFinance({ suppressNotices: ['ripHistorical', 'yahooSurvey'] })
 
 
 export interface MarketData {
@@ -185,25 +185,48 @@ export async function getMarketData(ticker: string): Promise<MarketData | null> 
         // console.log(`Fetching Yahoo for ${ticker}`)
 
         let yahooTicker = ticker
-        // Auto-append .KS for Korean 6-digit tickers
-        if (/^\d{6}$/.test(ticker)) {
+        // Auto-append suffix for Korean 6-character tickers if not already present
+        if (/^[0-9A-Z]{6}$/.test(ticker) && !ticker.includes('.')) {
             yahooTicker = `${ticker}.KS`
         }
 
         // Fetch Quote
-        const quote = await yahooFinance.quote(yahooTicker) as any
+        let quote: any
+        try {
+            quote = await yahooFinance.quote(yahooTicker)
+        } catch (e) {
+            // Fallback for KOSDAQ if KOSPI fails
+            if (yahooTicker.endsWith('.KS')) {
+                const kqTicker = yahooTicker.replace('.KS', '.KQ')
+                try {
+                    quote = await yahooFinance.quote(kqTicker)
+                    yahooTicker = kqTicker // Update ticker if fallback works
+                } catch (e2) {
+                    throw e // Throw original error if both fail
+                }
+            } else {
+                throw e
+            }
+        }
 
-        // Fetch Historical (for Technical Analysis) - last 150 days typically enough for MA, RSI
-        const queryOptions = { period1: '2023-01-01' } // Approximate, better to use relative date
-        // Let's explicitly calculate start date: 200 days ago
+        // Fetch Historical (using chart() as recommended)
         const startDate = new Date()
         startDate.setDate(startDate.getDate() - 300)
 
-        const historical = await yahooFinance.historical(yahooTicker, {
+        const chartResult = await yahooFinance.chart(yahooTicker, {
             period1: startDate.toISOString().split('T')[0],
             period2: new Date().toISOString().split('T')[0],
             interval: '1d'
-        }) as any[]
+        })
+
+        const historical = chartResult.quotes.map((q: any) => ({
+            date: q.date,
+            open: q.open,
+            high: q.high,
+            low: q.low,
+            close: q.close,
+            volume: q.volume
+        })).filter((q: any) => q.close !== null)
 
 
         const marketData: MarketData = {

@@ -18,6 +18,10 @@ export interface TechnicalAnalysisResult {
         emaLong: number  // 60
         status: 'GOLDEN_CROSS' | 'DEAD_CROSS' | 'UP_TREND' | 'DOWN_TREND' | 'NEUTRAL'
     }
+    movingAverages?: {
+        ma5: number
+        ma20: number
+    }
     objectives?: {
         short: { entry: number; stop: number; target: number }
         mid: { entry: number; stop: number; target: number }
@@ -116,6 +120,11 @@ export function analyzeTechnical(marketData: MarketData): TechnicalAnalysisResul
         emaLong: currEma60,
         status: trendStatus
     }
+
+    // 4. SMA (5 vs 20)
+    const ma5 = closes.slice(0, 5).reduce((a, b) => a + b, 0) / 5
+    const ma20 = closes.slice(0, 20).reduce((a, b) => a + b, 0) / 20
+    result.movingAverages = { ma5, ma20 }
 
     return result
 }
