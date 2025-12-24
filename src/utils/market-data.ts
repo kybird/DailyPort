@@ -199,7 +199,7 @@ export async function getMarketData(ticker: string): Promise<MarketData | null> 
         }
 
         // Fetch Quote
-        let quote: import('yahoo-finance2/dist/esm/src/modules/quote').Quote | undefined;
+        let quote: any | undefined;
         try {
             quote = await yahooFinance.quote(yahooTicker)
         } catch (e) {
