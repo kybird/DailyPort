@@ -149,28 +149,6 @@ export default function Watchlist({ items }: { items: WatchlistItem[] }) {
                                 )}
                             </div>
 
-                            {/* Price Objectives Mini Table */}
-                            <div className="space-y-2 border-t border-zinc-50 dark:border-zinc-800 pt-4">
-                                <div className="grid grid-cols-4 text-[10px] font-black text-zinc-400 uppercase tracking-wider mb-1">
-                                    <span>관점</span>
-                                    <span className="text-center flex items-center justify-center gap-1"><ArrowRightCircle size={10} className="text-blue-500" />진입</span>
-                                    <span className="text-center flex items-center justify-center gap-1"><ShieldAlert size={10} className="text-rose-500" />손절</span>
-                                    <span className="text-center flex items-center justify-center gap-1"><Target size={10} className="text-emerald-500" />목표</span>
-                                </div>
-
-                                {[
-                                    { label: '단기', entry: item.short_entry, stop: item.short_stop, target: item.short_target, color: 'text-zinc-500' },
-                                    { label: '중기', entry: item.mid_entry, stop: item.mid_stop, target: item.mid_target, color: 'text-zinc-700 dark:text-zinc-300' },
-                                    { label: '장기', entry: item.long_entry, stop: item.long_stop, target: item.long_target, color: 'text-zinc-900 dark:text-zinc-100' }
-                                ].map((row) => (
-                                    <div key={row.label} className="grid grid-cols-4 text-xs font-bold py-1 items-center border-b border-zinc-50/50 dark:border-zinc-800/50 last:border-0">
-                                        <span className={`${row.color} font-black`}>{row.label}</span>
-                                        <span className="text-center font-mono text-blue-600 dark:text-blue-400">{row.entry?.toLocaleString() || '-'}</span>
-                                        <span className="text-center font-mono text-rose-500">{row.stop?.toLocaleString() || '-'}</span>
-                                        <span className="text-center font-mono text-emerald-500">{row.target?.toLocaleString() || '-'}</span>
-                                    </div>
-                                ))}
-                            </div>
                         </div>
                     ))}
                 </div>

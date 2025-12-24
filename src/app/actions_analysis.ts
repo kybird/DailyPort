@@ -33,6 +33,15 @@ export interface AnalysisReport {
             institution_20d_net: number
         }
     }
+    fundamentals?: {
+        market_cap: number | null
+        per: number | null
+        pbr: number | null
+    }
+    portfolio?: {
+        quantity: number
+        entryPrice: number
+    }
     algoAnalysis?: {
         trend: string
         score: number
@@ -101,9 +110,15 @@ export async function getAnalysis(ticker: string): Promise<AnalysisReport | { er
 
     let supplyInfo = undefined
     let algoInfo = undefined
+    let fundamentalInfo = undefined
 
     if (reportRow && reportRow.report_data) {
         const d = reportRow.report_data
+
+        // Fundamentals from Admin Report
+        if (d.fundamentals) {
+            fundamentalInfo = d.fundamentals
+        }
 
         // Merge Admin Tool Summary
         if (d.summary) summaries.push(`[AI 진단] ${d.summary}`)
@@ -149,7 +164,26 @@ export async function getAnalysis(ticker: string): Promise<AnalysisReport | { er
         summaries.push('상세 분석 리포트가 없습니다 (Admin Tool 미실행).')
     }
 
-    // 4. Calculate Objectives
+    // 5. Fetch Portfolio Data for User Context
+    let portfolioInfo = undefined
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) {
+        const { data: pItem } = await supabase
+            .from('portfolios')
+            .select('quantity, entry_price')
+            .eq('user_id', user.id)
+            .eq('ticker', normalizedTicker)
+            .single()
+
+        if (pItem && pItem.quantity > 0) {
+            portfolioInfo = {
+                quantity: pItem.quantity,
+                entryPrice: pItem.entry_price
+            }
+        }
+    }
+
+    // 6. Calculate Objectives
     const objectives = calculateObjectives(marketData.currentPrice)
     technical.objectives = objectives
 
@@ -162,7 +196,9 @@ export async function getAnalysis(ticker: string): Promise<AnalysisReport | { er
         },
         technical,
         supplyDemand: supplyInfo,
+        fundamentals: fundamentalInfo, // Fixed field name
         algoAnalysis: algoInfo,
+        portfolio: portfolioInfo,
         summary: summaries.join(' '),
         generatedAt: new Date().toISOString(),
         historical: marketData.historical?.map(h => ({

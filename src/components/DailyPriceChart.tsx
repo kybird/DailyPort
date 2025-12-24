@@ -2,7 +2,7 @@
 'use client'
 
 import React, { useEffect, useRef } from 'react'
-import { createChart, ColorType, IChartApi, ISeriesApi, LineStyle } from 'lightweight-charts'
+import { createChart, ColorType, IChartApi, ISeriesApi, LineStyle, AreaSeries } from 'lightweight-charts'
 
 interface DailyPriceChartProps {
     data: {
@@ -61,7 +61,7 @@ export default function DailyPriceChart({ data }: DailyPriceChartProps) {
             },
         })
 
-        const areaSeries = chartRef.current.addAreaSeries({
+        const areaSeries = chartRef.current.addSeries(AreaSeries, {
             lineColor: '#3b82f6',
             topColor: 'rgba(59, 130, 246, 0.4)',
             bottomColor: 'rgba(59, 130, 246, 0.0)',

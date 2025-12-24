@@ -97,7 +97,7 @@ def process_watchlist(tickers):
     placeholders = ','.join(['?'] * len(normalized_tickers))
     
     price_sql = f"""
-        SELECT code, date, close 
+        SELECT code, date, close, market_cap, per, pbr
         FROM daily_price 
         WHERE code IN ({placeholders})
         ORDER BY code, date DESC
@@ -157,6 +157,9 @@ def process_watchlist(tickers):
                     "close": c_map.get(s["date"])
                 })
             
+            # 3. Fundamentals (Calculated from latest price data)
+            latest_p = p_history[0] if p_history else {}
+            
             report = {
                 "date": TODAY,
                 "ticker": code,
@@ -172,6 +175,11 @@ def process_watchlist(tickers):
                         "institution_5d_net": i_net_5,
                         "foreigner_20d_net": f_net_20,
                         "institution_20d_net": i_net_20
+                    },
+                    "fundamentals": {
+                        "market_cap": latest_p.get("market_cap"),
+                        "per": latest_p.get("per"),
+                        "pbr": latest_p.get("pbr")
                     }
                 }
             }

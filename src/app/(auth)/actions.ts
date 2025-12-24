@@ -1,10 +1,10 @@
+'use server'
 
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 import { headers } from 'next/headers'
 
 export async function login(formData: FormData) {
-    'use server'
 
     const email = formData.get('email') as string
     const password = formData.get('password') as string
@@ -23,7 +23,6 @@ export async function login(formData: FormData) {
 }
 
 export async function signup(formData: FormData) {
-    'use server'
 
     const email = formData.get('email') as string
     const password = formData.get('password') as string

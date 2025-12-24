@@ -45,14 +45,23 @@ export default function Sidebar() {
     return (
         <aside className="w-64 bg-white dark:bg-zinc-900 border-r border-zinc-200 dark:border-zinc-800 hidden md:block transition-colors shrink-0">
             <div className="p-4 mb-2">
-                <Link href="/" className="flex items-center gap-2 group" onClick={() => setNavigatingTo('/')}>
+                <Link href="/" className="flex items-center gap-2 group relative" onClick={() => setNavigatingTo('/')}>
                     <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white shadow-lg shadow-blue-500/20 group-hover:bg-blue-700 transition-colors">
                         <LayoutDashboard size={18} />
                     </div>
-                    <span className="text-xl font-black tracking-tight text-zinc-900 dark:text-white">
-                        DailyPort
-                    </span>
-                    {navigatingTo === '/' && <Loader2 size={14} className="animate-spin text-blue-500" />}
+                    <div className="flex flex-col">
+                        <span className="text-xl font-black tracking-tight text-zinc-900 dark:text-white leading-none">
+                            DailyPort
+                        </span>
+                        {navigatingTo === '/' && (
+                            <span className="text-[10px] text-blue-500 font-bold animate-pulse absolute -bottom-4 left-10">홈으로 이동 중...</span>
+                        )}
+                    </div>
+                    {navigatingTo === '/' && (
+                        <div className="absolute -right-2 top-1/2 -translate-y-1/2">
+                            <Loader2 size={16} className="animate-spin text-blue-500 shrink-0" />
+                        </div>
+                    )}
                 </Link>
             </div>
 

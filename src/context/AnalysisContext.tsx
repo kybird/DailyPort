@@ -1,8 +1,7 @@
 'use client'
 
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react'
-import { usePathname } from 'next/navigation'
-import AnalysisPanel from '@/components/AnalysisPanel'
+import { usePathname, useRouter } from 'next/navigation'
 
 interface AnalysisContextType {
     openAnalysis: (ticker: string, mode?: 'watchlist' | 'portfolio', portfolioData?: { quantity: number; entryPrice: number }) => void
@@ -14,19 +13,17 @@ const AnalysisContext = createContext<AnalysisContextType | undefined>(undefined
 
 export function AnalysisProvider({ children }: { children: ReactNode }) {
     const pathname = usePathname()
+    const router = useRouter()
     const [activeTicker, setActiveTicker] = useState<string | null>(null)
-    const [mode, setMode] = useState<'watchlist' | 'portfolio'>('portfolio')
-    const [portfolioData, setPortfolioData] = useState<{ quantity: number; entryPrice: number } | undefined>(undefined)
 
-    // Automatically close panel when navigation occurs
+    // Automatically close any residual state on navigation
     useEffect(() => {
         setActiveTicker(null)
     }, [pathname])
 
-    const openAnalysis = (ticker: string, m: 'watchlist' | 'portfolio' = 'portfolio', pData?: { quantity: number; entryPrice: number }) => {
-        setActiveTicker(ticker)
-        setMode(m)
-        setPortfolioData(pData)
+    const openAnalysis = (ticker: string) => {
+        // Instead of opening a side panel, we navigate to the full analysis page
+        router.push(`/analysis/${ticker}?ref=dashboard`)
     }
 
     const closeAnalysis = () => {
@@ -36,15 +33,6 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
     return (
         <AnalysisContext.Provider value={{ openAnalysis, closeAnalysis, activeTicker }}>
             {children}
-            {activeTicker && (
-                <AnalysisPanel
-                    key={activeTicker}
-                    ticker={activeTicker}
-                    mode={mode}
-                    portfolioData={portfolioData}
-                    onClose={closeAnalysis}
-                />
-            )}
         </AnalysisContext.Provider>
     )
 }
