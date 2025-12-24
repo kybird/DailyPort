@@ -1,9 +1,7 @@
 'use server'
 
 import { createClient } from '@/utils/supabase/server'
-import { analyzeTechnical, TechnicalAnalysisResult, calculateObjectives } from '@/utils/technical-analysis'
 import { revalidatePath } from 'next/cache'
-import { getMarketData } from '@/utils/market-data'
 
 
 export async function addTicker(ticker: string, quantity: number, entryPrice: number) {

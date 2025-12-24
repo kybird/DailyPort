@@ -5,6 +5,12 @@ import { getMarketData } from '@/utils/market-data'
 import { analyzeTechnical, TechnicalAnalysisResult, calculateObjectives } from '@/utils/technical-analysis'
 import { createClient } from '@/utils/supabase/server'
 
+export interface SupplyChartItem {
+    date: string;
+    foreigner: number;
+    institution: number;
+}
+
 export interface AnalysisReport {
     ticker: string
     price: {
@@ -18,7 +24,7 @@ export interface AnalysisReport {
         source: string
         updatedAt: string
         dataDate?: string
-        chartData?: any[] // Added for Supply Chart
+        chartData?: SupplyChartItem[] // Added for Supply Chart
         metrics?: {
             foreigner_5d_net: number
             institution_5d_net: number
@@ -26,7 +32,7 @@ export interface AnalysisReport {
             institution_20d_net: number
         }
     }
-    guruAnalysis?: {
+    algoAnalysis?: {
         trend: string
         score: number
     }
@@ -85,7 +91,7 @@ export async function getAnalysis(ticker: string): Promise<AnalysisReport | { er
     if (technical.trend.status === 'UP_TREND') summaries.push('이평선 정배열.')
 
     let supplyInfo = undefined
-    let guruInfo = undefined
+    let algoInfo = undefined
 
     if (reportRow && reportRow.report_data) {
         const d = reportRow.report_data
@@ -95,15 +101,25 @@ export async function getAnalysis(ticker: string): Promise<AnalysisReport | { er
 
         // Supply Data (Latest from Chart)
         if (d.supply_chart && d.supply_chart.length > 0) {
-            const latest = d.supply_chart[d.supply_chart.length - 1]
+            const chartData = d.supply_chart;
+            const latest = chartData[chartData.length - 1];
+
+            // ALWAYS calculate metrics live from chartData to ensure they are visible and current
+            const metrics = {
+                foreigner_5d_net: chartData.slice(-5).reduce((acc: number, curr: SupplyChartItem) => acc + (curr.foreigner || 0), 0),
+                institution_5d_net: chartData.slice(-5).reduce((acc: number, curr: SupplyChartItem) => acc + (curr.institution || 0), 0),
+                foreigner_20d_net: chartData.slice(-20).reduce((acc: number, curr: SupplyChartItem) => acc + (curr.foreigner || 0), 0),
+                institution_20d_net: chartData.slice(-20).reduce((acc: number, curr: SupplyChartItem) => acc + (curr.institution || 0), 0),
+            };
+
             supplyInfo = {
                 foreignNetBuy: latest.foreigner || 0,
                 instNetBuy: latest.institution || 0,
                 source: 'DailyPort Admin',
                 updatedAt: reportRow.created_at,
                 dataDate: latest.date,
-                chartData: d.supply_chart, // Pass full history (now 60d)
-                metrics: d.metrics
+                chartData: chartData,
+                metrics: metrics
             }
 
             // Enhanced Summary Insight from Metrics
@@ -116,7 +132,7 @@ export async function getAnalysis(ticker: string): Promise<AnalysisReport | { er
             }
         }
 
-        guruInfo = {
+        algoInfo = {
             trend: d.trend || 'NEUTRAL',
             score: d.technical_score || 0
         }
@@ -136,13 +152,13 @@ export async function getAnalysis(ticker: string): Promise<AnalysisReport | { er
         },
         technical,
         supplyDemand: supplyInfo,
-        guruAnalysis: guruInfo,
+        algoAnalysis: algoInfo,
         summary: summaries.join(' '),
         generatedAt: new Date().toISOString()
     }
 }
 
-export async function getGuruPicks(): Promise<AlgoPick[]> {
+export async function getAlgoPicks(): Promise<AlgoPick[]> {
     const supabase = await createClient()
 
     // Fetch latest picks for each strategy
@@ -153,7 +169,7 @@ export async function getGuruPicks(): Promise<AlgoPick[]> {
         .limit(10)
 
     if (error) {
-        console.error("Error fetching guru picks:", error)
+        console.error("Error fetching algo picks:", error)
         return []
     }
 

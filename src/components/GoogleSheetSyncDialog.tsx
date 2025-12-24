@@ -4,7 +4,6 @@
 import { useState } from 'react'
 import { FileSpreadsheet, RefreshCw, AlertTriangle, CheckCircle, X } from 'lucide-react'
 import { checkSheetSync, applySheetSync, ImportResult } from '@/app/actions_sheet'
-import { SheetRowData } from '@/utils/google-sheets'
 
 export default function GoogleSheetSyncDialog() {
     const [isOpen, setIsOpen] = useState(false)

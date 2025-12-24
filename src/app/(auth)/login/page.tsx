@@ -26,7 +26,7 @@ export default async function Login({
                         함께합니다.
                     </h1>
                     <p className="text-xl text-zinc-300 font-medium">
-                        "기도매매는 이제 그만."<br />
+                        &quot;기도매매는 이제 그만.&quot;<br />
                         데이터로 증명하고 수익으로 보답받는<br />
                         스마트한 투자자의 선택.
                     </p>

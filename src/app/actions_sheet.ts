@@ -20,7 +20,7 @@ export type ImportResult = {
     }
     previewData?: {
         valid: SheetRowData[]
-        invalid: { row: number; reason: string; data: any }[]
+        invalid: { row: number; reason: string; data: Record<string, unknown> }[]
     }
 }
 
@@ -33,8 +33,7 @@ export async function checkSheetSync(spreadsheetId: string): Promise<ImportResul
     }
 
     const rawRows = result.rows
-    const validRows: SheetRowData[] = []
-    const invalidRows: { row: number; reason: string; data: any }[] = []
+    const invalidRows: { row: number; reason: string; data: Record<string, unknown> }[] = []
 
     // 2. Validate & Normalize
     // Logic: Duplicate tickers in sheet -> Use last one? OR Error? 
@@ -107,7 +106,7 @@ export async function applySheetSync(spreadsheetId: string, rows: SheetRowData[]
         updated_at: new Date().toISOString()
     }))
 
-    const { error, count } = await supabase.from('portfolios').upsert(upsertData, {
+    const { error } = await supabase.from('portfolios').upsert(upsertData, {
         onConflict: 'user_id, ticker',
         ignoreDuplicates: false
     })

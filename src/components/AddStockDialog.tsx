@@ -8,7 +8,7 @@ import { addTicker } from '@/app/actions'
 
 export default function AddStockDialog() {
     const [isOpen, setIsOpen] = useState(false)
-    const [selectedStock, setSelectedStock] = useState<{ ticker: string, name: string } | null>(null)
+    const [selectedStock, setSelectedStock] = useState<{ code: string, name: string } | null>(null)
     const [quantity, setQuantity] = useState('')
     const [price, setPrice] = useState('')
     const [loading, setLoading] = useState(false)
@@ -23,7 +23,7 @@ export default function AddStockDialog() {
 
         // Server Action
         const result = await addTicker(
-            selectedStock.ticker,
+            selectedStock.code,
             Number(quantity),
             Number(price) || 0
         )
@@ -76,7 +76,7 @@ export default function AddStockDialog() {
                         <StockSearch onSelect={setSelectedStock} />
                         {selectedStock && (
                             <div className="mt-2 text-sm text-blue-600 font-medium">
-                                Selected: {selectedStock.name} ({selectedStock.ticker})
+                                Selected: {selectedStock.name} ({selectedStock.code})
                             </div>
                         )}
                     </div>

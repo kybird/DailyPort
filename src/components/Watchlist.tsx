@@ -43,10 +43,11 @@ export default function Watchlist({ items }: { items: WatchlistItem[] }) {
         setRemoving(null)
     }
 
-    const handleAddStock = async (stock: { ticker: string }) => {
-        const res = await addToWatchlist(stock.ticker)
-        if (res.error) alert(res.error)
-        else {
+    const handleAddStock = async (stock: { code: string; name: string }) => {
+        const res = await addToWatchlist(stock.code)
+        if (res.error) {
+            alert(res.error)
+        } else {
             setIsSearchOpen(false)
             router.refresh()
         }
@@ -116,16 +117,35 @@ export default function Watchlist({ items }: { items: WatchlistItem[] }) {
 
                             <div className="mb-6">
                                 {item.marketData ? (
-                                    <div className="flex items-baseline gap-2">
-                                        <span className="text-2xl font-black text-zinc-900 dark:text-white">
-                                            ₩ {item.marketData.currentPrice.toLocaleString()}
-                                        </span>
-                                        <span className={`text-sm font-bold px-2 py-0.5 rounded-full ${item.marketData.changePrice > 0 ? 'bg-rose-50 text-rose-500 dark:bg-rose-900/20' : item.marketData.changePrice < 0 ? 'bg-blue-50 text-blue-500 dark:bg-blue-900/20' : 'bg-zinc-50 text-zinc-400'}`}>
-                                            {item.marketData.changePrice > 0 ? '▲' : item.marketData.changePrice < 0 ? '▼' : ''} {item.marketData.changePercent.toFixed(2)}%
-                                        </span>
+                                    <div className="space-y-2">
+                                        <div className="text-3xl font-black text-zinc-900 dark:text-white">
+                                            ₩{item.marketData.currentPrice.toLocaleString()}
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <span className={`inline-flex items-center gap-1 text-sm font-bold px-3 py-1 rounded-full ${item.marketData.changePrice > 0
+                                                ? 'bg-rose-100 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400'
+                                                : item.marketData.changePrice < 0
+                                                    ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'
+                                                    : 'bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400'
+                                                }`}>
+                                                {item.marketData.changePrice > 0 ? '▲' : item.marketData.changePrice < 0 ? '▼' : '─'}
+                                                <span>{Math.abs(item.marketData.changePercent).toFixed(2)}%</span>
+                                            </span>
+                                            <span className={`text-sm font-semibold ${item.marketData.changePrice > 0
+                                                ? 'text-rose-600 dark:text-rose-400'
+                                                : item.marketData.changePrice < 0
+                                                    ? 'text-blue-600 dark:text-blue-400'
+                                                    : 'text-zinc-500 dark:text-zinc-400'
+                                                }`}>
+                                                {item.marketData.changePrice > 0 ? '+' : ''}{item.marketData.changePrice.toLocaleString()}원
+                                            </span>
+                                        </div>
                                     </div>
                                 ) : (
-                                    <div className="h-8 bg-zinc-50 dark:bg-zinc-800 animate-pulse rounded-lg w-32" />
+                                    <div className="space-y-3">
+                                        <div className="h-9 bg-zinc-100 dark:bg-zinc-800 animate-pulse rounded-lg w-40" />
+                                        <div className="h-6 bg-zinc-100 dark:bg-zinc-800 animate-pulse rounded-lg w-32" />
+                                    </div>
                                 )}
                             </div>
 

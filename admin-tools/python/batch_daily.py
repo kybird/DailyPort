@@ -45,13 +45,72 @@ def update_tickers(conn):
     print(f"✅ Master Updated: {count} tickers processed.")
 
 def get_last_sync_date(conn):
-    """Returns the last date that has market-wide data."""
+    """Returns the last date that has both price AND supply data."""
     cursor = conn.cursor()
-    cursor.execute("SELECT MAX(date) FROM daily_price")
+    # Check for the latest date where both have at least some data
+    cursor.execute("""
+        SELECT MIN(price_max, supply_max) FROM (
+            SELECT MAX(date) as price_max FROM daily_price
+        ) JOIN (
+            SELECT MAX(date) as supply_max FROM daily_supply
+        )
+    """)
     res = cursor.fetchone()[0]
     return res.replace('-', '') if res else None
 
-def sync_market_data_bulk(conn, start_date=None, end_date=None, test_mode=False):
+def repair_supply_bulk(conn, start_date, end_date=None):
+    if not end_date:
+        end_date = TODAY
+    print(f"🛠 Starting Fast Supply Repair ({start_date} to {end_date})...")
+    cursor = conn.cursor()
+    
+    # Get all active tickers
+    cursor.execute("SELECT code, name FROM tickers WHERE is_active = 1")
+    tickers = cursor.fetchall()
+    total = len(tickers)
+    
+    print(f"📊 Processing {total} tickers individually...")
+    
+    for i, (code, name) in enumerate(tickers):
+        try:
+            # Fetch for the entire range for THIS ticker
+            # PyKRX returns a DF indexed by Date with columns: [기관합계, 기타법인, 개인, 외국인합계, 전체]
+            df = stock.get_market_trading_value_by_date(start_date, end_date, code)
+            
+            if df.empty:
+                continue
+                
+            supply_data = []
+            for date_val, row in df.iterrows():
+                # date_val is a Timestamp
+                date_str = date_val.strftime("%Y%m%d")
+                supply_data.append((
+                    code, date_str,
+                    int(row.get('개인', 0)),
+                    int(row.get('외국인합계', 0)),
+                    int(row.get('기관합계', 0))
+                ))
+            
+            if supply_data:
+                cursor.executemany("""
+                    INSERT OR REPLACE INTO daily_supply (code, date, individual, foreigner, institution)
+                    VALUES (?, ?, ?, ?, ?)
+                """, supply_data)
+                conn.commit()
+            
+            if (i + 1) % 50 == 0 or (i + 1) == total:
+                print(f"   [{i+1}/{total}] {code} {name} synced ({len(supply_data)} days).")
+            
+            # Subtle delay to respect KRX
+            time.sleep(0.05)
+            
+        except Exception as e:
+            print(f"\n❌ Error processing {code}: {e}")
+            time.sleep(2) # Wait longer on error
+
+    print("\n✨ Supply Repair Task Completed.")
+
+def sync_market_data_bulk(conn, start_date=None, end_date=None, test_mode=False, force_supply=False):
     print(f"🚀 Starting Bulk Market Sync ({start_date} to {end_date})...")
     cursor = conn.cursor()
     
@@ -88,6 +147,13 @@ def sync_market_data_bulk(conn, start_date=None, end_date=None, test_mode=False)
         print(f"🧪 Test Mode: Syncing only {len(valid_dates)} dates: {valid_dates}")
 
     for date_str in valid_dates:
+        # If not force_supply, we skip if data already exists in both
+        if not force_supply:
+            cursor.execute("SELECT count(*) FROM daily_supply WHERE date = ?", (date_str,))
+            if cursor.fetchone()[0] > 100: # Assuming market-wide data has > 100 tickers
+                print(f"📅 Skipping {date_str} (Supply data already exists)")
+                continue
+
         print(f"📅 Processing {date_str}...")
         try:
             # 2. Bulk Fetch Data for each market
@@ -219,6 +285,8 @@ if __name__ == "__main__":
     parser.add_argument("--test", action="store_true", help="Sync last 3 days only")
     parser.add_argument("--start", type=str, help="Start date (YYYYMMDD)")
     parser.add_argument("--end", type=str, help="End date (YYYYMMDD)")
+    parser.add_argument("--force-supply", action="store_true", help="Sync supply data even if price exists")
+    parser.add_argument("--repair-supply", action="store_true", help="Efficiently repair supply data per ticker")
     args = parser.parse_args()
 
     conn = get_db_connection()
@@ -226,7 +294,11 @@ if __name__ == "__main__":
     # 1. Update Master
     update_tickers(conn)
     
-    # 2. Bulk Sync
-    sync_market_data_bulk(conn, start_date=args.start, end_date=args.end, test_mode=args.test)
+    # 2. Choice of Sync Mode
+    if args.repair_supply:
+        start_date = args.start if args.start else START_DATE_LIMIT
+        repair_supply_bulk(conn, start_date, args.end)
+    else:
+        sync_market_data_bulk(conn, start_date=args.start, end_date=args.end, test_mode=args.test, force_supply=args.force_supply)
     
     conn.close()

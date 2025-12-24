@@ -48,12 +48,20 @@ export interface IndexData {
 
 const CACHE_TTL_MINUTES = 10
 
-// Simple delay function for rate limiting
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
-
-
-
-
+interface KRXIndexItem {
+    BAS_DD: string;
+    IDX_NM: string;
+    IDX_CLSS: string;
+    CLSPRC_IDX: string;
+    CMPPREVDD_IDX: string;
+    FLUC_RT: string;
+    OPNPRC_IDX: string;
+    HGPRC_IDX: string;
+    LWPRC_IDX: string;
+    ACC_TRDVOL: string;
+    ACC_TRDVAL: string;
+    MKTCAP: string;
+}
 
 // KRX Index data functions
 export async function getKOSPIIndexData(): Promise<IndexData[]> {
@@ -78,7 +86,7 @@ export async function getKOSPIIndexData(): Promise<IndexData[]> {
         const data = await response.json()
         const indices = data.OutBlock_1 || []
 
-        return indices.map((item: any) => {
+        return indices.map((item: KRXIndexItem) => {
             const basDd = item.BAS_DD
             const year = basDd.slice(0, 4)
             const month = basDd.slice(4, 6)
@@ -128,7 +136,7 @@ export async function getKOSDAQIndexData(): Promise<IndexData[]> {
         const data = await response.json()
         const indices = data.OutBlock_1 || []
 
-        return indices.map((item: any) => {
+        return indices.map((item: KRXIndexItem) => {
             const basDd = item.BAS_DD
             const year = basDd.slice(0, 4)
             const month = basDd.slice(4, 6)
@@ -191,7 +199,7 @@ export async function getMarketData(ticker: string): Promise<MarketData | null> 
         }
 
         // Fetch Quote
-        let quote: any
+        let quote: import('yahoo-finance2/dist/esm/src/modules/quote').Quote | undefined;
         try {
             quote = await yahooFinance.quote(yahooTicker)
         } catch (e) {
@@ -201,13 +209,15 @@ export async function getMarketData(ticker: string): Promise<MarketData | null> 
                 try {
                     quote = await yahooFinance.quote(kqTicker)
                     yahooTicker = kqTicker // Update ticker if fallback works
-                } catch (e2) {
+                } catch {
                     throw e // Throw original error if both fail
                 }
             } else {
                 throw e
             }
         }
+
+        if (!quote) throw new Error('Failed to fetch quote')
 
         // Fetch Historical (using chart() as recommended)
         const startDate = new Date()
@@ -219,14 +229,14 @@ export async function getMarketData(ticker: string): Promise<MarketData | null> 
             interval: '1d'
         })
 
-        const historical = chartResult.quotes.map((q: any) => ({
+        const historical = chartResult.quotes.map((q) => ({
             date: q.date,
             open: q.open,
             high: q.high,
             low: q.low,
             close: q.close,
             volume: q.volume
-        })).filter((q: any) => q.close !== null)
+        })).filter((q) => q.close !== null)
 
 
         const marketData: MarketData = {
@@ -240,13 +250,13 @@ export async function getMarketData(ticker: string): Promise<MarketData | null> 
             changePrice: quote.regularMarketChange,
             changePercent: quote.regularMarketChangePercent,
             currency: quote.currency,
-            historical: historical.map((h: any) => ({
-                date: h.date.toISOString(),
-                open: h.open,
-                high: h.high,
-                low: h.low,
-                close: h.close,
-                volume: h.volume
+            historical: historical.map((h) => ({
+                date: (h.date as Date).toISOString(), // chart() result date is Date object
+                open: h.open as number,
+                high: h.high as number,
+                low: h.low as number,
+                close: h.close as number,
+                volume: h.volume as number
             })) // .reverse() ? technicalindicators usually expect oldest first (array[0] is old)
         }
 

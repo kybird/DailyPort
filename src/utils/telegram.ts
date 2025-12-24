@@ -27,8 +27,9 @@ export async function sendTelegramMessage(text: string, parseMode: 'MarkdownV2' 
             return { success: false, error: data.description }
         }
         return { success: true }
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('Telegram Network Error:', error)
-        return { success: false, error: error.message }
+        const message = error instanceof Error ? error.message : 'Unknown error'
+        return { success: false, error: message }
     }
 }

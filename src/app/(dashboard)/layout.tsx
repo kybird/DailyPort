@@ -2,7 +2,7 @@
 import Link from 'next/link'
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
-import { LayoutDashboard, User, Info } from 'lucide-react'
+import { LayoutDashboard, Info } from 'lucide-react'
 import TopPanel from '@/components/TopPanel'
 
 

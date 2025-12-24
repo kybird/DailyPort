@@ -3,7 +3,7 @@ import AddStockDialog from '@/components/AddStockDialog'
 import GoogleSheetSyncDialog from '@/components/GoogleSheetSyncDialog'
 import SettingsForm from '@/components/SettingsForm'
 import SignOutButton from '@/components/SignOutButton'
-import { Settings2, ShieldCheck, Wallet, Send } from 'lucide-react'
+import { ShieldCheck, Wallet, Send } from 'lucide-react'
 
 
 

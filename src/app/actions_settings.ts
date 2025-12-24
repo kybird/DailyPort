@@ -79,7 +79,7 @@ Your Telegram settings are configured correctly!
         if (!data.ok) return { error: data.description }
 
         return { success: true }
-    } catch (e) {
+    } catch {
         return { error: 'Network error occurred' }
     }
 }

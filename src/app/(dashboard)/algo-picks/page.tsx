@@ -1,11 +1,12 @@
 
-import { getGuruPicks } from '@/app/actions_analysis'
+import { getAlgoPicks } from '@/app/actions_analysis'
 import { getStockName } from '@/utils/stockUtils'
 import Link from 'next/link'
-import { ArrowRight, Trophy, TrendingUp, DollarSign, Zap, Box, Info, LineChart } from 'lucide-react'
+import { ArrowRight, Trophy, DollarSign, Zap, Box, LineChart } from 'lucide-react'
+import React from 'react'
 
 // Strategy Icon Mapping
-const strategyIcons: Record<string, any> = {
+const strategyIcons: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
     'Value_Picks': DollarSign,
     'Twin_Engines': Zap,
     'Foreigner_Accumulation': Box,
@@ -20,8 +21,8 @@ const strategyDescriptions: Record<string, string> = {
     'Trend_Following': '추세추종: 상승 추세(정배열)를 그리며 신고가에 근접한 종목'
 }
 
-export default async function GuruPage() {
-    const picks = await getGuruPicks()
+export default async function AlgoPage() {
+    const picks = await getAlgoPicks()
 
     return (
         <div className="space-y-10">

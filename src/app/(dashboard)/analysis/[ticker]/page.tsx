@@ -1,7 +1,12 @@
 import { getAnalysis } from '@/app/actions_analysis'
-import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Activity, RefreshCw } from 'lucide-react'
+
+interface SupplyChartItem {
+    date: string;
+    foreigner: number;
+    institution: number;
+}
 
 
 // TODO: Move Chart components to separate files if they get complex
@@ -138,62 +143,67 @@ export default async function AnalysisPage({ params }: { params: Promise<{ ticke
                         <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-6 space-y-6">
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="p-3 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl border border-zinc-100 dark:border-zinc-800">
-                                    <div className="p-3 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl border border-zinc-100 dark:border-zinc-800">
-                                        <div className="text-[10px] text-zinc-400 uppercase font-black mb-1 flex items-center gap-2">
-                                            Foreigner
-                                            {supplyDemand.dataDate && <span className="font-mono text-[9px]">({supplyDemand.dataDate})</span>}
-                                        </div>
-                                        <div className={`text-lg font-bold ${supplyDemand.foreignNetBuy > 0 ? 'text-rose-500' : supplyDemand.foreignNetBuy < 0 ? 'text-blue-500' : 'text-zinc-500'}`}>
-                                            {supplyDemand.foreignNetBuy > 0 ? '+' : ''}{supplyDemand.foreignNetBuy.toLocaleString()}
+                                    <div className="text-[10px] text-zinc-400 uppercase font-black mb-1 flex items-center gap-2">
+                                        Foreigner
+                                        {supplyDemand.dataDate && <span className="font-mono text-[9px]">({supplyDemand.dataDate})</span>}
+                                    </div>
+                                    <div className={`text-lg font-bold ${supplyDemand.foreignNetBuy > 0 ? 'text-rose-500' : supplyDemand.foreignNetBuy < 0 ? 'text-blue-500' : 'text-zinc-500'}`}>
+                                        {supplyDemand.foreignNetBuy > 0 ? '+' : ''}{supplyDemand.foreignNetBuy.toLocaleString()}
+                                    </div>
+                                </div>
+                                <div className="p-3 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl border border-zinc-100 dark:border-zinc-800">
+                                    <div className="text-[10px] text-zinc-400 uppercase font-black mb-1 flex items-center gap-2">
+                                        Institution
+                                        {supplyDemand.dataDate && <span className="font-mono text-[9px]">({supplyDemand.dataDate})</span>}
+                                    </div>
+                                    <div className={`text-lg font-bold ${supplyDemand.instNetBuy > 0 ? 'text-rose-500' : supplyDemand.instNetBuy < 0 ? 'text-blue-500' : 'text-zinc-500'}`}>
+                                        {supplyDemand.instNetBuy > 0 ? '+' : ''}{supplyDemand.instNetBuy.toLocaleString()}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Accumulation Metrics */}
+                            {supplyDemand.metrics && (
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-1">
+                                        <div className="text-[10px] text-zinc-400 font-bold">외인 매집 (5일/20일)</div>
+                                        <div className="text-sm font-mono text-zinc-600 dark:text-zinc-300">
+                                            {supplyDemand.metrics.foreigner_5d_net > 0 ? '▲' : '▼'} {Math.round(supplyDemand.metrics.foreigner_5d_net / 1000000)}M / {Math.round(supplyDemand.metrics.foreigner_20d_net / 1000000)}M
                                         </div>
                                     </div>
-                                    <div className="p-3 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl border border-zinc-100 dark:border-zinc-800">
-                                        <div className="text-[10px] text-zinc-400 uppercase font-black mb-1 flex items-center gap-2">
-                                            Institution
-                                            {supplyDemand.dataDate && <span className="font-mono text-[9px]">({supplyDemand.dataDate})</span>}
-                                        </div>
-                                        <div className={`text-lg font-bold ${supplyDemand.instNetBuy > 0 ? 'text-rose-500' : supplyDemand.instNetBuy < 0 ? 'text-blue-500' : 'text-zinc-500'}`}>
-                                            {supplyDemand.instNetBuy > 0 ? '+' : ''}{supplyDemand.instNetBuy.toLocaleString()}
+                                    <div className="space-y-1">
+                                        <div className="text-[10px] text-zinc-400 font-bold">기관 매집 (5일/20일)</div>
+                                        <div className="text-sm font-mono text-zinc-600 dark:text-zinc-300">
+                                            {supplyDemand.metrics.institution_5d_net > 0 ? '▲' : '▼'} {Math.round(supplyDemand.metrics.institution_5d_net / 1000000)}M / {Math.round(supplyDemand.metrics.institution_20d_net / 1000000)}M
                                         </div>
                                     </div>
                                 </div>
+                            )}
 
-                                {/* Accumulation Metrics */}
-                                {supplyDemand.metrics && (
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="space-y-1">
-                                            <div className="text-[10px] text-zinc-400 font-bold">외인 매집 (5일/20일)</div>
-                                            <div className="text-sm font-mono text-zinc-600 dark:text-zinc-300">
-                                                {supplyDemand.metrics.foreigner_5d_net > 0 ? '▲' : '▼'} {Math.round(supplyDemand.metrics.foreigner_5d_net / 1000000)}M / {Math.round(supplyDemand.metrics.foreigner_20d_net / 1000000)}M
-                                            </div>
-                                        </div>
-                                        <div className="space-y-1">
-                                            <div className="text-[10px] text-zinc-400 font-bold">기관 매집 (5일/20일)</div>
-                                            <div className="text-sm font-mono text-zinc-600 dark:text-zinc-300">
-                                                {supplyDemand.metrics.institution_5d_net > 0 ? '▲' : '▼'} {Math.round(supplyDemand.metrics.institution_5d_net / 1000000)}M / {Math.round(supplyDemand.metrics.institution_20d_net / 1000000)}M
-                                            </div>
-                                        </div>
+
+                            {/* Supply Trend Visualization */}
+                            <div className="mt-6">
+                                <div className="flex justify-between items-end mb-2">
+                                    <h4 className="text-xs font-bold text-zinc-400">Supply History (Last 60 Days)</h4>
+                                    <div className="flex gap-2 text-[10px] font-bold">
+                                        <span className="flex items-center gap-1 text-blue-500"><div className="w-2 h-2 bg-blue-500 rounded-sm" /> 외인</span>
+                                        <span className="flex items-center gap-1 text-red-500"><div className="w-2 h-2 bg-red-500 rounded-sm" /> 기관</span>
                                     </div>
-                                )}
-
-
-                                {/* Supply Trend Visualization */}
-                                <div className="mt-6">
-                                    <div className="flex justify-between items-end mb-2">
-                                        <h4 className="text-xs font-bold text-zinc-400">Supply History (Last 60 Days)</h4>
-                                        <div className="flex gap-2 text-[10px] font-bold">
-                                            <span className="flex items-center gap-1 text-blue-500"><div className="w-2 h-2 bg-blue-500 rounded-sm" /> 외인</span>
-                                            <span className="flex items-center gap-1 text-red-500"><div className="w-2 h-2 bg-red-500 rounded-sm" /> 기관</span>
-                                        </div>
-                                    </div>
-                                    <div className="h-32 bg-zinc-50 dark:bg-zinc-800/30 rounded-xl flex items-end justify-center p-2 gap-[1px] border border-zinc-100 dark:border-zinc-800">
-                                        {(supplyDemand.chartData || []).map((d: any, i: number) => {
-                                            const f_h = Math.min(Math.abs(d.foreigner) / 200000, 100)
-                                            const i_h = Math.min(Math.abs(d.institution) / 200000, 100)
+                                </div>
+                                <div className="h-32 bg-zinc-50 dark:bg-zinc-800/30 rounded-xl flex items-end justify-center p-2 gap-[1px] border border-zinc-100 dark:border-zinc-800">
+                                    {(() => {
+                                        const chartData: SupplyChartItem[] = supplyDemand.chartData || []
+                                        const maxVal = Math.max(
+                                            ...chartData.map((d: SupplyChartItem) => Math.max(Math.abs(d.foreigner), Math.abs(d.institution))),
+                                            1000000
+                                        )
+                                        return chartData.map((d: SupplyChartItem, i: number) => {
+                                            const f_h = (Math.abs(d.foreigner) / maxVal) * 100
+                                            const i_h = (Math.abs(d.institution) / maxVal) * 100
                                             return (
                                                 <div key={i} className="flex-1 flex flex-col justify-end gap-[1px] h-full group relative">
-                                                    <div className={`w-full rounded-t-sm ${d.institution > 0 ? 'bg-red-500' : 'bg-red-500/20'}`} style={{ height: `${i_h}%` }} />
-                                                    <div className={`w-full rounded-b-sm ${d.foreigner > 0 ? 'bg-blue-500' : 'bg-blue-500/20'}`} style={{ height: `${f_h}%` }} />
+                                                    <div className={`w-full rounded-t-sm ${d.institution > 0 ? 'bg-rose-500' : d.institution < 0 ? 'bg-rose-500/30' : 'bg-transparent'}`} style={{ height: `${i_h}%` }} />
+                                                    <div className={`w-full rounded-b-sm ${d.foreigner > 0 ? 'bg-blue-500' : d.foreigner < 0 ? 'bg-blue-500/30' : 'bg-transparent'}`} style={{ height: `${f_h}%` }} />
 
                                                     {/* Tooltip on hover */}
                                                     <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-10 bg-zinc-900 text-white text-[10px] p-2 rounded shadow-xl whitespace-nowrap pointer-events-none">
@@ -203,8 +213,8 @@ export default async function AnalysisPage({ params }: { params: Promise<{ ticke
                                                     </div>
                                                 </div>
                                             )
-                                        })}
-                                    </div>
+                                        })
+                                    })()}
                                 </div>
                             </div>
                         </div>

@@ -17,17 +17,16 @@ export default function SettingsForm() {
     const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
 
     useEffect(() => {
+        const loadSettings = async () => {
+            const res = await getSettings()
+            if (res.data) {
+                setChatId(res.data.telegram_chat_id || '')
+                setBotToken(res.data.telegram_bot_token || '')
+            }
+            setLoading(false)
+        }
         loadSettings()
     }, [])
-
-    const loadSettings = async () => {
-        const res = await getSettings()
-        if (res.data) {
-            setChatId(res.data.telegram_chat_id || '')
-            setBotToken(res.data.telegram_bot_token || '')
-        }
-        setLoading(false)
-    }
 
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault()

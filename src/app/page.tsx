@@ -1,6 +1,6 @@
 
 import Link from 'next/link'
-import { LayoutDashboard, Github, Shield, Zap, BarChart3 } from 'lucide-react'
+import { LayoutDashboard, Shield, Zap, BarChart3 } from 'lucide-react'
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 
@@ -77,7 +77,7 @@ export default async function LandingPage() {
                             <h3 className="text-xl font-bold text-zinc-900 dark:text-white">매일 아침 투자 비서</h3>
                             <p className="text-zinc-600 dark:text-zinc-400 keep-all">
                                 24시간 차트를 볼 필요 없습니다.
-                                알고리즘이 밤새 발굴한 <b>'수급 급등주(Guru Picks)'</b>를 매일 아침 브리핑해드립니다.
+                                알고리즘이 밤새 발굴한 <b>&apos;수급 급등주(Algo Picks)&apos;</b>를 매일 아침 브리핑해드립니다.
                             </p>
                         </div>
                         <div className="space-y-4">

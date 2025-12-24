@@ -10,7 +10,9 @@ const KST_OFFSET = 9 * 60 * 60 * 1000
 
 // Helper function to fetch intraday data for a specific date
 async function fetchIntradayData(symbol: string, targetDate: Date): Promise<{ time: string, price: number }[]> {
-    // Market hours: 09:00 ~ 20:00 KST
+    // Market hours: 09:00 ~ 15:30 KST (Regular)
+    // Extended hours: 15:30 ~ 20:00 KST (After-hours/ATS)
+    // We try to fetch until 20:00 to see if any ATS data is available
     const marketOpenKst = new Date(targetDate)
     marketOpenKst.setUTCHours(9, 0, 0, 0)
 
@@ -21,7 +23,8 @@ async function fetchIntradayData(symbol: string, targetDate: Date): Promise<{ ti
     const period1 = Math.floor((marketOpenKst.getTime() - KST_OFFSET) / 1000)
     const period2 = Math.floor((marketCloseKst.getTime() - KST_OFFSET) / 1000)
 
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?period1=${period1}&period2=${period2}&interval=60m`
+    // Using 5m interval for better chart resolution as requested by user
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?period1=${period1}&period2=${period2}&interval=5m`
 
     const response = await fetch(url)
     if (!response.ok) {
@@ -65,7 +68,7 @@ async function getIntradayDataWithFallback(symbol: string): Promise<{ time: stri
     return []
 }
 
-// Intraday data for charts (1-hour intervals for current trading day)
+// Intraday data for charts (5-minute intervals for current trading day)
 export async function getKOSPIIntradayData(): Promise<{ time: string, price: number }[]> {
     try {
         return await getIntradayDataWithFallback('%5EKS11')

@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { Github, LayoutDashboard, User, MessageCircle } from 'lucide-react'
+import { Github, User, MessageCircle } from 'lucide-react'
 
 import ThemeToggle from './ThemeToggle'
 

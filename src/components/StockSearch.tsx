@@ -5,15 +5,8 @@ import { useState, useMemo } from 'react'
 import stocksData from '@/data/stocks.json'
 import { Search } from 'lucide-react'
 
-type Stock = {
-    ticker: string
-    name: string
-    market: string
-    chosung: string
-}
-
 interface StockSearchProps {
-    onSelect: (stock: Stock) => void
+    onSelect: (stock: { code: string, name: string }) => void
 }
 
 export default function StockSearch({ onSelect }: StockSearchProps) {
@@ -49,8 +42,9 @@ export default function StockSearch({ onSelect }: StockSearchProps) {
                     onKeyDown={(e) => {
                         if (e.key === 'Enter' && filteredStocks.length > 0) {
                             e.preventDefault()
-                            onSelect(filteredStocks[0])
-                            setQuery(filteredStocks[0].name)
+                            const stock = filteredStocks[0]
+                            onSelect({ code: stock.code, name: stock.name })
+                            setQuery(stock.name)
                             setIsOpen(false)
                         }
                     }}
@@ -65,7 +59,7 @@ export default function StockSearch({ onSelect }: StockSearchProps) {
                             key={stock.ticker}
                             className="px-4 py-3 hover:bg-zinc-50 dark:hover:bg-zinc-950 cursor-pointer flex justify-between items-center transition-colors"
                             onClick={() => {
-                                onSelect(stock)
+                                onSelect({ code: stock.code, name: stock.name })
                                 setQuery(stock.name)
                                 setIsOpen(false)
                             }}

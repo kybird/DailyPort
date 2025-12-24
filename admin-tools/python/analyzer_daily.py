@@ -45,38 +45,40 @@ def analyze_technicals_bulk(rows):
     """
     Rows: List of SQLite rows (date, close) ordered by date DESC
     """
-    if len(rows) < 20:
-        return {"signal": "NEUTRAL", "summary": "데이터 부족 (20일 미만)"}
+    count = len(rows)
+    if count < 5:
+        return {"signal": "NEUTRAL", "summary": "데이터 부족 (5일 미만)", "trend": "NEUTRAL", "ma5": None, "ma20": None}
         
     closes = [r["close"] for r in rows] # Newest first
-    
     ma5 = sum(closes[:5]) / 5
-    ma20 = sum(closes[:20]) / 20
     
-    prev_ma5 = sum(closes[1:6]) / 5
-    prev_ma20 = sum(closes[1:21]) / 20
+    # Optional MA20
+    ma20 = sum(closes[:20]) / 20 if count >= 20 else ma5
     
-    signal = "NEUTRAL"
-    summary = "특이사항 없음"
+    # Prev values for cross detection
+    if count >= 21:
+        prev_ma5 = sum(closes[1:6]) / 5
+        prev_ma20 = sum(closes[1:21]) / 20
+        
+        # Golden Cross
+        if prev_ma5 < prev_ma20 and ma5 >= ma20:
+            return {"signal": "BUY", "summary": "✨ 5일선이 20일선을 돌파했습니다 (골든크로스)", "trend": "UP_TREND", "ma5": ma5, "ma20": ma20}
+        # Dead Cross
+        elif prev_ma5 > prev_ma20 and ma5 <= ma20:
+            return {"signal": "SELL", "summary": "⚠️ 5일선이 20일선을 하향 이탈했습니다 (데드크로스)", "trend": "DOWN_TREND", "ma5": ma5, "ma20": ma20}
     
-    # Golden Cross
-    if prev_ma5 < prev_ma20 and ma5 >= ma20:
-        signal = "BUY"
-        summary = "✨ 5일선이 20일선을 돌파했습니다 (골든크로스)"
-    # Dead Cross
-    elif prev_ma5 > prev_ma20 and ma5 <= ma20:
-        signal = "SELL"
-        summary = "⚠️ 5일선이 20일선을 하향 이탈했습니다 (데드크로스)"
-    
-    # Trend Check
-    status = "UP_TREND" if ma5 > ma20 else "DOWN_TREND"
+    # Fallback status
+    status = "UP_TREND" if ma5 >= ma20 else "DOWN_TREND"
+    summary = f"단기 이평선({ma5:,.0f}원) {'상향' if status == 'UP_TREND' else '하향'}세"
+    if count < 20:
+        summary += " (20일 데이터 부족)"
         
     return {
-        "signal": signal, 
+        "signal": "NEUTRAL", 
         "summary": summary, 
         "trend": status,
         "ma5": ma5, 
-        "ma20": ma20
+        "ma20": ma20 if count >= 20 else None
     }
 
 def process_watchlist(tickers):
@@ -142,10 +144,10 @@ def process_watchlist(tickers):
             supply_chart = []
             
             # Calculate accumulation metrics
-            f_net_5 = sum(s["foreigner"] for s in s_history[:5]) if len(s_history) >= 5 else 0
-            i_net_5 = sum(s["institution"] for s in s_history[:5]) if len(s_history) >= 5 else 0
-            f_net_20 = sum(s["foreigner"] for s in s_history[:20]) if len(s_history) >= 20 else 0
-            i_net_20 = sum(s["institution"] for s in s_history[:20]) if len(s_history) >= 20 else 0
+            f_net_5 = sum(s["foreigner"] for s in s_history[:5])
+            i_net_5 = sum(s["institution"] for s in s_history[:5])
+            f_net_20 = sum(s["foreigner"] for s in s_history[:20])
+            i_net_20 = sum(s["institution"] for s in s_history[:20])
             
             for s in reversed(s_history[:60]):
                 supply_chart.append({
@@ -175,19 +177,20 @@ def process_watchlist(tickers):
             }
             reports.append(report)
 
-            # Change on_conflict to "ticker" only to keep only the latest report in Supabase
+        # Change on_conflict to "ticker" only to keep only the latest report in Supabase
+        if reports: # Only upsert if there are reports to avoid empty payload errors
             supabase.table("daily_analysis_reports").upsert(reports, on_conflict="ticker").execute()
             logger.info(f"✅ Uploaded {len(reports)} detailed reports to Supabase (Latest Only).")
             
     except Exception as e:
         logger.error(f"Watchlist processing failed: {e}")
 
-def run_guru_screening():
+def run_algo_screening():
     """
-    Filter all stocks for specific strategies.
+    Filter all stocks for specific strategies (Algo Picks).
     Optimized queries and execution flow.
     """
-    logger.info("🕵️ Running Guru Screening...")
+    logger.info("🕵️ Running Algorithm Screening (Algo Picks)...")
     cur = get_db_cursor()
     
     # Get latest data dates efficiently
@@ -198,7 +201,7 @@ def run_guru_screening():
     max_supply_date = cur.fetchone()[0]
 
     if not max_price_date:
-        logger.warning("No data found in DB. Skipping Guru Screening.")
+        logger.warning("No data found in DB. Skipping Algo Screening.")
         return
 
     # Strategy 1: Low PER & PBR (Value Picks)
@@ -357,28 +360,31 @@ if __name__ == "__main__":
     logger.info("🚀 Starting Daily Analyzer...")
     
     # 1. Fetch Tickers from Supabase (Watchlist + Portfolio)
+    all_tickers = []
     try:
-        # Fetch from watchlists
-        res_w = supabase.table("watchlists").select("ticker").execute()
-        tickers_w = [r['ticker'] for r in res_w.data] if res_w.data else []
+        # Fetch tickers from watchlists and portfolios
+        watchlist_res = supabase.table("watchlists").select("ticker").execute()
+        portfolio_res = supabase.table("portfolios").select("ticker").execute()
         
-        # Fetch from portfolios
-        res_p = supabase.table("portfolios").select("ticker").execute()
-        tickers_p = [r['ticker'] for r in res_p.data] if res_p.data else []
+        watchlist_tickers = [r["ticker"] for r in watchlist_res.data] if watchlist_res.data else []
+        portfolio_tickers = [r["ticker"] for r in portfolio_res.data] if portfolio_res.data else []
         
-        # Merge and remove duplicates
-        my_tickers = list(set(tickers_w + tickers_p))
+        # Merge and deduplicate
+        all_tickers = list(set(watchlist_tickers + portfolio_tickers))
         
-        # Fallback to defaults if empty
-        if not my_tickers:
-            my_tickers = ["005930", "000660", "035420", "035720"]
+        logger.info(f"Found {len(watchlist_tickers)} watchlist tickers, {len(portfolio_tickers)} portfolio tickers")
+        logger.info(f"Total unique tickers to analyze: {len(all_tickers)}")
             
     except Exception as e:
         logger.warning(f"Failed to fetch tickers from DB: {e}")
-        my_tickers = ["005930", "000660", "035420", "035720"]
+        
+    # Fallback to defaults if empty
+    if not all_tickers:
+        all_tickers = ["005930", "000660", "035420", "035720"]
+        logger.info("Using default tickers as no tickers found in Supabase.")
     
-    process_watchlist(my_tickers)
-    run_guru_screening()
+    process_watchlist(all_tickers)
+    run_algo_screening()
     
     conn.close()
     logger.info("🎉 Analyzer Finished.")

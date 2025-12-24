@@ -16,6 +16,11 @@ interface PortfolioItem {
     entry_price: number
     realized_gain?: number
     currency: string
+    marketData?: {
+        currentPrice: number
+        changePrice: number
+        changePercent: number
+    }
 }
 
 export default function PortfolioList({ items }: { items: PortfolioItem[] }) {
@@ -47,7 +52,9 @@ export default function PortfolioList({ items }: { items: PortfolioItem[] }) {
                             <th className="px-6 py-3 text-left text-xs font-bold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider">종목명</th>
                             <th className="px-6 py-3 text-right text-xs font-bold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider">수량</th>
                             <th className="px-6 py-3 text-right text-xs font-bold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider">평균 단가</th>
-                            <th className="px-6 py-3 text-right text-xs font-bold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider">평가금액 (매수기준)</th>
+                            <th className="px-6 py-3 text-right text-xs font-bold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider">현재가</th>
+                            <th className="px-6 py-3 text-right text-xs font-bold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider">수익률</th>
+                            <th className="px-6 py-3 text-right text-xs font-bold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider">평가금액</th>
                             <th className="px-6 py-3 text-right text-xs font-bold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider">실현손익</th>
                             <th className="px-6 py-3 text-right text-xs font-bold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider">관리</th>
                         </tr>
@@ -76,8 +83,25 @@ export default function PortfolioList({ items }: { items: PortfolioItem[] }) {
                                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-semibold text-zinc-800 dark:text-zinc-200">
                                     {item.entry_price.toLocaleString()} <span className="text-xs text-zinc-500 font-normal">{item.currency}</span>
                                 </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-semibold text-zinc-800 dark:text-zinc-200">
+                                    {item.marketData?.currentPrice ? item.marketData.currentPrice.toLocaleString() : '-'}
+                                </td>
+                                <td className={`px-6 py-4 whitespace-nowrap text-right text-sm font-black ${(() => {
+                                    const currentPrice = item.marketData?.currentPrice || 0
+                                    const returnPct = currentPrice > 0 ? ((currentPrice - item.entry_price) / item.entry_price) * 100 : 0
+                                    return returnPct > 0 ? 'text-rose-500' : returnPct < 0 ? 'text-blue-500' : 'text-zinc-500'
+                                })()}`}>
+                                    {(() => {
+                                        const currentPrice = item.marketData?.currentPrice || 0
+                                        const returnPct = currentPrice > 0 ? ((currentPrice - item.entry_price) / item.entry_price) * 100 : 0
+                                        return returnPct > 0 ? '+' : ''
+                                    })()}{(() => {
+                                        const currentPrice = item.marketData?.currentPrice || 0
+                                        return currentPrice > 0 ? (((currentPrice - item.entry_price) / item.entry_price) * 100).toFixed(2) : '0.00'
+                                    })()}%
+                                </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-bold text-zinc-900 dark:text-white">
-                                    {(item.quantity * item.entry_price).toLocaleString()}
+                                    {item.marketData?.currentPrice ? (item.quantity * item.marketData.currentPrice).toLocaleString() : (item.quantity * item.entry_price).toLocaleString()}
                                 </td>
                                 <td className={`px-6 py-4 whitespace-nowrap text-right text-sm font-bold ${item.realized_gain && item.realized_gain > 0 ? 'text-red-500' : item.realized_gain && item.realized_gain < 0 ? 'text-blue-500' : 'text-zinc-500'}`}>
                                     {item.realized_gain ? (item.realized_gain > 0 ? '+' : '') + item.realized_gain.toLocaleString() : '0'}

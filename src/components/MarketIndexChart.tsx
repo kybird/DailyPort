@@ -2,10 +2,10 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { getKOSPIIntradayData, getKOSDAQIntradayData } from '@/utils/market-index'
-import { TrendingUp, TrendingDown } from 'lucide-react'
 
 // Dynamic import for lightweight-charts to avoid SSR issues
-let createChart: any = null
+let createChart: typeof import('lightweight-charts').createChart | null = null
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 let LineSeries: any = null
 
 interface MarketIndexChartProps {
@@ -14,7 +14,7 @@ interface MarketIndexChartProps {
 
 export default function MarketIndexChart({ index }: MarketIndexChartProps) {
     const chartContainerRef = useRef<HTMLDivElement>(null)
-    const chartRef = useRef<any>(null)
+    const chartRef = useRef<unknown>(null)
     const [data, setData] = useState<{ time: string, price: number }[]>([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState('')
@@ -66,22 +66,16 @@ export default function MarketIndexChart({ index }: MarketIndexChartProps) {
 
         const chart = createChart(chartContainerRef.current, {
             layout: {
-                background: { color: isDark ? '#18181b' : '#ffffff' }, // zinc-900 or white
-                textColor: isDark ? '#a1a1aa' : '#333333',         // zinc-400 or gray-800
+                background: { color: isDark ? '#18181b' : '#ffffff' },
+                textColor: isDark ? '#a1a1aa' : '#333333',
+                fontFamily: 'Inter, system-ui, sans-serif',
             },
             grid: {
-                vertLines: { color: isDark ? '#27272a' : '#f0f0f0' }, // zinc-800 or light gray
+                vertLines: { color: isDark ? '#27272a' : '#f0f0f0' },
                 horzLines: { color: isDark ? '#27272a' : '#f0f0f0' },
             },
             localization: {
-                timeFormatter: (time: number) => {
-                    return new Intl.DateTimeFormat('ko-KR', {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        hour12: false,
-                        timeZone: 'Asia/Seoul',
-                    }).format(new Date(time * 1000));
-                },
+                locale: 'ko-KR',
                 priceFormatter: (price: number) => price.toLocaleString(undefined, { minimumFractionDigits: 2 }),
             },
             width: chartContainerRef.current.clientWidth,
@@ -90,37 +84,52 @@ export default function MarketIndexChart({ index }: MarketIndexChartProps) {
                 timeVisible: true,
                 secondsVisible: false,
                 borderColor: isDark ? '#27272a' : '#cccccc',
-                tickMarkFormatter: (time: number) => {
-                    const date = new Date(time * 1000);
-                    return new Intl.DateTimeFormat('ko-KR', {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        hour12: false,
-                        timeZone: 'Asia/Seoul',
-                    }).format(date);
-                },
+                barSpacing: 10,
+                fixLeftEdge: true,
+                fixRightEdge: true,
             },
             rightPriceScale: {
                 borderColor: isDark ? '#27272a' : '#cccccc',
+                scaleMargins: {
+                    top: 0.2,
+                    bottom: 0.2,
+                },
+            },
+            crosshair: {
+                vertLine: {
+                    color: isDark ? '#52525b' : '#94a3b8',
+                    width: 1,
+                    style: 2, // Dashed
+                    labelBackgroundColor: isDark ? '#27272a' : '#475569',
+                },
+                horzLine: {
+                    color: isDark ? '#52525b' : '#94a3b8',
+                    width: 1,
+                    style: 2, // Dashed
+                    labelBackgroundColor: isDark ? '#27272a' : '#475569',
+                },
             },
             handleScroll: false,
             handleScale: false,
         })
 
         const lineSeries = chart.addSeries(LineSeries, {
-            color: index === 'KOSPI' ? '#dc2626' : '#2563eb', // Red for KOSPI, Blue for KOSDAQ
-            lineWidth: 2,
+            color: index === 'KOSPI' ? '#ef4444' : '#3b82f6', // Bright Red/Blue
+            lineWidth: 3,
+            priceLineVisible: false,
+            lastValueVisible: true,
+            crosshairMarkerVisible: true,
         })
 
         // Convert data to chart format
         const chartData = data.map(item => ({
-            time: Math.floor(new Date(item.time).getTime() / 1000) as any,
+            time: (Math.floor(new Date(item.time).getTime() / 1000) as unknown) as import('lightweight-charts').Time,
             value: item.price
         }))
 
         lineSeries.setData(chartData)
 
-        // Fit content
+        // Fit content to show the full range
         chart.timeScale().fitContent()
 
         chartRef.current = chart
@@ -143,16 +152,13 @@ export default function MarketIndexChart({ index }: MarketIndexChartProps) {
     }, [data, index])
 
     const currentPrice = data.length > 0 ? data[data.length - 1].price : 0
-    const previousPrice = data.length > 1 ? data[data.length - 2].price : currentPrice
-    const change = currentPrice - previousPrice
-    const changePercent = previousPrice > 0 ? (change / previousPrice) * 100 : 0
 
     return (
         <div className="bg-white dark:bg-zinc-900 p-6 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm transition-colors">
             <div className="flex justify-between items-center mb-4">
                 <h3 className="text-sm font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">{index} Index</h3>
                 <div className="text-xl font-black text-zinc-900 dark:text-white">
-                    {data.length > 0 ? data[data.length - 1].price.toLocaleString(undefined, { minimumFractionDigits: 2 }) : '-'}
+                    {data.length > 0 ? currentPrice.toLocaleString(undefined, { minimumFractionDigits: 2 }) : '-'}
                 </div>
             </div>
 

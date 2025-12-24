@@ -1,26 +1,37 @@
 
 import { createClient } from '@/utils/supabase/server'
-import AddStockDialog from '@/components/AddStockDialog'
 import PortfolioList from '@/components/PortfolioList'
 import { getPortfolio, getWatchlist } from '@/app/actions'
-import GoogleSheetSyncDialog from '@/components/GoogleSheetSyncDialog'
 import MarketIndexChart from '@/components/MarketIndexChart'
-import { getMarketData } from '@/utils/market-data'
+import { getMarketData, MarketData } from '@/utils/market-data'
 import Watchlist from '@/components/Watchlist'
+
+interface PortfolioItem {
+    id: string;
+    ticker: string;
+    quantity: number;
+    average_price: number;
+    realized_gain: number;
+    marketData?: MarketData | null;
+}
+
+interface WatchlistItem {
+    id: string;
+    ticker: string;
+    marketData?: MarketData | null;
+}
 
 export default async function Dashboard() {
     const supabase = await createClient()
 
-    const {
-        data: { user },
-    } = await supabase.auth.getUser()
+    await supabase.auth.getUser()
 
-    const portfolioItems = await getPortfolio()
-    const watchlistItems = await getWatchlist()
+    const portfolioItems = await getPortfolio() as PortfolioItem[] | null
+    const watchlistItems = await getWatchlist() as WatchlistItem[] | null
 
     // Fetch market data for all portfolio items
     const portfolioWithMarketData = await Promise.all(
-        (portfolioItems || []).map(async (item: any) => {
+        (portfolioItems || []).map(async (item: PortfolioItem) => {
             const marketData = await getMarketData(item.ticker)
             return { ...item, marketData }
         })
@@ -28,24 +39,24 @@ export default async function Dashboard() {
 
     // Fetch market data for watchlist items
     const watchlistWithMarketData = await Promise.all(
-        (watchlistItems || []).map(async (item: any) => {
+        (watchlistItems || []).map(async (item: WatchlistItem) => {
             const marketData = await getMarketData(item.ticker)
             return { ...item, marketData }
         })
     )
 
     // Calculate totals
-    const totalValuation = portfolioWithMarketData.reduce((sum: number, item: any) => {
+    const totalValuation = portfolioWithMarketData.reduce((sum: number, item: PortfolioItem) => {
         const price = item.marketData?.currentPrice || 0
         return sum + price * item.quantity
     }, 0)
 
-    const totalChange = portfolioWithMarketData.reduce((sum: number, item: any) => {
+    const totalChange = portfolioWithMarketData.reduce((sum: number, item: PortfolioItem) => {
         const change = item.marketData?.changePrice || 0
         return sum + change * item.quantity
     }, 0)
 
-    const totalRealizedGain = portfolioWithMarketData.reduce((sum: number, item: any) => {
+    const totalRealizedGain = portfolioWithMarketData.reduce((sum: number, item: PortfolioItem) => {
         return sum + (item.realized_gain || 0)
     }, 0)
 
@@ -101,7 +112,7 @@ export default async function Dashboard() {
                 <div className="flex justify-between items-center">
                     <h2 className="text-3xl font-black text-zinc-900 dark:text-white">나의 포트폴리오</h2>
                 </div>
-                <PortfolioList items={portfolioItems || []} />
+                <PortfolioList items={portfolioWithMarketData || []} />
             </div>
         </div>
     )

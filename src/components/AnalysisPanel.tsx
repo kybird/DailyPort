@@ -5,11 +5,17 @@ import { useState, useEffect } from 'react'
 
 
 import { Activity, X, AlertTriangle, TrendingUp, TrendingDown, RefreshCw, Star, Target, Wallet, ArrowLeftRight, Trash2 } from 'lucide-react'
-import { getAnalysis, AnalysisReport } from '@/app/actions_analysis'
+import { getAnalysis, AnalysisReport, SupplyChartItem } from '@/app/actions_analysis'
 import { getStockName } from '@/utils/stockUtils'
 import { addToWatchlist, removeFromWatchlist, getWatchlist, sellTicker } from '@/app/actions'
 import { getSettings } from '@/app/actions_settings'
+import { formatKoreanUnit } from '@/utils/formatUtils'
 import TransactionDialog from './TransactionDialog'
+
+interface WatchlistItem {
+    ticker: string;
+}
+
 
 interface AnalysisPanelProps {
     ticker: string
@@ -106,8 +112,14 @@ export default function AnalysisPanel({ ticker, onClose, mode = 'portfolio', por
                 )}
 
                 {error && (
-                    <div className="p-4 bg-red-50 text-red-600 rounded-md">
-                        {error}
+                    <div className="p-6 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 rounded-xl border border-blue-200 dark:border-blue-800/30 text-center space-y-3">
+                        <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center mx-auto">
+                            <RefreshCw className="text-blue-600 dark:text-blue-400 animate-spin" size={24} />
+                        </div>
+                        <div className="space-y-1">
+                            <div className="text-sm font-bold text-blue-900 dark:text-blue-100">분석 자료 준비 중</div>
+                            <div className="text-xs text-blue-600 dark:text-blue-300">내일 아침 업데이트 예정입니다</div>
+                        </div>
                     </div>
                 )}
 
@@ -259,44 +271,56 @@ export default function AnalysisPanel({ ticker, onClose, mode = 'portfolio', por
                             {report.supplyDemand ? (
                                 <div className="space-y-4">
                                     <div className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-100 dark:border-zinc-800 rounded-xl p-4 space-y-4">
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div className="space-y-1">
-                                                <div className="flex items-center gap-1">
-                                                    <span className="text-[10px] text-zinc-500 dark:text-zinc-400 font-bold uppercase">Foreign</span>
-                                                    {report.supplyDemand.dataDate && (
-                                                        <span className="text-[8px] text-zinc-400 font-mono">({report.supplyDemand.dataDate})</span>
-                                                    )}
+                                        <div className="space-y-3">
+                                            <div className="flex justify-between items-end border-b border-zinc-100 dark:border-zinc-800 pb-2">
+                                                <div className="space-y-1">
+                                                    <div className="flex items-center gap-1">
+                                                        <span className="text-[10px] text-zinc-500 dark:text-zinc-400 font-black uppercase tracking-tighter">Foreign (오늘)</span>
+                                                        {report.supplyDemand.dataDate && (
+                                                            <span className="text-[8px] text-zinc-400 font-mono">[{report.supplyDemand.dataDate}]</span>
+                                                        )}
+                                                    </div>
+                                                    <div className={`font-mono font-black text-lg leading-none ${report.supplyDemand.foreignNetBuy > 0 ? 'text-rose-500' : report.supplyDemand.foreignNetBuy < 0 ? 'text-blue-500' : 'text-zinc-400'}`}>
+                                                        {report.supplyDemand.foreignNetBuy > 0 ? '+' : ''}{formatKoreanUnit(report.supplyDemand.foreignNetBuy)}
+                                                    </div>
                                                 </div>
-                                                <span className={`font-mono font-black text-lg ${report.supplyDemand.foreignNetBuy > 0 ? 'text-rose-500' : report.supplyDemand.foreignNetBuy < 0 ? 'text-blue-500' : 'text-zinc-400'}`}>
-                                                    {report.supplyDemand.foreignNetBuy > 0 ? '+' : ''}{report.supplyDemand.foreignNetBuy.toLocaleString()}
-                                                </span>
+                                                <div className="text-[9px] font-bold text-zinc-300 dark:text-zinc-600 uppercase">KRW</div>
                                             </div>
-                                            <div className="space-y-1">
-                                                <div className="flex items-center gap-1">
-                                                    <span className="text-[10px] text-zinc-500 dark:text-zinc-400 font-bold uppercase">Institution</span>
-                                                    {report.supplyDemand.dataDate && (
-                                                        <span className="text-[8px] text-zinc-400 font-mono">({report.supplyDemand.dataDate})</span>
-                                                    )}
+                                            <div className="flex justify-between items-end border-b border-zinc-100 dark:border-zinc-800 pb-2">
+                                                <div className="space-y-1">
+                                                    <div className="flex items-center gap-1">
+                                                        <span className="text-[10px] text-zinc-500 dark:text-zinc-400 font-black uppercase tracking-tighter">Institution (오늘)</span>
+                                                        {report.supplyDemand.dataDate && (
+                                                            <span className="text-[8px] text-zinc-400 font-mono">[{report.supplyDemand.dataDate}]</span>
+                                                        )}
+                                                    </div>
+                                                    <div className={`font-mono font-black text-lg leading-none ${report.supplyDemand.instNetBuy > 0 ? 'text-rose-500' : report.supplyDemand.instNetBuy < 0 ? 'text-blue-500' : 'text-zinc-400'}`}>
+                                                        {report.supplyDemand.instNetBuy > 0 ? '+' : ''}{formatKoreanUnit(report.supplyDemand.instNetBuy)}
+                                                    </div>
                                                 </div>
-                                                <span className={`font-mono font-black text-lg ${report.supplyDemand.instNetBuy > 0 ? 'text-rose-500' : report.supplyDemand.instNetBuy < 0 ? 'text-blue-500' : 'text-zinc-400'}`}>
-                                                    {report.supplyDemand.instNetBuy > 0 ? '+' : ''}{report.supplyDemand.instNetBuy.toLocaleString()}
-                                                </span>
+                                                <div className="text-[9px] font-bold text-zinc-300 dark:text-zinc-600 uppercase">KRW</div>
                                             </div>
                                         </div>
 
                                         {report.supplyDemand.metrics && (
                                             <div className="pt-3 border-t border-zinc-100 dark:border-zinc-800 grid grid-cols-1 gap-3">
-                                                <div className="flex justify-between items-center bg-white dark:bg-zinc-900/50 p-2 rounded-lg ring-1 ring-zinc-200 dark:ring-zinc-800">
-                                                    <span className="text-[10px] font-bold text-zinc-400 uppercase">외인 매집 (5/20)</span>
-                                                    <span className={`text-xs font-mono font-bold ${report.supplyDemand.metrics.foreigner_5d_net > 0 ? 'text-rose-500' : 'text-zinc-500'}`}>
-                                                        {report.supplyDemand.metrics.foreigner_5d_net > 0 ? '▲' : '▼'} {Math.round(report.supplyDemand.metrics.foreigner_5d_net / 1000000)}M / {Math.round(report.supplyDemand.metrics.foreigner_20d_net / 1000000)}M
+                                                <div className="flex justify-between items-center bg-white dark:bg-zinc-900/50 p-2 rounded-lg ring-1 ring-zinc-200 dark:ring-zinc-800 group relative border-l-4 border-rose-500">
+                                                    <span className="text-[10px] font-bold text-zinc-400 uppercase ml-1">외인 매집 (5일/20일)</span>
+                                                    <span className={`text-xs font-mono font-bold ${report.supplyDemand.metrics.foreigner_5d_net > 0 ? 'text-rose-500' : 'text-blue-500'}`}>
+                                                        {report.supplyDemand.metrics.foreigner_5d_net > 0 ? '▲' : '▼'} {formatKoreanUnit(report.supplyDemand.metrics.foreigner_5d_net)} / {formatKoreanUnit(report.supplyDemand.metrics.foreigner_20d_net)}
                                                     </span>
+                                                    <div className="absolute bottom-full right-0 mb-2 hidden group-hover:block z-[210] bg-zinc-800 text-white text-[9px] p-2 rounded shadow-lg whitespace-nowrap">
+                                                        최근 5거래일 및 20거래일 누적 순매수 대금
+                                                    </div>
                                                 </div>
-                                                <div className="flex justify-between items-center bg-white dark:bg-zinc-900/50 p-2 rounded-lg ring-1 ring-zinc-200 dark:ring-zinc-800">
-                                                    <span className="text-[10px] font-bold text-zinc-400 uppercase">기관 매집 (5/20)</span>
-                                                    <span className={`text-xs font-mono font-bold ${report.supplyDemand.metrics.institution_5d_net > 0 ? 'text-rose-500' : 'text-zinc-500'}`}>
-                                                        {report.supplyDemand.metrics.institution_5d_net > 0 ? '▲' : '▼'} {Math.round(report.supplyDemand.metrics.institution_5d_net / 1000000)}M / {Math.round(report.supplyDemand.metrics.institution_20d_net / 1000000)}M
+                                                <div className="flex justify-between items-center bg-white dark:bg-zinc-900/50 p-2 rounded-lg ring-1 ring-zinc-200 dark:ring-zinc-800 group relative border-l-4 border-amber-500">
+                                                    <span className="text-[10px] font-bold text-zinc-400 uppercase ml-1">기관 매집 (5일/20일)</span>
+                                                    <span className={`text-xs font-mono font-bold ${report.supplyDemand.metrics.institution_5d_net > 0 ? 'text-amber-500' : 'text-indigo-500'}`}>
+                                                        {report.supplyDemand.metrics.institution_5d_net > 0 ? '▲' : '▼'} {formatKoreanUnit(report.supplyDemand.metrics.institution_5d_net)} / {formatKoreanUnit(report.supplyDemand.metrics.institution_20d_net)}
                                                     </span>
+                                                    <div className="absolute bottom-full right-0 mb-2 hidden group-hover:block z-[210] bg-zinc-800 text-white text-[9px] p-2 rounded shadow-lg whitespace-nowrap">
+                                                        최근 5거래일 및 20거래일 누적 순매수 대금
+                                                    </div>
                                                 </div>
                                             </div>
                                         )}
@@ -306,28 +330,86 @@ export default function AnalysisPanel({ ticker, onClose, mode = 'portfolio', por
                                         </div>
                                     </div>
 
-                                    {/* Mini Supply Trend Chart - Improved Layout */}
+                                    {/* Mini Supply Trend Chart - Bar Chart with Zero Line */}
                                     <div className="flex flex-col gap-2">
                                         <div className="flex justify-between items-center px-1">
-                                            <span className="text-[10px] font-bold text-zinc-400 uppercase">최근 15회 추세</span>
-                                            <span className="text-[9px] text-zinc-400">(단위: M)</span>
+                                            <span className="text-[10px] font-bold text-zinc-400 uppercase">최근 수급 추세 (Buy/Sell)</span>
+                                            <span className="text-[9px] text-zinc-400">단위: {report.supplyDemand!.foreignNetBuy >= 1_000_000_000_000 ? '조' : '억'}</span>
                                         </div>
-                                        <div className="h-28 bg-zinc-50 dark:bg-zinc-950 rounded-xl border border-zinc-100 dark:border-zinc-800 flex items-end justify-center p-3 gap-1 overflow-hidden">
-                                            {(report.supplyDemand.chartData || []).slice(-15).map((d: any, i: number) => {
-                                                const f_h = Math.min(Math.abs(d.foreigner) / 200000, 100)
-                                                const i_h = Math.min(Math.abs(d.institution) / 200000, 100)
-                                                return (
-                                                    <div key={i} className="flex-1 max-w-[12px] flex flex-col justify-end gap-[1px] h-full group relative cursor-help">
-                                                        <div className={`w-full rounded-t-[1px] ${d.institution > 0 ? 'bg-rose-500' : 'bg-blue-500/20'}`} style={{ height: `${i_h}%` }} />
-                                                        <div className={`w-full rounded-b-[1px] ${d.foreigner > 0 ? 'bg-sky-500' : 'bg-red-500/20'}`} style={{ height: `${f_h}%` }} />
-                                                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-[200] bg-zinc-900/95 backdrop-blur-sm text-white text-[9px] p-2 rounded-lg shadow-2xl whitespace-nowrap pointer-events-none ring-1 ring-white/10">
-                                                            <div className="font-bold border-b border-white/10 pb-1 mb-1">{d.date}</div>
-                                                            <div className="text-sky-300 flex justify-between gap-4"><span>For:</span> <span>{Math.round(d.foreigner / 1000000)}M</span></div>
-                                                            <div className="text-rose-300 flex justify-between gap-4"><span>Inst:</span> <span>{Math.round(d.institution / 1000000)}M</span></div>
-                                                        </div>
-                                                    </div>
+                                        <div className="h-40 bg-zinc-50 dark:bg-zinc-950 rounded-xl border border-zinc-100 dark:border-zinc-800 relative p-3 flex items-center justify-center gap-1.5">
+                                            {/* Zero Line */}
+                                            <div className="absolute top-1/2 left-0 right-0 h-[1px] bg-zinc-200 dark:bg-zinc-800 z-0" />
+
+                                            {(() => {
+                                                const visibleData = (report.supplyDemand!.chartData || []).slice(-20)
+                                                if (visibleData.length === 0) return null
+
+                                                const maxVal = Math.max(
+                                                    ...visibleData.map((d: SupplyChartItem) => Math.max(Math.abs(d.foreigner), Math.abs(d.institution))),
+                                                    100_000_000 // floor to 1억
                                                 )
-                                            })}
+
+                                                return (
+                                                    <>
+                                                        {/* Scale Labels */}
+                                                        <div className="absolute left-1 top-1 text-[8px] font-mono text-zinc-400 z-10">{formatKoreanUnit(maxVal)}</div>
+                                                        <div className="absolute left-1 bottom-1 text-[8px] font-mono text-zinc-400 z-10">-{formatKoreanUnit(maxVal)}</div>
+                                                        <div className="absolute left-1 top-1/2 -translate-y-1/2 text-[8px] font-mono text-zinc-300 z-10">0</div>
+
+                                                        {visibleData.map((d: SupplyChartItem, i: number) => {
+                                                            const f_h = (Math.abs(d.foreigner) / maxVal) * 50
+                                                            const i_h = (Math.abs(d.institution) / maxVal) * 50
+
+                                                            return (
+                                                                <div key={i} className="flex-1 max-w-[14px] h-full relative group cursor-help">
+                                                                    {/* Foreigner Bar (Left half of slot) - Rose/Blue */}
+                                                                    <div
+                                                                        className={`absolute left-0 w-[45%] rounded-sm shadow-sm transition-all z-10 ${d.foreigner > 0 ? 'bg-rose-500' : d.foreigner < 0 ? 'bg-blue-500' : 'bg-transparent'}`}
+                                                                        style={{
+                                                                            height: `${Math.max(1, f_h)}%`,
+                                                                            bottom: d.foreigner >= 0 ? '50%' : 'auto',
+                                                                            top: d.foreigner < 0 ? '50%' : 'auto'
+                                                                        }}
+                                                                    />
+                                                                    {/* Institution Bar (Right half of slot) - Amber/Indigo */}
+                                                                    <div
+                                                                        className={`absolute right-0 w-[45%] rounded-sm shadow-sm transition-all z-10 ${d.institution > 0 ? 'bg-amber-500' : d.institution < 0 ? 'bg-indigo-500' : 'bg-transparent'}`}
+                                                                        style={{
+                                                                            height: `${Math.max(1, i_h)}%`,
+                                                                            bottom: d.institution >= 0 ? '50%' : 'auto',
+                                                                            top: d.institution < 0 ? '50%' : 'auto'
+                                                                        }}
+                                                                    />
+
+                                                                    {/* Tooltip - Fixed at top to avoid clipping */}
+                                                                    <div className="absolute top-[-8px] left-1/2 -translate-x-1/2 hidden group-hover:block z-[300] bg-zinc-900/95 backdrop-blur-sm text-white text-[9px] p-2 rounded-lg shadow-2xl whitespace-nowrap pointer-events-none ring-1 ring-white/10">
+                                                                        <div className="font-bold border-b border-white/10 pb-1 mb-1">{d.date}</div>
+                                                                        <div className="flex flex-col gap-1">
+                                                                            <div className="text-zinc-300 flex justify-between gap-4">
+                                                                                <span className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 bg-rose-500 rounded-full" /> 외인:</span>
+                                                                                <span className={d.foreigner > 0 ? 'text-rose-400' : 'text-blue-400'}>{formatKoreanUnit(d.foreigner)}</span>
+                                                                            </div>
+                                                                            <div className="text-zinc-300 flex justify-between gap-4">
+                                                                                <span className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 bg-amber-500 rounded-full" /> 기관:</span>
+                                                                                <span className={d.institution > 0 ? 'text-amber-400' : 'text-indigo-400'}>{formatKoreanUnit(d.institution)}</span>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            )
+                                                        })}
+                                                    </>
+                                                )
+                                            })()}
+                                        </div>
+                                        <div className="flex justify-between items-center px-1 text-[8px] text-zinc-400">
+                                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                                                <div className="flex items-center gap-1"><div className="w-1.5 h-1.5 bg-rose-500 rounded-full" /> 외인 매수</div>
+                                                <div className="flex items-center gap-1"><div className="w-1.5 h-1.5 bg-blue-500 rounded-full" /> 외인 매도</div>
+                                                <div className="flex items-center gap-1"><div className="w-1.5 h-1.5 bg-amber-500 rounded-full" /> 기관 매수</div>
+                                                <div className="flex items-center gap-1"><div className="w-1.5 h-1.5 bg-indigo-500 rounded-full" /> 기관 매도</div>
+                                            </div>
+                                            <span className="shrink-0">과거 20거래일</span>
                                         </div>
                                     </div>
                                 </div>

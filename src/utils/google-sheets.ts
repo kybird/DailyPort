@@ -79,14 +79,16 @@ export async function fetchSheetData(spreadsheetId: string): Promise<FetchResult
 
         return { success: true, rows: parsedRows }
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('Google Sheet Error:', error)
-        if (error.response?.status === 403 || error.message?.includes('403')) {
+        const err = error as { response?: { status: number }; message?: string };
+        if (err.response?.status === 403 || err.message?.includes('403')) {
             return { success: false, error: `Permission denied. Please share the sheet with: ${GOOGLE_SERVICE_ACCOUNT_EMAIL}` }
         }
-        if (error.response?.status === 404) {
+        if (err.response?.status === 404) {
             return { success: false, error: 'Spreadsheet not found. Check the ID.' }
         }
-        return { success: false, error: error.message || 'Unknown error occurred during fetch.' }
+        const message = err.message || 'Unknown error occurred during fetch.'
+        return { success: false, error: message }
     }
 }

@@ -45,8 +45,9 @@ export default function TransactionDialog({ ticker, currentQuantity, onClose, in
             } else {
                 onClose()
             }
-        } catch (err: any) {
-            setError(err.message || '오류가 발생했습니다.')
+        } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : '오류가 발생했습니다.'
+            setError(message)
         } finally {
             setLoading(false)
         }
