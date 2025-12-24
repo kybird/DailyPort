@@ -85,12 +85,12 @@ def process_watchlist(tickers):
     if not tickers:
         return
 
-    logger.info(f"Processing Watchlist: {len(tickers)} tickers")
+    # Normalize tickers (strip .KS, .KQ) for SQLite lookup
+    normalized_tickers = list(set([t.split('.')[0] for t in tickers]))
     cur = get_db_cursor()
     
     # Bulk fetch price and supply data for all tickers at once
-    # Limit history to 60 days to cover MA20 and supply charts (30d)
-    placeholders = ','.join(['?'] * len(tickers))
+    placeholders = ','.join(['?'] * len(normalized_tickers))
     
     price_sql = f"""
         SELECT code, date, close 
@@ -107,10 +107,10 @@ def process_watchlist(tickers):
     """
     
     try:
-        cur.execute(price_sql, tickers)
+        cur.execute(price_sql, normalized_tickers)
         price_rows = cur.fetchall()
         
-        cur.execute(supply_sql, tickers)
+        cur.execute(supply_sql, normalized_tickers)
         supply_rows = cur.fetchall()
         
             # Group by code
@@ -125,7 +125,7 @@ def process_watchlist(tickers):
             supply_map[r["code"]].append(dict(r))
             
         reports = []
-        for code in tickers:
+        for code in normalized_tickers:
             p_history = price_map.get(code, [])
             s_history = supply_map.get(code, [])
             
@@ -173,10 +173,9 @@ def process_watchlist(tickers):
             }
             reports.append(report)
 
-        if reports:
             # Change on_conflict to "ticker" only to keep only the latest report in Supabase
             supabase.table("daily_analysis_reports").upsert(reports, on_conflict="ticker").execute()
-            logger.info(f"✅ Uploaded {len(reports)} reports to Supabase (Latest Only).")
+            logger.info(f"✅ Uploaded {len(reports)} detailed reports to Supabase (Latest Only).")
             
     except Exception as e:
         logger.error(f"Watchlist processing failed: {e}")
@@ -355,14 +354,25 @@ def notify_telegram(value_count, twin_count, acc_count, trend_count, twin_ticker
 if __name__ == "__main__":
     logger.info("🚀 Starting Daily Analyzer...")
     
-    # 1. Fetch Watchlist from Supabase (instead of mock)
+    # 1. Fetch Tickers from Supabase (Watchlist + Portfolio)
     try:
-        # Fetch unique tickers from all watchlists
-        res = supabase.table("watchlists").select("ticker").execute()
+        # Fetch from watchlists
+        res_w = supabase.table("watchlists").select("ticker").execute()
+        tickers_w = [r['ticker'] for r in res_w.data] if res_w.data else []
+        
+        # Fetch from portfolios
+        res_p = supabase.table("portfolios").select("ticker").execute()
+        tickers_p = [r['ticker'] for r in res_p.data] if res_p.data else []
+        
+        # Merge and remove duplicates
+        my_tickers = list(set(tickers_w + tickers_p))
+        
         # Fallback to defaults if empty
-        my_tickers = list(set([r['ticker'] for r in res.data])) if res.data else ["005930", "000660", "035420", "035720"]
+        if not my_tickers:
+            my_tickers = ["005930", "000660", "035420", "035720"]
+            
     except Exception as e:
-        logger.warning(f"Failed to fetch watchlists from DB: {e}")
+        logger.warning(f"Failed to fetch tickers from DB: {e}")
         my_tickers = ["005930", "000660", "035420", "035720"]
     
     process_watchlist(my_tickers)

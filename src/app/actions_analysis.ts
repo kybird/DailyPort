@@ -17,6 +17,7 @@ export interface AnalysisReport {
         instNetBuy: number
         source: string
         updatedAt: string
+        dataDate?: string
         chartData?: any[] // Added for Supply Chart
         metrics?: {
             foreigner_5d_net: number
@@ -100,6 +101,7 @@ export async function getAnalysis(ticker: string): Promise<AnalysisReport | { er
                 instNetBuy: latest.institution || 0,
                 source: 'DailyPort Admin',
                 updatedAt: reportRow.created_at,
+                dataDate: latest.date,
                 chartData: d.supply_chart, // Pass full history (now 60d)
                 metrics: d.metrics
             }

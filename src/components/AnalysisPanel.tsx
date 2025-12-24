@@ -264,14 +264,24 @@ export default function AnalysisPanel({ ticker, onClose, mode = 'portfolio', por
                                     <div className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-100 dark:border-zinc-800 rounded-xl p-4 space-y-4">
                                         <div className="grid grid-cols-2 gap-4">
                                             <div className="space-y-1">
-                                                <span className="text-[10px] text-zinc-500 dark:text-zinc-400 font-bold uppercase block">Foreign (Latest)</span>
-                                                <span className={`font-mono font-black text-lg ${report.supplyDemand.foreignNetBuy > 0 ? 'text-rose-500' : 'text-blue-500'}`}>
+                                                <div className="flex items-center gap-1">
+                                                    <span className="text-[10px] text-zinc-500 dark:text-zinc-400 font-bold uppercase">Foreign</span>
+                                                    {report.supplyDemand.dataDate && (
+                                                        <span className="text-[8px] text-zinc-400 font-mono">({report.supplyDemand.dataDate})</span>
+                                                    )}
+                                                </div>
+                                                <span className={`font-mono font-black text-lg ${report.supplyDemand.foreignNetBuy > 0 ? 'text-rose-500' : report.supplyDemand.foreignNetBuy < 0 ? 'text-blue-500' : 'text-zinc-400'}`}>
                                                     {report.supplyDemand.foreignNetBuy > 0 ? '+' : ''}{report.supplyDemand.foreignNetBuy.toLocaleString()}
                                                 </span>
                                             </div>
                                             <div className="space-y-1">
-                                                <span className="text-[10px] text-zinc-500 dark:text-zinc-400 font-bold uppercase block">Inst. (Latest)</span>
-                                                <span className={`font-mono font-black text-lg ${report.supplyDemand.instNetBuy > 0 ? 'text-rose-500' : 'text-blue-500'}`}>
+                                                <div className="flex items-center gap-1">
+                                                    <span className="text-[10px] text-zinc-500 dark:text-zinc-400 font-bold uppercase">Institution</span>
+                                                    {report.supplyDemand.dataDate && (
+                                                        <span className="text-[8px] text-zinc-400 font-mono">({report.supplyDemand.dataDate})</span>
+                                                    )}
+                                                </div>
+                                                <span className={`font-mono font-black text-lg ${report.supplyDemand.instNetBuy > 0 ? 'text-rose-500' : report.supplyDemand.instNetBuy < 0 ? 'text-blue-500' : 'text-zinc-400'}`}>
                                                     {report.supplyDemand.instNetBuy > 0 ? '+' : ''}{report.supplyDemand.instNetBuy.toLocaleString()}
                                                 </span>
                                             </div>
@@ -281,13 +291,13 @@ export default function AnalysisPanel({ ticker, onClose, mode = 'portfolio', por
                                             <div className="pt-3 border-t border-zinc-100 dark:border-zinc-800 grid grid-cols-1 gap-3">
                                                 <div className="flex justify-between items-center bg-white dark:bg-zinc-900/50 p-2 rounded-lg ring-1 ring-zinc-200 dark:ring-zinc-800">
                                                     <span className="text-[10px] font-bold text-zinc-400 uppercase">외인 매집 (5/20)</span>
-                                                    <span className="text-xs font-mono text-zinc-600 dark:text-zinc-300">
+                                                    <span className={`text-xs font-mono font-bold ${report.supplyDemand.metrics.foreigner_5d_net > 0 ? 'text-rose-500' : 'text-zinc-500'}`}>
                                                         {report.supplyDemand.metrics.foreigner_5d_net > 0 ? '▲' : '▼'} {Math.round(report.supplyDemand.metrics.foreigner_5d_net / 1000000)}M / {Math.round(report.supplyDemand.metrics.foreigner_20d_net / 1000000)}M
                                                     </span>
                                                 </div>
                                                 <div className="flex justify-between items-center bg-white dark:bg-zinc-900/50 p-2 rounded-lg ring-1 ring-zinc-200 dark:ring-zinc-800">
                                                     <span className="text-[10px] font-bold text-zinc-400 uppercase">기관 매집 (5/20)</span>
-                                                    <span className="text-xs font-mono text-zinc-600 dark:text-zinc-300">
+                                                    <span className={`text-xs font-mono font-bold ${report.supplyDemand.metrics.institution_5d_net > 0 ? 'text-rose-500' : 'text-zinc-500'}`}>
                                                         {report.supplyDemand.metrics.institution_5d_net > 0 ? '▲' : '▼'} {Math.round(report.supplyDemand.metrics.institution_5d_net / 1000000)}M / {Math.round(report.supplyDemand.metrics.institution_20d_net / 1000000)}M
                                                     </span>
                                                 </div>
@@ -295,85 +305,94 @@ export default function AnalysisPanel({ ticker, onClose, mode = 'portfolio', por
                                         )}
 
                                         <div className="text-[9px] text-right text-zinc-400 mt-2">
-                                            Update: {new Date(report.supplyDemand.updatedAt).toLocaleDateString()}
+                                            Report Generated: {new Date(report.supplyDemand.updatedAt).toLocaleDateString()}
                                         </div>
                                     </div>
 
-                                    {/* Mini Supply Trend Chart */}
-                                    <div className="h-24 bg-zinc-50 dark:bg-zinc-950 rounded-xl border border-zinc-100 dark:border-zinc-800 flex items-end justify-center p-2 gap-[1px]">
-                                        {(report.supplyDemand.chartData || []).map((d: any, i: number) => {
-                                            const f_h = Math.min(Math.abs(d.foreigner) / 200000, 100)
-                                            const i_h = Math.min(Math.abs(d.institution) / 200000, 100)
-                                            return (
-                                                <div key={i} className="flex-1 flex flex-col justify-end gap-[1px] h-full group relative">
-                                                    <div className={`w-full rounded-t-sm ${d.institution > 0 ? 'bg-red-500' : 'bg-red-500/20'}`} style={{ height: `${i_h}%` }} />
-                                                    <div className={`w-full rounded-b-sm ${d.foreigner > 0 ? 'bg-blue-500' : 'bg-blue-500/20'}`} style={{ height: `${f_h}%` }} />
-                                                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-[200] bg-zinc-900 text-white text-[9px] p-2 rounded shadow-2xl whitespace-nowrap pointer-events-none">
-                                                        <div>{d.date}</div>
-                                                        <div className="text-blue-300">For: {Math.round(d.foreigner / 1000000)}M</div>
-                                                        <div className="text-red-300">Inst: {Math.round(d.institution / 1000000)}M</div>
+                                    {/* Mini Supply Trend Chart - Improved Layout */}
+                                    <div className="flex flex-col gap-2">
+                                        <div className="flex justify-between items-center px-1">
+                                            <span className="text-[10px] font-bold text-zinc-400 uppercase">최근 15회 추세</span>
+                                            <span className="text-[9px] text-zinc-400">(단위: M)</span>
+                                        </div>
+                                        <div className="h-28 bg-zinc-50 dark:bg-zinc-950 rounded-xl border border-zinc-100 dark:border-zinc-800 flex items-end justify-center p-3 gap-1 overflow-hidden">
+                                            {(report.supplyDemand.chartData || []).slice(-15).map((d: any, i: number) => {
+                                                const f_h = Math.min(Math.abs(d.foreigner) / 200000, 100)
+                                                const i_h = Math.min(Math.abs(d.institution) / 200000, 100)
+                                                return (
+                                                    <div key={i} className="flex-1 max-w-[12px] flex flex-col justify-end gap-[1px] h-full group relative cursor-help">
+                                                        <div className={`w-full rounded-t-[1px] ${d.institution > 0 ? 'bg-rose-500' : 'bg-blue-500/20'}`} style={{ height: `${i_h}%` }} />
+                                                        <div className={`w-full rounded-b-[1px] ${d.foreigner > 0 ? 'bg-sky-500' : 'bg-red-500/20'}`} style={{ height: `${f_h}%` }} />
+                                                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-[200] bg-zinc-900/95 backdrop-blur-sm text-white text-[9px] p-2 rounded-lg shadow-2xl whitespace-nowrap pointer-events-none ring-1 ring-white/10">
+                                                            <div className="font-bold border-b border-white/10 pb-1 mb-1">{d.date}</div>
+                                                            <div className="text-sky-300 flex justify-between gap-4"><span>For:</span> <span>{Math.round(d.foreigner / 1000000)}M</span></div>
+                                                            <div className="text-rose-300 flex justify-between gap-4"><span>Inst:</span> <span>{Math.round(d.institution / 1000000)}M</span></div>
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            )
-                                        })}
+                                                )
+                                            })}
+                                        </div>
                                     </div>
                                 </div>
-                            ) : (
-                                <div className="text-xs text-zinc-500 italic bg-zinc-50 dark:bg-zinc-950 p-4 rounded-xl border border-dashed border-zinc-200 dark:border-zinc-800 text-center">
-                                    분석 데이터가 없습니다 (Admin Tool 미실행).
                                 </div>
-                            )}
+                        ) : (
+                        <div className="text-xs text-zinc-500 italic bg-zinc-50 dark:bg-zinc-950 p-4 rounded-xl border border-dashed border-zinc-200 dark:border-zinc-800 text-center">
+                            분석 데이터가 없습니다 (Admin Tool 미실행).
                         </div>
+                            )}
+                    </div>
 
                         {/* Disclaimer */}
-                        <div className="mt-8 pt-4 border-t border-gray-100 dark:border-zinc-800">
-                            <div className="flex justify-end mb-4">
-                                <button
-                                    disabled={!hasTelegramSettings}
-                                    title={hasTelegramSettings ? "현재 분석 리포트를 텔레그램으로 전송합니다." : "마이페이지에서 텔레그램 설정을 완료해주세요."}
-                                    onClick={async () => {
-                                        if (!report || !hasTelegramSettings) return
-                                        const btn = document.getElementById('btn-telegram') as HTMLButtonElement
-                                        if (btn) btn.disabled = true;
-                                        if (btn) btn.innerHTML = 'Sending...';
+                <div className="mt-8 pt-4 border-t border-gray-100 dark:border-zinc-800">
+                    <div className="flex justify-end mb-4">
+                        <button
+                            disabled={!hasTelegramSettings}
+                            title={hasTelegramSettings ? "현재 분석 리포트를 텔레그램으로 전송합니다." : "마이페이지에서 텔레그램 설정을 완료해주세요."}
+                            onClick={async () => {
+                                if (!report || !hasTelegramSettings) return
+                                const btn = document.getElementById('btn-telegram') as HTMLButtonElement
+                                if (btn) btn.disabled = true;
+                                if (btn) btn.innerHTML = 'Sending...';
 
-                                        const res = await import('@/app/actions_notification').then(m => m.sendAnalysisToTelegram(report))
+                                const res = await import('@/app/actions_notification').then(m => m.sendAnalysisToTelegram(report))
 
-                                        if (res.success) alert('Sent to Telegram!')
-                                        else alert('Failed: ' + res.error)
+                                if (res.success) alert('Sent to Telegram!')
+                                else alert('Failed: ' + res.error)
 
-                                        if (btn) {
-                                            btn.disabled = false;
-                                            btn.innerHTML = '<span>✈️ Send to Telegram</span>';
-                                        }
-                                    }}
-                                    id="btn-telegram"
-                                    className="bg-blue-500 hover:bg-blue-600 disabled:bg-zinc-300 dark:disabled:bg-zinc-700 disabled:cursor-not-allowed text-white px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition-colors"
-                                >
-                                    <span>✈️ Send to Telegram</span>
-                                </button>
-                            </div>
-                            <div className="flex gap-2 text-gray-500 dark:text-zinc-500 text-xs">
-                                <AlertTriangle size={16} className="shrink-0" />
-                                <p>
-                                    본 정보는 투자 참고 자료일 뿐, 투자 권유가 아닙니다. 투자 판단과 그 결과에 대한 책임은 투자자 본인에게 있습니다.
-                                    {mode === 'portfolio' && ' 데이터는 최소 15분 지연될 수 있습니다 (Yahoo Finance).'}
-                                </p>
-                            </div>
-                        </div>
+                                if (btn) {
+                                    btn.disabled = false;
+                                    btn.innerHTML = '<span>✈️ Send to Telegram</span>';
+                                }
+                            }}
+                            id="btn-telegram"
+                            className="bg-blue-500 hover:bg-blue-600 disabled:bg-zinc-300 dark:disabled:bg-zinc-700 disabled:cursor-not-allowed text-white px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition-colors"
+                        >
+                            <span>✈️ Send to Telegram</span>
+                        </button>
                     </div>
+                    <div className="flex gap-2 text-gray-500 dark:text-zinc-500 text-xs">
+                        <AlertTriangle size={16} className="shrink-0" />
+                        <p>
+                            본 정보는 투자 참고 자료일 뿐, 투자 권유가 아닙니다. 투자 판단과 그 결과에 대한 책임은 투자자 본인에게 있습니다.
+                            {mode === 'portfolio' && ' 데이터는 최소 15분 지연될 수 있습니다 (Yahoo Finance).'}
+                        </p>
+                    </div>
+                </div>
+            </div>
                 )}
 
-            </div>
-
-            {showTradeDialog && (
-                <TransactionDialog
-                    ticker={ticker}
-                    currentQuantity={portfolioData?.quantity || 0}
-                    onClose={() => setShowTradeDialog(false)}
-                    initialType={tradeType}
-                />
-            )}
         </div>
+
+            {
+        showTradeDialog && (
+            <TransactionDialog
+                ticker={ticker}
+                currentQuantity={portfolioData?.quantity || 0}
+                onClose={() => setShowTradeDialog(false)}
+                initialType={tradeType}
+            />
+        )
+    }
+        </div >
     )
 }
