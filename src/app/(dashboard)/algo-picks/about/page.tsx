@@ -65,13 +65,6 @@ export default function AlgoAboutPage() {
     return (
         <div className="max-w-4xl mx-auto space-y-12 pb-20">
             <header className="space-y-4">
-                <Link
-                    href="/algo-picks"
-                    className="inline-flex items-center gap-2 text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 transition-colors text-sm font-medium"
-                >
-                    <ArrowLeft size={16} />
-                    Algo Picks로 돌아가기
-                </Link>
                 <h1 className="text-4xl font-black text-zinc-900 dark:text-white">
                     DailyPort의 알고리즘<br />
                     <span className="text-blue-600 dark:text-blue-400 text-3xl">스크리닝 기법 소개</span>

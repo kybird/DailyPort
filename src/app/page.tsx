@@ -45,8 +45,8 @@ export default async function LandingPage() {
 
 
                         <p className="max-w-2xl mx-auto text-lg md:text-xl text-zinc-600 dark:text-zinc-400 mb-10 leading-relaxed font-medium">
-                            DailyPort는 증권사 API 키를 서버에 저장하지 않습니다.<br />
-                            민감한 정보는 로컬에, 분석과 관리는 웹 대시보드에서 안전하게 경험하세요.
+                            실시간 포트폴리오 분석부터 정교한 AI 알고리즘 종목 발굴까지.<br />
+                            당신의 자산 성장을 위한 가장 완벽한 투자 파트너, <b>DailyPort</b>와 함께하세요.
                         </p>
                         <div className="flex justify-center mt-10">
                             <Link href="/signup" className="px-10 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl text-lg font-bold shadow-xl shadow-blue-500/30 transition-all hover:-translate-y-1 active:scale-95 flex items-center gap-3">
@@ -62,12 +62,12 @@ export default async function LandingPage() {
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-3 gap-12 text-center">
                         <div className="space-y-4">
                             <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-xl flex items-center justify-center mx-auto">
-                                <Shield size={24} />
+                                <BarChart3 size={24} />
                             </div>
-                            <h3 className="text-xl font-bold text-zinc-900 dark:text-white">내 투자는 내 공간에</h3>
+                            <h3 className="text-xl font-bold text-zinc-900 dark:text-white">직관적인 자산 관리</h3>
                             <p className="text-zinc-600 dark:text-zinc-400 keep-all">
-                                증권사 계정과 포트폴리오 정보가 서버로 전송되지 않습니다.
-                                오직 당신의 <b>로컬 DB</b>에 암호화되어 안전하게 저장됩니다.
+                                복잡한 종목별 수익률과 변동 현황을 한눈에 파악하세요.
+                                당신의 <b>포트폴리오 성과</b>가 실시간으로 일목요연하게 정리됩니다.
                             </p>
                         </div>
                         <div className="space-y-4">

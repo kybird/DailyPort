@@ -7,6 +7,7 @@ const yahooFinance = new YahooFinance({ suppressNotices: ['ripHistorical', 'yaho
 
 export interface MarketData {
     ticker: string
+    name?: string
     currentPrice: number
     marketCap?: number
     per?: number
@@ -241,6 +242,7 @@ export async function getMarketData(ticker: string): Promise<MarketData | null> 
 
         const marketData: MarketData = {
             ticker,
+            name: quote.shortName || quote.longName || ticker,
             currentPrice: quote.regularMarketPrice || 0,
             marketCap: quote.marketCap,
             per: quote.trailingPE,
@@ -259,6 +261,9 @@ export async function getMarketData(ticker: string): Promise<MarketData | null> 
                 volume: h.volume as number
             })) // .reverse() ? technicalindicators usually expect oldest first (array[0] is old)
         }
+
+        // TODO: Integrate a real-time supply data fetcher here (e.g., via a Python microservice or API bridge)
+        // so that newly added tickers have immediate supply insights without waiting for the admin tool.
 
         // 3. Save to Cache (Upsert)
         await supabase.from('analysis_cache').upsert({

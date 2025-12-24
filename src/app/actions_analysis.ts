@@ -13,6 +13,7 @@ export interface SupplyChartItem {
 
 export interface AnalysisReport {
     ticker: string
+    name?: string
     price: {
         current: number
         changePercent: number
@@ -38,6 +39,11 @@ export interface AnalysisReport {
     }
     summary: string
     generatedAt: string
+    historical?: {
+        date: string
+        close: number
+        volume: number
+    }[]
 }
 
 export interface AlgoPick {
@@ -50,6 +56,9 @@ export async function getAnalysis(ticker: string): Promise<AnalysisReport | { er
     // 1. Fetch Market Data (Yahoo) for Real-time Price
     const marketData = await getMarketData(ticker)
     if (!marketData) return { error: 'Failed to fetch market data' }
+
+    // TODO: If detailed analysis (Supply Data) is missing from Supabase,
+    // trigger an on-demand Python analysis fetch and update the cache in real-time.
 
     const technical = analyzeTechnical(marketData)
 
@@ -146,6 +155,7 @@ export async function getAnalysis(ticker: string): Promise<AnalysisReport | { er
 
     return {
         ticker,
+        name: marketData.name,
         price: {
             current: marketData.currentPrice,
             changePercent: marketData.changePercent || 0
@@ -154,7 +164,12 @@ export async function getAnalysis(ticker: string): Promise<AnalysisReport | { er
         supplyDemand: supplyInfo,
         algoAnalysis: algoInfo,
         summary: summaries.join(' '),
-        generatedAt: new Date().toISOString()
+        generatedAt: new Date().toISOString(),
+        historical: marketData.historical?.map(h => ({
+            date: h.date,
+            close: h.close,
+            volume: h.volume
+        }))
     }
 }
 

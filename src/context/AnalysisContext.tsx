@@ -1,6 +1,7 @@
 'use client'
 
-import React, { createContext, useContext, useState, ReactNode } from 'react'
+import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react'
+import { usePathname } from 'next/navigation'
 import AnalysisPanel from '@/components/AnalysisPanel'
 
 interface AnalysisContextType {
@@ -12,9 +13,15 @@ interface AnalysisContextType {
 const AnalysisContext = createContext<AnalysisContextType | undefined>(undefined)
 
 export function AnalysisProvider({ children }: { children: ReactNode }) {
+    const pathname = usePathname()
     const [activeTicker, setActiveTicker] = useState<string | null>(null)
     const [mode, setMode] = useState<'watchlist' | 'portfolio'>('portfolio')
     const [portfolioData, setPortfolioData] = useState<{ quantity: number; entryPrice: number } | undefined>(undefined)
+
+    // Automatically close panel when navigation occurs
+    useEffect(() => {
+        setActiveTicker(null)
+    }, [pathname])
 
     const openAnalysis = (ticker: string, m: 'watchlist' | 'portfolio' = 'portfolio', pData?: { quantity: number; entryPrice: number }) => {
         setActiveTicker(ticker)

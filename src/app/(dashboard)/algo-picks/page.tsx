@@ -82,7 +82,7 @@ export default async function AlgoPage() {
                                             {pick.tickers.map((ticker) => (
                                                 <Link
                                                     key={ticker}
-                                                    href={`/analysis/${ticker}`}
+                                                    href={`/analysis/${ticker}?ref=algo`}
                                                     className="flex items-center justify-between p-3 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors group/item"
                                                 >
                                                     <div className="flex items-center gap-3">

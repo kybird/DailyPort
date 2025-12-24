@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { login } from '../actions'
+import LoginButton from './LoginButton'
 
 export default async function Login({
     searchParams,
@@ -97,12 +97,7 @@ export default async function Login({
                             />
                         </div>
 
-                        <button
-                            formAction={login}
-                            className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-xl transition-all shadow-lg shadow-blue-500/20 active:scale-[0.98] mt-2"
-                        >
-                            로그인
-                        </button>
+                        <LoginButton />
 
                         <div className="relative my-4">
                             <div className="absolute inset-0 flex items-center">

@@ -1,6 +1,7 @@
 import { getAnalysis } from '@/app/actions_analysis'
 import Link from 'next/link'
-import { ArrowLeft, Activity, RefreshCw } from 'lucide-react'
+import { ArrowLeft, Activity, RefreshCw, BarChart3 } from 'lucide-react'
+import DailyPriceChart from '@/components/DailyPriceChart'
 
 interface SupplyChartItem {
     date: string;
@@ -13,9 +14,19 @@ interface SupplyChartItem {
 // ensuring we use client-side charting library for charts
 
 
-export default async function AnalysisPage({ params }: { params: Promise<{ ticker: string }> }) {
+export default async function AnalysisPage({
+    params,
+    searchParams
+}: {
+    params: Promise<{ ticker: string }>,
+    searchParams: Promise<{ ref?: string }>
+}) {
     const { ticker: tickerParam } = await params
+    const { ref } = await searchParams
     const report = await getAnalysis(tickerParam)
+
+    const backPath = ref === 'algo' ? '/algo-picks' : '/dashboard'
+    const backLabel = ref === 'algo' ? 'Back to Algo Picks' : 'Back to Dashboard'
 
 
     if ('error' in report) {
@@ -55,10 +66,10 @@ export default async function AnalysisPage({ params }: { params: Promise<{ ticke
 
                     <div className="flex gap-3">
                         <Link
-                            href="/"
+                            href="/algo-picks"
                             className="flex-1 px-4 py-3 bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 font-bold rounded-xl hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors"
                         >
-                            대시보드
+                            Algo Picks
                         </Link>
                         <a
                             href={`/analysis/${tickerParam}`}
@@ -74,19 +85,25 @@ export default async function AnalysisPage({ params }: { params: Promise<{ ticke
     }
 
 
-    const { price, technical, supplyDemand, summary, generatedAt } = report
+    const { price, technical, supplyDemand, summary, generatedAt, name, historical } = report
 
     return (
         <div className="max-w-5xl mx-auto p-6 space-y-10">
             {/* Header */}
             <div className="space-y-4">
-                <Link href="/" className="inline-flex items-center text-zinc-500 hover:text-zinc-900 transition-colors">
+                <Link href={backPath} className="inline-flex items-center text-zinc-500 hover:text-zinc-900 transition-colors">
                     <ArrowLeft className="w-4 h-4 mr-2" />
-                    Back to Dashboard
+                    {backLabel}
                 </Link>
                 <div className="flex justify-between items-end">
                     <div>
-                        <h1 className="text-4xl font-black tracking-tight text-zinc-900 dark:text-white">{report.ticker} Analysis</h1>
+                        <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400 mb-1">
+                            <span className="text-xs font-black px-2 py-0.5 bg-blue-50 dark:bg-blue-900/30 rounded-full border border-blue-100 dark:border-blue-800">ANALYSIS</span>
+                            <span className="text-xs font-mono opacity-60">{report.ticker}</span>
+                        </div>
+                        <h1 className="text-4xl font-black tracking-tight text-zinc-900 dark:text-white">
+                            {name || report.ticker}
+                        </h1>
                         <p className="text-zinc-500 mt-2">Generated at {generatedAt ? new Date(generatedAt).toLocaleString() : 'Just now'}</p>
                     </div>
                     {price && (
@@ -109,6 +126,11 @@ export default async function AnalysisPage({ params }: { params: Promise<{ ticke
                     {summary || "No summary available."}
                 </p>
             </div>
+
+            {/* Price Chart */}
+            {historical && historical.length > 0 && (
+                <DailyPriceChart data={historical} />
+            )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 {/* Technicals */}

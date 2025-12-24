@@ -304,6 +304,8 @@ def run_algo_screening():
 
     except Exception as e:
         logger.error(f"Algo Upload Error: {e}")
+    
+    return list(set(value_picks + twin_picks + acc_picks + trend_picks))
 
 def get_telegram_settings_from_db():
     """
@@ -383,8 +385,15 @@ if __name__ == "__main__":
         all_tickers = ["005930", "000660", "035420", "035720"]
         logger.info("Using default tickers as no tickers found in Supabase.")
     
+    # 2. Add Algo Picks to the queue
+    algo_tickers = run_algo_screening()
+    
+    # Merge and deduplicate
+    all_tickers = list(set(all_tickers + algo_tickers))
+    logger.info(f"Final analysis queue: {len(all_tickers)} unique tickers")
+    
+    # 3. Process all
     process_watchlist(all_tickers)
-    run_algo_screening()
     
     conn.close()
     logger.info("🎉 Analyzer Finished.")
