@@ -24,9 +24,9 @@ interface WatchlistItem {
     long_target?: number
     marketData?: {
         currentPrice: number
-        changePrice: number
-        changePercent: number
-    }
+        changePrice?: number
+        changePercent?: number
+    } | null
 }
 
 export default function Watchlist({ items }: { items: WatchlistItem[] }) {

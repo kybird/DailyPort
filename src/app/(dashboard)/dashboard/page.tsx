@@ -10,8 +10,9 @@ interface PortfolioItem {
     id: string;
     ticker: string;
     quantity: number;
-    average_price: number;
+    entry_price: number;
     realized_gain: number;
+    currency: string;
     marketData?: MarketData | null;
 }
 

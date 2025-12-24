@@ -18,9 +18,9 @@ interface PortfolioItem {
     currency: string
     marketData?: {
         currentPrice: number
-        changePrice: number
-        changePercent: number
-    }
+        changePrice?: number
+        changePercent?: number
+    } | null
 }
 
 export default function PortfolioList({ items }: { items: PortfolioItem[] }) {
