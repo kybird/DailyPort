@@ -174,8 +174,9 @@ def process_watchlist(tickers):
             reports.append(report)
 
         if reports:
-            supabase.table("daily_analysis_reports").upsert(reports, on_conflict="date, ticker").execute()
-            logger.info(f"✅ Uploaded {len(reports)} reports to Supabase.")
+            # Change on_conflict to "ticker" only to keep only the latest report in Supabase
+            supabase.table("daily_analysis_reports").upsert(reports, on_conflict="ticker").execute()
+            logger.info(f"✅ Uploaded {len(reports)} reports to Supabase (Latest Only).")
             
     except Exception as e:
         logger.error(f"Watchlist processing failed: {e}")
@@ -290,8 +291,9 @@ def run_guru_screening():
     ]
     
     try:
-        supabase.table("guru_picks").upsert(picks_payload, on_conflict="date, strategy_name").execute()
-        logger.info(f"✅ Uploaded Algo Picks: Value({len(value_picks)}), Twin({len(twin_picks)}), Acc({len(acc_picks)}), Trend({len(trend_picks)})")
+        # Change table name to "algo_picks" and use strategy_name for latest-only policy
+        supabase.table("algo_picks").upsert(picks_payload, on_conflict="strategy_name").execute()
+        logger.info(f"✅ Uploaded Algo Picks to 'algo_picks' table (Latest Only)")
         
         # Send Notification
         notify_telegram(len(value_picks), len(twin_picks), len(acc_picks), len(trend_picks), twin_picks)

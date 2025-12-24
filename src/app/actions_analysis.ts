@@ -33,7 +33,7 @@ export interface AnalysisReport {
     generatedAt: string
 }
 
-export interface GuruPick {
+export interface AlgoPick {
     strategy_name: string
     tickers: string[] // Array of ticker codes
     date: string
@@ -46,6 +46,9 @@ export async function getAnalysis(ticker: string): Promise<AnalysisReport | { er
 
     const technical = analyzeTechnical(marketData)
 
+    // Normalize ticker for DB lookup (strip .KS, .KQ suffixes)
+    const normalizedTicker = ticker.split('.')[0]
+
     // 2. Fetch "Daily Insight" from Supabase (Uploaded by Admin Tool)
     const supabase = await createClient()
 
@@ -54,7 +57,7 @@ export async function getAnalysis(ticker: string): Promise<AnalysisReport | { er
     const { data: reportRow } = await supabase
         .from('daily_analysis_reports')
         .select('report_data, created_at')
-        .eq('ticker', ticker)
+        .eq('ticker', normalizedTicker)
         .order('date', { ascending: false })
         .limit(1)
         .single()
@@ -137,17 +140,12 @@ export async function getAnalysis(ticker: string): Promise<AnalysisReport | { er
     }
 }
 
-export async function getGuruPicks(): Promise<GuruPick[]> {
+export async function getGuruPicks(): Promise<AlgoPick[]> {
     const supabase = await createClient()
 
     // Fetch latest picks for each strategy
-    // We fetch all pics from the last 2 days to ensure we see something
-    const today = new Date().toISOString().split('T')[0]
-
-    // Simple query: Get all picks from last 3 days
-    // In a real app we might want to group by strategy and get max date
     const { data, error } = await supabase
-        .from('guru_picks')
+        .from('algo_picks')
         .select('*')
         .order('date', { ascending: false })
         .limit(10)
