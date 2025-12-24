@@ -113,7 +113,7 @@ def process_watchlist(tickers):
         cur.execute(supply_sql, tickers)
         supply_rows = cur.fetchall()
         
-        # Group by code
+            # Group by code
         price_map = {}
         for r in price_rows:
             if r["code"] not in price_map: price_map[r["code"]] = []
@@ -132,13 +132,20 @@ def process_watchlist(tickers):
             if not p_history: continue
             
             # 1. Technical Analysis
-            tech = analyze_technicals_bulk(p_history[:60])
+            tech = analyze_technicals_bulk(p_history[:100])
             
-            # 2. Supply Chart Data (Merge Close from price_map)
+            # 2. Supply Analysis (Extended to 60 days)
             # Create a quick date -> close map
-            c_map = {p["date"]: p["close"] for p in p_history[:40]}
+            c_map = {p["date"]: p["close"] for p in p_history[:100]}
             supply_chart = []
-            for s in reversed(s_history[:30]):
+            
+            # Calculate accumulation metrics
+            f_net_5 = sum(s["foreigner"] for s in s_history[:5]) if len(s_history) >= 5 else 0
+            i_net_5 = sum(s["institution"] for s in s_history[:5]) if len(s_history) >= 5 else 0
+            f_net_20 = sum(s["foreigner"] for s in s_history[:20]) if len(s_history) >= 20 else 0
+            i_net_20 = sum(s["institution"] for s in s_history[:20]) if len(s_history) >= 20 else 0
+            
+            for s in reversed(s_history[:60]):
                 supply_chart.append({
                     "date": s["date"],
                     "foreigner": s["foreigner"],
@@ -155,7 +162,13 @@ def process_watchlist(tickers):
                     "trend": tech.get("trend", "NEUTRAL"),
                     "ma5": tech.get("ma5"),
                     "ma20": tech.get("ma20"),
-                    "supply_chart": supply_chart
+                    "supply_chart": supply_chart,
+                    "metrics": {
+                        "foreigner_5d_net": f_net_5,
+                        "institution_5d_net": i_net_5,
+                        "foreigner_20d_net": f_net_20,
+                        "institution_20d_net": i_net_20
+                    }
                 }
             }
             reports.append(report)

@@ -23,11 +23,13 @@ export default async function AnalysisPage({ params }: { params: Promise<{ ticke
 
                     <div>
                         <h1 className="text-2xl font-black text-zinc-900 dark:text-white mb-2">
-                            데이터 수집 중...
+                            분석 리포트 없음
                         </h1>
                         <p className="text-zinc-500 dark:text-zinc-400 leading-relaxed">
-                            현재 <b>{tickerParam}</b>에 대한 시장 데이터를 분석하고 있습니다.<br />
-                            잠시 후 다시 확인해주세요.
+                            현재 <b>{tickerParam}</b>에 대한 관리자 분석 리포트가 업로드되지 않았습니다.<br />
+                            <span className="text-sm mt-2 block">
+                                ※ 상세 리포트와 수급 데이터는 <b>관심종목(Watchlist)</b>에 등록된 종목에 대해 Admin Tool이 매일 아침 생성합니다.
+                            </span>
                         </p>
                     </div>
 
@@ -135,34 +137,66 @@ export default async function AnalysisPage({ params }: { params: Promise<{ ticke
                     {supplyDemand ? (
                         <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-6 space-y-6">
                             <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <div className="text-xs text-zinc-500 mb-1">Foreigner Net Buy (Latest)</div>
+                                <div className="p-3 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl border border-zinc-100 dark:border-zinc-800">
+                                    <div className="text-[10px] text-zinc-400 uppercase font-black mb-1">Foreigner (Latest)</div>
                                     <div className={`text-lg font-bold ${supplyDemand.foreignNetBuy > 0 ? 'text-red-500' : 'text-blue-500'}`}>
-                                        {supplyDemand.foreignNetBuy.toLocaleString()}
+                                        {supplyDemand.foreignNetBuy > 0 ? '+' : ''}{supplyDemand.foreignNetBuy.toLocaleString()}
                                     </div>
                                 </div>
-                                <div>
-                                    <div className="text-xs text-zinc-500 mb-1">Institution Net Buy (Latest)</div>
+                                <div className="p-3 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl border border-zinc-100 dark:border-zinc-800">
+                                    <div className="text-[10px] text-zinc-400 uppercase font-black mb-1">Institution (Latest)</div>
                                     <div className={`text-lg font-bold ${supplyDemand.instNetBuy > 0 ? 'text-red-500' : 'text-blue-500'}`}>
-                                        {supplyDemand.instNetBuy.toLocaleString()}
+                                        {supplyDemand.instNetBuy > 0 ? '+' : ''}{supplyDemand.instNetBuy.toLocaleString()}
                                     </div>
                                 </div>
                             </div>
 
-
-                            {/* Chart Placeholder - In a real app, use Recharts or Chart.js here with supplyDemand.chartData */}
-                            <div className="mt-6 h-48 bg-zinc-50 dark:bg-zinc-800 rounded-lg flex items-center justify-center border border-dashed border-zinc-300 dark:border-zinc-700">
-                                <div className="text-center">
-                                    <p className="text-zinc-400 text-sm">Supply Trend Chart</p>
-                                    <p className="text-xs text-zinc-500 mt-1">
-                                        Data Points: {supplyDemand.chartData ? supplyDemand.chartData.length : 0}
-                                    </p>
-                                    {/* Simple visualization using text bars for now to prove data flow */}
-                                    <div className="flex items-end h-20 gap-1 mt-4 justify-center">
-                                        {(supplyDemand.chartData || []).slice(-10).map((d: any, i: number) => (
-                                            <div key={i} className={`w-2 ${d.institution > 0 ? 'bg-red-400' : 'bg-blue-400'}`} style={{ height: `${Math.min(Math.abs(d.institution) / 10000, 100)}%` }} title={`Inst: ${d.institution}`} />
-                                        ))}
+                            {/* Accumulation Metrics */}
+                            {supplyDemand.metrics && (
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-1">
+                                        <div className="text-[10px] text-zinc-400 font-bold">외인 매집 (5일/20일)</div>
+                                        <div className="text-sm font-mono text-zinc-600 dark:text-zinc-300">
+                                            {supplyDemand.metrics.foreigner_5d_net > 0 ? '▲' : '▼'} {Math.round(supplyDemand.metrics.foreigner_5d_net / 1000000)}M / {Math.round(supplyDemand.metrics.foreigner_20d_net / 1000000)}M
+                                        </div>
                                     </div>
+                                    <div className="space-y-1">
+                                        <div className="text-[10px] text-zinc-400 font-bold">기관 매집 (5일/20일)</div>
+                                        <div className="text-sm font-mono text-zinc-600 dark:text-zinc-300">
+                                            {supplyDemand.metrics.institution_5d_net > 0 ? '▲' : '▼'} {Math.round(supplyDemand.metrics.institution_5d_net / 1000000)}M / {Math.round(supplyDemand.metrics.institution_20d_net / 1000000)}M
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+
+                            {/* Supply Trend Visualization */}
+                            <div className="mt-6">
+                                <div className="flex justify-between items-end mb-2">
+                                    <h4 className="text-xs font-bold text-zinc-400">Supply History (Last 60 Days)</h4>
+                                    <div className="flex gap-2 text-[10px] font-bold">
+                                        <span className="flex items-center gap-1 text-blue-500"><div className="w-2 h-2 bg-blue-500 rounded-sm" /> 외인</span>
+                                        <span className="flex items-center gap-1 text-red-500"><div className="w-2 h-2 bg-red-500 rounded-sm" /> 기관</span>
+                                    </div>
+                                </div>
+                                <div className="h-32 bg-zinc-50 dark:bg-zinc-800/30 rounded-xl flex items-end justify-center p-2 gap-[1px] border border-zinc-100 dark:border-zinc-800">
+                                    {(supplyDemand.chartData || []).map((d: any, i: number) => {
+                                        const f_h = Math.min(Math.abs(d.foreigner) / 200000, 100)
+                                        const i_h = Math.min(Math.abs(d.institution) / 200000, 100)
+                                        return (
+                                            <div key={i} className="flex-1 flex flex-col justify-end gap-[1px] h-full group relative">
+                                                <div className={`w-full rounded-t-sm ${d.institution > 0 ? 'bg-red-500' : 'bg-red-500/20'}`} style={{ height: `${i_h}%` }} />
+                                                <div className={`w-full rounded-b-sm ${d.foreigner > 0 ? 'bg-blue-500' : 'bg-blue-500/20'}`} style={{ height: `${f_h}%` }} />
+
+                                                {/* Tooltip on hover */}
+                                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-10 bg-zinc-900 text-white text-[10px] p-2 rounded shadow-xl whitespace-nowrap pointer-events-none">
+                                                    <div>{d.date}</div>
+                                                    <div className="text-blue-400">For: {Math.round(d.foreigner / 1000000)}M</div>
+                                                    <div className="text-red-400">Inst: {Math.round(d.institution / 1000000)}M</div>
+                                                </div>
+                                            </div>
+                                        )
+                                    })}
                                 </div>
                             </div>
                         </div>

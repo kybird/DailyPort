@@ -77,7 +77,8 @@ export default function GuruAboutPage() {
                     <span className="text-blue-600 dark:text-blue-400 text-3xl">스크리닝 기법 소개</span>
                 </h1>
                 <p className="text-lg text-zinc-500 leading-relaxed max-w-2xl">
-                    DailyPort는 기술적 지표와 수급 데이터를 결합한 퀀트 알고리즘을 통해 시장의 기회를 매일 아침 선별하여 제공합니다.
+                    DailyPort는 기술적 지표와 수급 데이터를 결합한 퀀트 알고리즘을 통해 매일 아침(마지막 분석 완료 시점) 시장의 기회를 선별하여 제공합니다.
+                    <span className="block mt-2 text-sm text-zinc-400 font-medium">※ 본 스크리닝 결과에는 장중 실시간 시세 변동이 반영되지 않습니다.</span>
                 </p>
             </header>
 

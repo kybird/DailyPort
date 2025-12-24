@@ -257,29 +257,70 @@ export default function AnalysisPanel({ ticker, onClose, mode = 'portfolio', por
                             </div>
                         )}
                         {/* 4. Supply & Demand */}
-                        <div>
-                            <h3 className="font-bold text-zinc-700 dark:text-zinc-300 mb-3 text-sm">수급 현황 (Supply & Demand)</h3>
+                        <div className="space-y-4">
+                            <h3 className="font-bold text-zinc-700 dark:text-zinc-300 text-sm">수급 현황 (Supply & Demand)</h3>
                             {report.supplyDemand ? (
-                                <div className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-100 dark:border-zinc-800 rounded-xl p-4 space-y-3">
-                                    <div className="flex justify-between text-sm">
-                                        <span className="text-zinc-600 dark:text-zinc-400 font-medium">Foreign Net Buy</span>
-                                        <span className={`font-mono font-black ${report.supplyDemand.foreignNetBuy > 0 ? 'text-rose-500' : 'text-blue-500'}`}>
-                                            {report.supplyDemand.foreignNetBuy.toLocaleString()}
-                                        </span>
+                                <div className="space-y-4">
+                                    <div className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-100 dark:border-zinc-800 rounded-xl p-4 space-y-4">
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="space-y-1">
+                                                <span className="text-[10px] text-zinc-500 dark:text-zinc-400 font-bold uppercase block">Foreign (Latest)</span>
+                                                <span className={`font-mono font-black text-lg ${report.supplyDemand.foreignNetBuy > 0 ? 'text-rose-500' : 'text-blue-500'}`}>
+                                                    {report.supplyDemand.foreignNetBuy > 0 ? '+' : ''}{report.supplyDemand.foreignNetBuy.toLocaleString()}
+                                                </span>
+                                            </div>
+                                            <div className="space-y-1">
+                                                <span className="text-[10px] text-zinc-500 dark:text-zinc-400 font-bold uppercase block">Inst. (Latest)</span>
+                                                <span className={`font-mono font-black text-lg ${report.supplyDemand.instNetBuy > 0 ? 'text-rose-500' : 'text-blue-500'}`}>
+                                                    {report.supplyDemand.instNetBuy > 0 ? '+' : ''}{report.supplyDemand.instNetBuy.toLocaleString()}
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        {report.supplyDemand.metrics && (
+                                            <div className="pt-3 border-t border-zinc-100 dark:border-zinc-800 grid grid-cols-1 gap-3">
+                                                <div className="flex justify-between items-center bg-white dark:bg-zinc-900/50 p-2 rounded-lg ring-1 ring-zinc-200 dark:ring-zinc-800">
+                                                    <span className="text-[10px] font-bold text-zinc-400 uppercase">외인 매집 (5/20)</span>
+                                                    <span className="text-xs font-mono text-zinc-600 dark:text-zinc-300">
+                                                        {report.supplyDemand.metrics.foreigner_5d_net > 0 ? '▲' : '▼'} {Math.round(report.supplyDemand.metrics.foreigner_5d_net / 1000000)}M / {Math.round(report.supplyDemand.metrics.foreigner_20d_net / 1000000)}M
+                                                    </span>
+                                                </div>
+                                                <div className="flex justify-between items-center bg-white dark:bg-zinc-900/50 p-2 rounded-lg ring-1 ring-zinc-200 dark:ring-zinc-800">
+                                                    <span className="text-[10px] font-bold text-zinc-400 uppercase">기관 매집 (5/20)</span>
+                                                    <span className="text-xs font-mono text-zinc-600 dark:text-zinc-300">
+                                                        {report.supplyDemand.metrics.institution_5d_net > 0 ? '▲' : '▼'} {Math.round(report.supplyDemand.metrics.institution_5d_net / 1000000)}M / {Math.round(report.supplyDemand.metrics.institution_20d_net / 1000000)}M
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        <div className="text-[9px] text-right text-zinc-400 mt-2">
+                                            Update: {new Date(report.supplyDemand.updatedAt).toLocaleDateString()}
+                                        </div>
                                     </div>
-                                    <div className="flex justify-between text-sm">
-                                        <span className="text-zinc-600 dark:text-zinc-400 font-medium">Inst. Net Buy</span>
-                                        <span className={`font-mono font-black ${report.supplyDemand.instNetBuy > 0 ? 'text-rose-500' : 'text-blue-500'}`}>
-                                            {report.supplyDemand.instNetBuy.toLocaleString()}
-                                        </span>
-                                    </div>
-                                    <div className="text-[10px] text-right text-zinc-500 mt-2 font-medium">
-                                        Source: {report.supplyDemand.source} ({new Date(report.supplyDemand.updatedAt).toLocaleDateString()})
+
+                                    {/* Mini Supply Trend Chart */}
+                                    <div className="h-24 bg-zinc-50 dark:bg-zinc-950 rounded-xl border border-zinc-100 dark:border-zinc-800 flex items-end justify-center p-2 gap-[1px]">
+                                        {(report.supplyDemand.chartData || []).map((d: any, i: number) => {
+                                            const f_h = Math.min(Math.abs(d.foreigner) / 200000, 100)
+                                            const i_h = Math.min(Math.abs(d.institution) / 200000, 100)
+                                            return (
+                                                <div key={i} className="flex-1 flex flex-col justify-end gap-[1px] h-full group relative">
+                                                    <div className={`w-full rounded-t-sm ${d.institution > 0 ? 'bg-red-500' : 'bg-red-500/20'}`} style={{ height: `${i_h}%` }} />
+                                                    <div className={`w-full rounded-b-sm ${d.foreigner > 0 ? 'bg-blue-500' : 'bg-blue-500/20'}`} style={{ height: `${f_h}%` }} />
+                                                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-[200] bg-zinc-900 text-white text-[9px] p-2 rounded shadow-2xl whitespace-nowrap pointer-events-none">
+                                                        <div>{d.date}</div>
+                                                        <div className="text-blue-300">For: {Math.round(d.foreigner / 1000000)}M</div>
+                                                        <div className="text-red-300">Inst: {Math.round(d.institution / 1000000)}M</div>
+                                                    </div>
+                                                </div>
+                                            )
+                                        })}
                                     </div>
                                 </div>
                             ) : (
-                                <div className="text-xs text-zinc-500 italic bg-zinc-50 dark:bg-zinc-950 p-4 rounded-xl border border-dashed border-zinc-200 dark:border-zinc-800">
-                                    데이터가 없습니다. 데이터 동기화를 진행해주세요.
+                                <div className="text-xs text-zinc-500 italic bg-zinc-50 dark:bg-zinc-950 p-4 rounded-xl border border-dashed border-zinc-200 dark:border-zinc-800 text-center">
+                                    분석 데이터가 없습니다 (Admin Tool 미실행).
                                 </div>
                             )}
                         </div>

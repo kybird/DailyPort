@@ -18,6 +18,12 @@ export interface AnalysisReport {
         source: string
         updatedAt: string
         chartData?: any[] // Added for Supply Chart
+        metrics?: {
+            foreigner_5d_net: number
+            institution_5d_net: number
+            foreigner_20d_net: number
+            institution_20d_net: number
+        }
     }
     guruAnalysis?: {
         trend: string
@@ -53,6 +59,15 @@ export async function getAnalysis(ticker: string): Promise<AnalysisReport | { er
         .limit(1)
         .single()
 
+    // Disable caching for this specific call to ensure fresh data after admin tool run
+    // Using a hacky way since the standard fetch options aren't directly available in Supabase JS easily 
+    // for Server Components without manual header manipulation or different client setup.
+    // However, createClient() from @/utils/supabase/server handles fresh session.
+    // Let's add a log to debug if data is null.
+    if (!reportRow) {
+        console.log(`[getAnalysis] Report NOT FOUND for ticker: ${ticker} on Supabase. Check if Admin tool processed it.`)
+    }
+
     // 3. Generate Summary & Merge Data
     const summaries: string[] = []
 
@@ -82,12 +97,22 @@ export async function getAnalysis(ticker: string): Promise<AnalysisReport | { er
                 instNetBuy: latest.institution || 0,
                 source: 'DailyPort Admin',
                 updatedAt: reportRow.created_at,
-                chartData: d.supply_chart // Pass full history for Chart
+                chartData: d.supply_chart, // Pass full history (now 60d)
+                metrics: d.metrics
+            }
+
+            // Enhanced Summary Insight from Metrics
+            if (d.metrics) {
+                if (d.metrics.foreigner_5d_net > 0 && d.metrics.institution_5d_net > 0) {
+                    summaries.push('최근 5일간 외인/기관 동반 매집 중.')
+                } else if (d.metrics.foreigner_20d_net > 0) {
+                    summaries.push('한 달간 외국인 지속 매집 포착.')
+                }
             }
         }
 
         guruInfo = {
-            trend: d.trend || 'UNKNOWN',
+            trend: d.trend || 'NEUTRAL',
             score: d.technical_score || 0
         }
     } else {

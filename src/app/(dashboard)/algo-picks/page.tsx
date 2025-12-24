@@ -31,9 +31,16 @@ export default async function GuruPage() {
                         <Zap className="text-amber-500" />
                         Algo Picks
                     </h1>
-                    <p className="text-zinc-500 mt-2">
-                        실시간 수급과 펀더멘털을 분석한 알고리즘 스크리닝 결과입니다.
-                    </p>
+                    <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-4 mt-2">
+                        <p className="text-zinc-500">
+                            마지막 분석일 기준으로 수급과 펀더멘털을 스크리닝한 결과입니다. (장중 실시간 데이터는 미포함)
+                        </p>
+                        {picks.length > 0 && (
+                            <span className="text-xs font-bold px-2 py-1 bg-zinc-100 dark:bg-zinc-800 text-zinc-500 rounded-lg w-fit">
+                                최근 분석일: {picks[0].date}
+                            </span>
+                        )}
+                    </div>
                 </div>
             </header>
 
