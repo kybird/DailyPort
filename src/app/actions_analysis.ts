@@ -50,6 +50,9 @@ export interface AnalysisReport {
     generatedAt: string
     historical?: {
         date: string
+        open: number
+        high: number
+        low: number
         close: number
         volume: number
     }[]
@@ -203,6 +206,9 @@ export async function getAnalysis(ticker: string): Promise<AnalysisReport | { er
         generatedAt: new Date().toISOString(),
         historical: marketData.historical?.map(h => ({
             date: h.date,
+            open: h.open,
+            high: h.high,
+            low: h.low,
             close: h.close,
             volume: h.volume
         }))
