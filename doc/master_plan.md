@@ -1,144 +1,92 @@
-프로젝트 마스터 지시서: DailyPort Service (Full-Stack JS/TS - Next.js)
+# 프로젝트 마스터 지시서: DailyPort (Daily Investment Routine Helper)
 
-1. 프로젝트 개요
+## 1. 프로젝트 개요 (Identity: Personal Data Powerhouse)
 
-DailyPort는 사용자가 웹 환경에서 자신의 주식 포트폴리오와 기술적 분석 조언을 받는 개인용 오픈소스 서비스입니다.
+**"개인은 기관처럼 데이터를 쌓고, 확인은 직장인처럼 가볍게."**
 
-핵심 철학: "민감한 정보(금융 키)는 유저 로컬에, 편리한 UI는 웹과 구글 시트에."
+DailyPort는 투자자가 집 컴퓨터(Local)를 '데이터 분석 센터'로 활용하고, 웹(Web)에서는 분석된 '인사이트'만 가볍게 소비하는 **하이브리드 투자 보조 도구**입니다.
 
-운영 원칙: 서버 리소스 최소화를 위해 모든 분석은 유저가 요청한 시점에만 수행하는 온디맨드(On-demand) 방식을 채택합니다. 유저의 "조회" 행위를 명확한 트리거로 삼아 법적 리스크를 최소화합니다.
+### 1.1 핵심 철학
+- **Local Data Lake**: 2,900개 전 종목의 방대한 역사(시세/재무)는 로컬(SQLite)에 쌓아둡니다. 클라우드 비용 0원.
+- **Cloud Data Mart**: 분석 결과(매수 신호, 추천 리스트)만 클라우드(Supabase)로 전송합니다.
+- **Daily Routine**: 실시간 호가창 쳐다보기(Real-time) 대신, **"장 마감 후 깊이 있는 분석(Batch)"**을 통해 다음 날의 행동을 결정합니다.
 
-2. 기술 스택 및 서비스 구성
+---
 
-Web Framework: Next.js (App Router / TypeScript)
+## 2. 아키텍처 (Hybrid Structure)
 
-Hosting: Vercel (Next.js 최적화 배포 환경)
+### 🏗️ Local Engine (The Factory)
+- **위치:** 사용자 PC (Admin Tools)
+- **DB:** **SQLite** (`dailyport.db`)
+- **역할:**
+    - **수집(Ingest):** 매일 장 마감 후 PyKRX/KIS API를 통해 전 종목 일봉 & 재무 데이터 업데이트.
+    - **분석(Analyze):** 
+        1. 내 포트폴리오 정밀 진단 (추세 붕괴 여부, 손절/익절 가이드).
+        2. '대가의 투자법' 알고리즘으로 전 종목 스크리닝 (Guru Screening).
+    - **배포(Publish):** 분석된 결과(JSON 리포트)를 Supabase에 업로드.
 
-Backend/Serverless: Supabase Edge Functions (Deno) & Next.js API Routes
+### ☁️ Cloud Viewer (The Dashboard)
+- **위치:** Vercel (Next.js Web App)
+- **DB:** **Supabase** (PostgreSQL)
+- **역할:**
+    - 로컬에서 올라온 **"Daily Brief"**(오늘의 조언)를 시각화.
+    - 무거운 연산 없이 즉각적인 로딩 속도 제공.
+    - 모바일/PC 어디서든 접근 가능.
 
-Database/Auth: Supabase (PostgreSQL / RLS 적용)
+---
 
-Data APIs:
+## 3. MVP 핵심 기능 (Daily Routine Flow)
 
-Primary: Yahoo Finance (yahoo-finance2)
+요란한 기능은 뺍니다. 아침 10분 브리핑에 집중합니다.
 
-Fallback: 공공데이터포털 (금융위 주식시세정보)
+### 3.1. 전 종목 스크리닝 (Guru Picks)
+- **기능:** 벤자민 그레이엄, 윌리엄 오닐 등 대가들의 조건을 만족하는 종목을 매일 밤 발굴.
+- **출력:** "오늘의 가치주 Top 10", "오늘의 돌파매매 후보 Top 10".
+- **데이터:** 이 리스트는 공용 데이터로 Supabase에 저장되어 친구들과 공유 가능.
 
-Notification: Telegram Bot API (1:1 DM 및 분석 결과 요약 전송)
+### 3.2. 내 종목 정밀 진단 (My Portfolio)
+- **기능:** 내가 보유한 종목의 현재 위치를 객관적으로 평가.
+- **체크리스트:** 
+    - [ ] 20일 이동평균선 위에 있는가?
+    - [ ] 기관 수급이 들어오고 있는가?
+    - [ ] 손실폭이 -10%를 넘었는가?
+- **출력:** "삼성전자: 관망(HOLD) - 추세는 살아있으나 수급이 꼬임".
 
-Google Sheets API: google-spreadsheet 라이브러리를 사용한 서비스 계정(Service Account) 기반 실시간 연동
+### 3.3. 모닝 브리핑 (Daily Briefing)
+- **화면:** 웹 접속 시 첫 화면.
+- **내용:**
+    - 🚨 **긴급:** "보유하신 종목 A가 지지선을 이탈했습니다."
+    - 💎 **발굴:** "관심 가질만한 신규 종목 3개가 발견되었습니다."
+    - 📊 **시장:** "어제 코스피는 하락 추세로 전환되었습니다."
 
-3. 시스템 아키텍처 및 데이터 흐름
+---
 
-3.1. 보안 설계 (KIS API 완전 분리)
+## 4. 데이터 전략 (Data Strategy)
 
-구조적 보안: 웹/DB 계층에서 증권사 API Key가 물리적으로 존재하지 않도록 설계하여 침해 사고 시에도 금융 계정 노출 가능성을 원천 차단합니다.
+### 4.1 소스 (Source)
+- **PyKRX (Python):** 전 종목 일봉, 재무지표 (무료, 배치 작업용).
+- **KIS API (Python):** (필요시) 정밀한 수급 데이터 보완.
 
-Admin Tool (Local): 한국투자증권(KIS) API 연동은 개발자가 로컬에서 실행하는 별도의 스크립트로 분리합니다. 이 툴은 데이터를 수집해 DB의 ticker_insights 테이블에 데이터를 공급합니다.
+### 4.2 저장소 분리 전략
+| 데이터 종류 | 저장소 | 이유 |
+| :--- | :--- | :--- |
+| **Raw Data** (2년치 시세, 재무제표) | **Local SQLite** | 용량이 크고(수백 MB), 웹에서는 직접 볼 필요 없음. |
+| **Insights** (매매 신호, 추천 리스트) | **Cloud Supabase** | 용량이 작고(수 KB), 언제 어디서든 확인해야 함. |
+| **User Data** (보유 종목, 관심 종목) | **Cloud Supabase** | 여러 기기에서 동기화 필요. |
 
-4. 상세 기능 및 UI/UX 요구사항
+---
 
-4.0. 랜딩 페이지 (Landing Page)
+## 5. 개발 로드맵
 
-Hero Section: "내 로컬의 안전함과 웹의 편리함을 동시에" - 하이브리드 아키텍처 부각.
+### Phase 1: The Engine (Local Python)
+- SQLite 스키마 설계 (`daily_price`, `fundamentals`, `guru_config`).
+- 데이터 수집기 구현 (Daily Batch Script).
+- 분석기 구현 (Scoring & Filtering Logic).
 
-4.1. 회원가입 및 인증 (Supabase Auth + Next.js Middleware)
+### Phase 2: The Bridge (Uploader)
+- 분석 결과를 JSON으로 변환하여 Supabase에 Upsert 하는 모듈 구현.
+- `daily_reports`, `guru_picks` 테이블 설계.
 
-인증 방식: 이메일/비밀번호 기반 인증.
-
-4.2. 데이터 입력 및 관리 UX (Dual-Path Entry)
-
-방법 1: 웹 기반 직접 입력 (Web-Native CRUD)
-
-입력 UI: 종목 추가 모달 및 인라인 에디팅(Inline Editing) 지원.
-
-방법 2: 구글 시트 API 동기화 (One-Click Sync Workflow)
-
-중요 지침: CSV 파일 수동 업로드/다운로드 방식은 절대 금지.
-
-서식 제공: API로 접속하여 표준 헤더(Ticker, Quantity, AvgPrice, TargetWeight)를 즉시 생성/업데이트하는 기능 제공.
-
-Import UX (Dry-Run): 시트 데이터를 읽어와 실제 반영 전 '변경 요약'을 보여주고 유저 컨펌 후 실행.
-
-4.3. 스마트 종목 검색 (Search Component)
-
-데이터 구조: stocks.json 기반 (ticker, name, market, chosung).
-
-4.4. 온디맨드 분석 엔진 및 리포트 (Edge Functions)
-
-캐싱 전략: 분석 요청 시 5~15분 TTL 캐시 적용하여 외부 API 부하 방지.
-
-4.5. 구글 시트 연동 로직 명세 (Service Account 기반)
-
-인증 방식: 유저가 개별적으로 Google Login을 수행할 필요 없음.
-
-서버는 사전에 발급된 서비스 계정 JSON 키를 환경 변수(GOOGLE_SERVICE_ACCOUNT_EMAIL, GOOGLE_PRIVATE_KEY)로 보유함.
-
-유저는 본인의 구글 시트 공유 설정에서 위 서비스 계정 이메일을 '편집자'로 추가함.
-
-유저는 웹 UI에 Spreadsheet ID만 입력하면 연동 완료.
-
-필수 컬럼 명세: Ticker, Quantity, AvgPrice, TargetWeight.
-
-파이프라인: Validator -> Normalize -> Upsert. 부분 성공을 허용하고 ImportResult 리포트를 반환함.
-
-5. 데이터베이스 설계 (SQL)
-
--- 1. 포트폴리오
-CREATE TABLE portfolios (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id UUID REFERENCES auth.users(id) NOT NULL,
-  ticker TEXT NOT NULL,
-  quantity NUMERIC NOT NULL DEFAULT 0,
-  entry_price NUMERIC NOT NULL DEFAULT 0,
-  currency TEXT NOT NULL DEFAULT 'KRW',
-  target_weight NUMERIC NOT NULL DEFAULT 0,
-  updated_at TIMESTAMPTZ DEFAULT NOW(),
-  UNIQUE (user_id, ticker)
-);
-
--- 2. 수급 데이터
-CREATE TABLE ticker_insights (
-  ticker TEXT PRIMARY KEY,
-  foreign_net_buy BIGINT DEFAULT 0,
-  inst_net_buy BIGINT DEFAULT 0,
-  source TEXT NOT NULL,
-  generated_at TIMESTAMPTZ NOT NULL,
-  last_updated TIMESTAMPTZ DEFAULT NOW()
-);
-
--- 3. 유저 설정
-CREATE TABLE user_configs (
-  user_id UUID REFERENCES auth.users(id) PRIMARY KEY,
-  google_sheet_id TEXT,
-  telegram_chat_id TEXT
-);
-
-
-5.2. RLS 정책 명세 (임의 작성 금지)
-
-포트폴리오, 관심종목 테이블에 대해 유저별 SELECT, INSERT, UPDATE, DELETE 정책을 개별적으로 설정 (단순 FOR ALL 금지).
-
-6. 에이전트를 위한 기술적 가이드 (핵심 강조)
-
-배포 및 환경 변수: * 본 프로젝트는 Vercel에 배포됨을 전제로 한다.
-
-모든 외부 API 키(Supabase, Google Service Account, Telegram)는 Vercel 환경 변수(Environment Variables) 기능을 통해 관리한다.
-
-구글 시트 API 복잡성 오해 금지: OAuth2 대신 서비스 계정 방식을 사용하여 구현을 단순화한다. CSV 방식은 자동화 철학에 반하므로 배제한다.
-
-RLS 준수: 세부 명세를 그대로 구현한다.
-
-캐싱 레이어: 동일 ticker 분석 요청 시, TTL 내 중복 외부 API 호출을 금지한다.
-
-고정 면책 조항: 모든 분석 결과 하단에 투자 면책 문구를 고정 노출한다.
-
-7. 구현 단계 (Milestones)
-
-Step 1: Supabase Auth/DB 구축 및 Next.js 기초 구조 설정 (Vercel 배포 초기 설정 포함).
-
-Step 2: Google Sheets API 연동(Validator 포함 Sync) 및 Dry-Run 요약 UI 구현.
-
-Step 3: 분석 엔진(캐싱 포함) 개발 및 리포트 시각화.
-
-Step 4: 텔레그램 봇 연동 및 로컬 KIS 데이터 펌프 도구 작성.
+### Phase 3: The View (Web)
+- Next.js 대시보드 UI 구현.
+- "오늘의 추천" 및 "내 종목 진단" 카드 UI 개발.

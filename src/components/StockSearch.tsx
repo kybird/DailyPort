@@ -46,7 +46,16 @@ export default function StockSearch({ onSelect }: StockSearchProps) {
                         setIsOpen(true)
                     }}
                     onFocus={() => setIsOpen(true)}
+                    onKeyDown={(e) => {
+                        if (e.key === 'Enter' && filteredStocks.length > 0) {
+                            e.preventDefault()
+                            onSelect(filteredStocks[0])
+                            setQuery(filteredStocks[0].name)
+                            setIsOpen(false)
+                        }
+                    }}
                 />
+
             </div>
 
             {isOpen && filteredStocks.length > 0 && (

@@ -184,8 +184,14 @@ export async function getMarketData(ticker: string): Promise<MarketData | null> 
     try {
         // console.log(`Fetching Yahoo for ${ticker}`)
 
+        let yahooTicker = ticker
+        // Auto-append .KS for Korean 6-digit tickers
+        if (/^\d{6}$/.test(ticker)) {
+            yahooTicker = `${ticker}.KS`
+        }
+
         // Fetch Quote
-        const quote = await yahooFinance.quote(ticker) as any
+        const quote = await yahooFinance.quote(yahooTicker) as any
 
         // Fetch Historical (for Technical Analysis) - last 150 days typically enough for MA, RSI
         const queryOptions = { period1: '2023-01-01' } // Approximate, better to use relative date
@@ -193,11 +199,12 @@ export async function getMarketData(ticker: string): Promise<MarketData | null> 
         const startDate = new Date()
         startDate.setDate(startDate.getDate() - 300)
 
-        const historical = await yahooFinance.historical(ticker, {
+        const historical = await yahooFinance.historical(yahooTicker, {
             period1: startDate.toISOString().split('T')[0],
             period2: new Date().toISOString().split('T')[0],
             interval: '1d'
         }) as any[]
+
 
         const marketData: MarketData = {
             ticker,

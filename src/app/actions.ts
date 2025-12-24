@@ -170,25 +170,9 @@ export async function addToWatchlist(ticker: string) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: 'Unauthorized' }
 
-    // Fetch current price to calculate objectives
-    const { getMarketData } = await import('@/utils/market-data')
-    const marketData = await getMarketData(ticker)
-    if (!marketData) return { error: 'Failed to fetch market data' }
-
-    const objectives = calculateObjectives(marketData.currentPrice)
-
     const { error } = await supabase.from('watchlists').insert({
         user_id: user.id,
         ticker,
-        short_entry: objectives.short.entry,
-        short_stop: objectives.short.stop,
-        short_target: objectives.short.target,
-        mid_entry: objectives.mid.entry,
-        mid_stop: objectives.mid.stop,
-        mid_target: objectives.mid.target,
-        long_entry: objectives.long.entry,
-        long_stop: objectives.long.stop,
-        long_target: objectives.long.target,
     })
 
     if (error) {
@@ -213,5 +197,11 @@ export async function removeFromWatchlist(ticker: string) {
     if (error) return { error: error.message }
 
     revalidatePath('/dashboard')
+    return { success: true }
+}
+
+export async function signOutAction() {
+    const supabase = await createClient()
+    await supabase.auth.signOut()
     return { success: true }
 }

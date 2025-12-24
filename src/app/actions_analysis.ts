@@ -17,72 +17,84 @@ export interface AnalysisReport {
         instNetBuy: number
         source: string
         updatedAt: string
+        chartData?: any[] // Added for Supply Chart
+    }
+    guruAnalysis?: {
+        trend: string
+        score: number
     }
     summary: string
     generatedAt: string
 }
 
+export interface GuruPick {
+    strategy_name: string
+    tickers: string[] // Array of ticker codes
+    date: string
+}
+
 export async function getAnalysis(ticker: string): Promise<AnalysisReport | { error: string }> {
-    // 1. Fetch Market Data & Calculate Technicals
+    // 1. Fetch Market Data (Yahoo) for Real-time Price
     const marketData = await getMarketData(ticker)
     if (!marketData) return { error: 'Failed to fetch market data' }
 
     const technical = analyzeTechnical(marketData)
 
-    // 2. Fetch Supply/Demand from 'analysis_cache' (Synced by Admin Tool)
-    // The previous code queried 'ticker_insights' which is deprecated or empty.
+    // 2. Fetch "Daily Insight" from Supabase (Uploaded by Admin Tool)
     const supabase = await createClient()
-    const { data: cachedData } = await supabase
-        .from('analysis_cache')
-        .select('*')
+
+    // Try to find today's report, or latest within 3 days
+    // Note: We use the new table 'daily_analysis_reports'
+    const { data: reportRow } = await supabase
+        .from('daily_analysis_reports')
+        .select('report_data, created_at')
         .eq('ticker', ticker)
+        .order('date', { ascending: false })
+        .limit(1)
         .single()
 
-    // 3. Generate Summary Message
+    // 3. Generate Summary & Merge Data
     const summaries: string[] = []
 
-    // Price
-    if ((marketData.changePercent || 0) > 0) summaries.push('주가가 상승세입니다.')
-    else summaries.push('주가가 하락세입니다.')
+    // Price Summary
+    if ((marketData.changePercent || 0) > 0) summaries.push('주가 상승세.')
+    else summaries.push('주가 하락세.')
 
-    // Technical
-    if (technical.rsi.status === 'OVERBOUGHT') summaries.push('RSI 과매수 구간입니다 (조정 주의).')
-    if (technical.trend.status === 'GOLDEN_CROSS') summaries.push('단기 이평선이 장기를 돌파했습니다 (골든크로스).')
-    if (technical.trend.status === 'UP_TREND') summaries.push('이평선 정배열 상태입니다.')
+    // Technical Summary
+    if (technical.rsi.status === 'OVERBOUGHT') summaries.push('RSI 과매수.')
+    if (technical.trend.status === 'GOLDEN_CROSS') summaries.push('골든크로스 발생.')
+    if (technical.trend.status === 'UP_TREND') summaries.push('이평선 정배열.')
 
-    // Supply/Demand
     let supplyInfo = undefined
+    let guruInfo = undefined
 
-    if (cachedData && cachedData.data) {
-        // Safe access to nested JSON properties
-        const d = cachedData.data
-        const hasInvestorData = 'investor_foreign' in d && 'investor_institution' in d
+    if (reportRow && reportRow.report_data) {
+        const d = reportRow.report_data
 
-        if (hasInvestorData) {
+        // Merge Admin Tool Summary
+        if (d.summary) summaries.push(`[AI 진단] ${d.summary}`)
+
+        // Supply Data (Latest from Chart)
+        if (d.supply_chart && d.supply_chart.length > 0) {
+            const latest = d.supply_chart[d.supply_chart.length - 1]
             supplyInfo = {
-                foreignNetBuy: d.investor_foreign || 0,
-                instNetBuy: d.investor_institution || 0,
-                source: cachedData.source || 'AdminTool',
-                updatedAt: cachedData.generated_at
-            }
-
-            if (supplyInfo.foreignNetBuy > 0 && supplyInfo.instNetBuy > 0) {
-                summaries.push('외국인과 기관의 양매수가 유입되고 있습니다.')
-            } else if (supplyInfo.foreignNetBuy > 0) {
-                summaries.push('외국인 순매수가 강세입니다.')
-            } else if (supplyInfo.instNetBuy > 0) {
-                summaries.push('기관 순매수가 강세입니다.')
-            } else if (supplyInfo.foreignNetBuy < 0 && supplyInfo.instNetBuy < 0) {
-                summaries.push('외국인과 기관이 동반 매도 중입니다.')
+                foreignNetBuy: latest.foreigner || 0,
+                instNetBuy: latest.institution || 0,
+                source: 'DailyPort Admin',
+                updatedAt: reportRow.created_at,
+                chartData: d.supply_chart // Pass full history for Chart
             }
         }
+
+        guruInfo = {
+            trend: d.trend || 'UNKNOWN',
+            score: d.technical_score || 0
+        }
+    } else {
+        summaries.push('상세 분석 리포트가 없습니다 (Admin Tool 미실행).')
     }
 
-    if (!supplyInfo) {
-        summaries.push('수급 데이터는 아직 집계되지 않았습니다 (로컬 Admin Tool 실행 필요).')
-    }
-
-    // 4. Calculate Suggested Objectives
+    // 4. Calculate Objectives
     const objectives = calculateObjectives(marketData.currentPrice)
     technical.objectives = objectives
 
@@ -94,7 +106,35 @@ export async function getAnalysis(ticker: string): Promise<AnalysisReport | { er
         },
         technical,
         supplyDemand: supplyInfo,
+        guruAnalysis: guruInfo,
         summary: summaries.join(' '),
         generatedAt: new Date().toISOString()
     }
+}
+
+export async function getGuruPicks(): Promise<GuruPick[]> {
+    const supabase = await createClient()
+
+    // Fetch latest picks for each strategy
+    // We fetch all pics from the last 2 days to ensure we see something
+    const today = new Date().toISOString().split('T')[0]
+
+    // Simple query: Get all picks from last 3 days
+    // In a real app we might want to group by strategy and get max date
+    const { data, error } = await supabase
+        .from('guru_picks')
+        .select('*')
+        .order('date', { ascending: false })
+        .limit(10)
+
+    if (error) {
+        console.error("Error fetching guru picks:", error)
+        return []
+    }
+
+    return (data || []).map(row => ({
+        strategy_name: row.strategy_name,
+        tickers: row.tickers, // Supabase JSONB comes as array
+        date: row.date
+    }))
 }

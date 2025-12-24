@@ -1,38 +1,35 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Noto_Sans_KR } from "next/font/google";
 import "./globals.css";
-import TopPanel from "@/components/TopPanel";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+const notoSansKr = Noto_Sans_KR({
+    weight: ['100', '300', '400', '500', '700', '900'],
+    subsets: ['latin'],
+    variable: '--font-noto',
+    display: 'swap',
 });
 
 export const metadata: Metadata = {
-  title: "DailyPort - Secure Local Stock Analysis",
-  description: "Secure, local-first stock analysis combining the safety of local API storage with the convenience of web-based tools.",
+    title: "DailyPort - Secure Local Stock Analysis",
+    description: "Secure, local-first stock analysis combining the safety of local API storage with the convenience of web-based tools.",
 };
 
 export default function RootLayout({
-  children,
+    children,
 }: Readonly<{
-  children: React.ReactNode;
+    children: React.ReactNode;
 }>) {
-  return (
-    <html lang="en" suppressHydrationWarning>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground transition-colors duration-300`}
-      >
-        <TopPanel />
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {children}
-        </main>
-      </body>
-    </html>
-  );
+    return (
+        <html lang="ko" suppressHydrationWarning>
+            <body
+                className={`${notoSansKr.className} antialiased bg-background text-foreground transition-colors duration-300`}
+            >
+
+                <main className="min-h-screen">
+                    {children}
+                </main>
+            </body>
+
+        </html>
+    );
 }

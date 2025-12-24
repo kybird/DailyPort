@@ -1,0 +1,9 @@
+2025-12-24 11:20:36,099 - INFO - \U0001f680 Starting Daily Analyzer...
+2025-12-24 11:20:36,811 - INFO - HTTP Request: GET https://eswruekjtczbnfreqkvx.supabase.co/rest/v1/watchlists?select=ticker "HTTP/2 200 OK"
+2025-12-24 11:20:36,811 - INFO - Processing Watchlist: 1 tickers
+2025-12-24 11:20:36,812 - INFO - \U0001f575\ufe0f Running Guru Screening...
+2025-12-24 11:20:37,324 - INFO - HTTP Request: POST https://eswruekjtczbnfreqkvx.supabase.co/rest/v1/guru_picks?on_conflict=date%2C+strategy_name&columns=%22tickers%22%2C%22date%22%2C%22strategy_name%22 "HTTP/2 200 OK"
+2025-12-24 11:20:37,324 - INFO - \u2705 Uploaded Guru Picks: Value(15), Twin(0), Acc(15)
+2025-12-24 11:20:37,544 - INFO - HTTP Request: GET https://eswruekjtczbnfreqkvx.supabase.co/rest/v1/user_settings?select=telegram_chat_id%2Ctelegram_bot_token&limit=1 "HTTP/2 200 OK"
+2025-12-24 11:20:37,544 - WARNING - Telegram credentials missing. Skipping notification.
+2025-12-24 11:20:37,545 - INFO - \U0001f389 Analyzer Finished.

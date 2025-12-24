@@ -110,6 +110,11 @@ export default function PortfolioList({ items }: { items: PortfolioItem[] }) {
                 <AnalysisPanel
                     ticker={analyzingTicker}
                     onClose={() => setAnalyzingTicker(null)}
+                    mode="portfolio"
+                    portfolioData={(() => {
+                        const item = items.find(i => i.ticker === analyzingTicker);
+                        return item ? { quantity: item.quantity, entryPrice: item.entry_price } : undefined;
+                    })()}
                 />
             )}
 

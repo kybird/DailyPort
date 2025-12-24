@@ -1,7 +1,11 @@
 
 import AddStockDialog from '@/components/AddStockDialog'
 import GoogleSheetSyncDialog from '@/components/GoogleSheetSyncDialog'
-import { Settings2, ShieldCheck, Wallet } from 'lucide-react'
+import SettingsForm from '@/components/SettingsForm'
+import SignOutButton from '@/components/SignOutButton'
+import { Settings2, ShieldCheck, Wallet, Send } from 'lucide-react'
+
+
 
 export default function MyPage() {
     return (
@@ -37,6 +41,25 @@ export default function MyPage() {
                 </div>
             </div>
 
+
+            {/* Telegram Settings Section */}
+            <div className="bg-white dark:bg-zinc-900 p-8 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm">
+                <div className="flex items-center gap-4 mb-6">
+                    <div className="w-12 h-12 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-xl flex items-center justify-center">
+                        <Send size={24} />
+                    </div>
+                    <div>
+                        <h3 className="text-xl font-bold text-zinc-900 dark:text-white">텔레그램 알림 설정</h3>
+                        <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
+                            매일 아침 수급 분석 리포트를 텔레그램으로 받아보세요.
+                        </p>
+                    </div>
+                </div>
+                <div className="max-w-2xl">
+                    <SettingsForm />
+                </div>
+            </div>
+
             {/* Security Notice */}
             <div className="bg-zinc-100 dark:bg-zinc-900/50 p-6 rounded-xl flex items-start gap-4 border border-zinc-200 dark:border-zinc-800">
                 <div className="p-2 bg-white dark:bg-zinc-800 rounded-lg shadow-sm">
@@ -49,6 +72,12 @@ export default function MyPage() {
                     </p>
                 </div>
             </div>
+            {/* Footer / Danger Zone */}
+            <div className="flex justify-center pt-8 border-t border-zinc-200 dark:border-zinc-800">
+                <SignOutButton />
+            </div>
         </div>
     )
 }
+
+

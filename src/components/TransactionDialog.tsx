@@ -10,10 +10,11 @@ interface TransactionDialogProps {
     ticker: string
     currentQuantity: number
     onClose: () => void
+    initialType?: 'BUY' | 'SELL'
 }
 
-export default function TransactionDialog({ ticker, currentQuantity, onClose }: TransactionDialogProps) {
-    const [type, setType] = useState<'BUY' | 'SELL'>('BUY')
+export default function TransactionDialog({ ticker, currentQuantity, onClose, initialType = 'BUY' }: TransactionDialogProps) {
+    const [type, setType] = useState<'BUY' | 'SELL'>(initialType)
     const [quantity, setQuantity] = useState<number>(0)
     const [price, setPrice] = useState<number>(0)
     const [loading, setLoading] = useState(false)

@@ -1,30 +1,45 @@
 
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
-import { Activity, X, AlertTriangle, TrendingUp, TrendingDown, RefreshCw, Star, Target } from 'lucide-react'
+
+import { Activity, X, AlertTriangle, TrendingUp, TrendingDown, RefreshCw, Star, Target, Wallet, ArrowLeftRight, Trash2 } from 'lucide-react'
 import { getAnalysis, AnalysisReport } from '@/app/actions_analysis'
 import { getStockName } from '@/utils/stockUtils'
-import { addToWatchlist, removeFromWatchlist, getWatchlist } from '@/app/actions'
+import { addToWatchlist, removeFromWatchlist, getWatchlist, sellTicker } from '@/app/actions'
+import { getSettings } from '@/app/actions_settings'
+import TransactionDialog from './TransactionDialog'
 
 interface AnalysisPanelProps {
     ticker: string
     onClose: () => void
+    mode?: 'watchlist' | 'portfolio'
+    portfolioData?: {
+        quantity: number
+        entryPrice: number
+    }
 }
 
-export default function AnalysisPanel({ ticker, onClose }: AnalysisPanelProps) {
+export default function AnalysisPanel({ ticker, onClose, mode = 'portfolio', portfolioData }: AnalysisPanelProps) {
     const [report, setReport] = useState<AnalysisReport | null>(null)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState('')
     const [isWatched, setIsWatched] = useState(false)
     const [watchingEffect, setWatchingEffect] = useState(false)
+    const [hasTelegramSettings, setHasTelegramSettings] = useState(false)
+    const [showTradeDialog, setShowTradeDialog] = useState(false)
+    const [tradeType, setTradeType] = useState<'BUY' | 'SELL'>('BUY')
 
     // Fetch on mount
-    useState(() => {
+    // Fetch on mount
+    useEffect(() => {
+        let mounted = true
         const fetch = async () => {
             setLoading(true)
             const result = await getAnalysis(ticker)
+            if (!mounted) return
+
             if ('error' in result) {
                 setError(result.error)
             } else {
@@ -33,12 +48,23 @@ export default function AnalysisPanel({ ticker, onClose }: AnalysisPanelProps) {
 
             // Check if already in watchlist
             const watchlist = await getWatchlist()
+            if (!mounted) return
             setIsWatched(watchlist?.some((item: any) => item.ticker === ticker) || false)
+
+            // Check telegram settings
+            const settings = await getSettings()
+            if (!mounted) return
+            if (settings.data?.telegram_bot_token && settings.data?.telegram_chat_id) {
+                setHasTelegramSettings(true)
+            }
 
             setLoading(false)
         }
         fetch()
-    })
+
+        return () => { mounted = false }
+    }, [ticker])
+
 
     const toggleWatchlist = async () => {
         setWatchingEffect(true)
@@ -101,6 +127,61 @@ export default function AnalysisPanel({ ticker, onClose }: AnalysisPanelProps) {
                             </span>
                         </div>
 
+                        {/* Portfolio Status (Only in Portfolio mode) */}
+                        {mode === 'portfolio' && portfolioData && (
+                            <div className="bg-zinc-50 dark:bg-zinc-950 p-5 rounded-2xl border border-zinc-100 dark:border-zinc-800 space-y-4">
+                                <div className="flex items-center gap-2 text-xs font-black text-zinc-400 uppercase tracking-widest">
+                                    <Wallet size={14} className="text-blue-500" />
+                                    Portfolio Status
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <div className="text-[10px] text-zinc-500 font-bold uppercase">보유 수량</div>
+                                        <div className="text-lg font-black text-zinc-900 dark:text-white">{portfolioData.quantity.toLocaleString()}</div>
+                                    </div>
+                                    <div>
+                                        <div className="text-[10px] text-zinc-500 font-bold uppercase">평균 단가</div>
+                                        <div className="text-lg font-black text-zinc-900 dark:text-white">₩{portfolioData.entryPrice.toLocaleString()}</div>
+                                    </div>
+                                </div>
+
+                                {portfolioData.quantity > 0 && (
+                                    <div className="pt-3 border-t border-zinc-100 dark:border-zinc-800">
+                                        <div className="text-[10px] text-zinc-500 font-bold uppercase mb-1">평가 손익</div>
+                                        {(() => {
+                                            const profit = (report.price.current - portfolioData.entryPrice) * portfolioData.quantity
+                                            const profitPercent = ((report.price.current / portfolioData.entryPrice) - 1) * 100
+                                            return (
+                                                <div className={`text-xl font-black ${profit >= 0 ? 'text-rose-500' : 'text-blue-500'}`}>
+                                                    {profit >= 0 ? '+' : ''}{profit.toLocaleString()} ({profitPercent >= 0 ? '+' : ''}{profitPercent.toFixed(2)}%)
+                                                </div>
+                                            )
+                                        })()}
+                                    </div>
+                                )}
+
+                                <div className="flex flex-wrap gap-2 pt-2">
+                                    <button
+                                        onClick={() => { setTradeType('BUY'); setShowTradeDialog(true); }}
+                                        className="flex-1 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl text-sm font-black transition-all shadow-lg shadow-blue-500/20 active:scale-95"
+                                    >
+                                        <ArrowLeftRight size={16} /> 포트폴리오 조정
+                                    </button>
+                                    <button
+                                        onClick={async () => {
+                                            if (confirm('전량 매도 처리하시겠습니까?')) {
+                                                await sellTicker(ticker, portfolioData.quantity, report.price.current);
+                                                onClose();
+                                            }
+                                        }}
+                                        className="w-full flex items-center justify-center gap-2 bg-zinc-800 hover:bg-black text-white py-2.5 rounded-xl text-xs font-black transition-all active:scale-95"
+                                    >
+                                        <Trash2 size={14} /> 전량 매도하기
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
                         {/* 2. AI/Rule Summary */}
                         <div className="bg-blue-50 dark:bg-blue-950/30 p-4 rounded-xl border border-blue-100 dark:border-blue-900/50">
                             <h3 className="font-bold text-blue-800 dark:text-blue-400 text-xs uppercase tracking-wider mb-2">DailyPort Insight</h3>
@@ -139,35 +220,40 @@ export default function AnalysisPanel({ ticker, onClose }: AnalysisPanelProps) {
                                 <div className="absolute top-0 right-0 p-3 opacity-10">
                                     <Target size={40} className="text-white" />
                                 </div>
-                                <h3 className="font-black text-white mb-4 text-xs uppercase tracking-[0.2em] flex items-center gap-2">
+                                <h3 className="font-black !text-white mb-4 text-xs uppercase tracking-[0.2em] flex items-center gap-2">
                                     <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse" />
-                                    Suggested Objectives
+                                    진입 참고가 (SUGGESTED)
                                 </h3>
                                 <div className="space-y-4">
                                     {[
-                                        { label: 'Short-term', data: report.technical.objectives.short, color: 'text-zinc-400' },
-                                        { label: 'Mid-term', data: report.technical.objectives.mid, color: 'text-zinc-200' },
-                                        { label: 'Long-term', data: report.technical.objectives.long, color: 'text-blue-400' }
+                                        { label: '단기', data: report.technical.objectives.short, color: 'text-zinc-400' },
+                                        { label: '중기', data: report.technical.objectives.mid, color: 'text-zinc-200' },
+                                        { label: '장기', data: report.technical.objectives.long, color: 'text-blue-400' }
                                     ].map((group) => (
                                         <div key={group.label} className="grid grid-cols-1 gap-2">
                                             <div className={`text-[10px] font-black uppercase tracking-widest ${group.color}`}>{group.label}</div>
                                             <div className="grid grid-cols-3 gap-2">
                                                 <div className="bg-zinc-800/50 p-2 rounded-lg border border-zinc-700/50">
-                                                    <div className="text-[8px] font-bold text-zinc-500 uppercase">Entry</div>
+                                                    <div className="text-[8px] font-bold text-zinc-500 uppercase">진입</div>
                                                     <div className="text-xs font-mono font-bold text-zinc-300">₩{group.data.entry.toLocaleString()}</div>
                                                 </div>
                                                 <div className="bg-rose-900/20 p-2 rounded-lg border border-rose-900/30">
-                                                    <div className="text-[8px] font-bold text-rose-500 uppercase">Stop</div>
+                                                    <div className="text-[8px] font-bold text-rose-500 uppercase">손절</div>
                                                     <div className="text-xs font-mono font-bold text-rose-400">₩{group.data.stop.toLocaleString()}</div>
                                                 </div>
                                                 <div className="bg-emerald-900/20 p-2 rounded-lg border border-emerald-900/30">
-                                                    <div className="text-[8px] font-bold text-emerald-500 uppercase">Target</div>
+                                                    <div className="text-[8px] font-bold text-emerald-500 uppercase">목표</div>
                                                     <div className="text-xs font-mono font-bold text-emerald-400">₩{group.data.target.toLocaleString()}</div>
                                                 </div>
                                             </div>
                                         </div>
                                     ))}
                                 </div>
+                                {mode === 'watchlist' && (
+                                    <div className="mt-4 text-[10px] text-zinc-500 leading-relaxed">
+                                        💡 본 가격은 투자 참고 자료일 뿐, 투자 권유가 아닙니다.
+                                    </div>
+                                )}
                             </div>
                         )}
                         {/* 4. Supply & Demand */}
@@ -199,11 +285,13 @@ export default function AnalysisPanel({ ticker, onClose }: AnalysisPanelProps) {
                         </div>
 
                         {/* Disclaimer */}
-                        <div className="mt-8 pt-4 border-t border-gray-100">
+                        <div className="mt-8 pt-4 border-t border-gray-100 dark:border-zinc-800">
                             <div className="flex justify-end mb-4">
                                 <button
+                                    disabled={!hasTelegramSettings}
+                                    title={hasTelegramSettings ? "현재 분석 리포트를 텔레그램으로 전송합니다." : "마이페이지에서 텔레그램 설정을 완료해주세요."}
                                     onClick={async () => {
-                                        if (!report) return
+                                        if (!report || !hasTelegramSettings) return
                                         const btn = document.getElementById('btn-telegram') as HTMLButtonElement
                                         if (btn) btn.disabled = true;
                                         if (btn) btn.innerHTML = 'Sending...';
@@ -213,27 +301,38 @@ export default function AnalysisPanel({ ticker, onClose }: AnalysisPanelProps) {
                                         if (res.success) alert('Sent to Telegram!')
                                         else alert('Failed: ' + res.error)
 
-                                        if (btn) btn.disabled = false;
-                                        if (btn) btn.innerHTML = 'Send to Telegram';
+                                        if (btn) {
+                                            btn.disabled = false;
+                                            btn.innerHTML = '<span>✈️ Send to Telegram</span>';
+                                        }
                                     }}
                                     id="btn-telegram"
-                                    className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2"
+                                    className="bg-blue-500 hover:bg-blue-600 disabled:bg-zinc-300 dark:disabled:bg-zinc-700 disabled:cursor-not-allowed text-white px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition-colors"
                                 >
                                     <span>✈️ Send to Telegram</span>
                                 </button>
                             </div>
-                            <div className="flex gap-2 text-gray-500 text-xs">
+                            <div className="flex gap-2 text-gray-500 dark:text-zinc-500 text-xs">
                                 <AlertTriangle size={16} className="shrink-0" />
                                 <p>
-                                    This report is for informational purposes only and does not constitute financial advice.
-                                    Investment decisions are solely your responsibility.
-                                    Data delayed by at least 15 minutes (Yahoo Finance).
+                                    본 정보는 투자 참고 자료일 뿐, 투자 권유가 아닙니다. 투자 판단과 그 결과에 대한 책임은 투자자 본인에게 있습니다.
+                                    {mode === 'portfolio' && ' 데이터는 최소 15분 지연될 수 있습니다 (Yahoo Finance).'}
                                 </p>
                             </div>
                         </div>
                     </div>
                 )}
+
             </div>
+
+            {showTradeDialog && (
+                <TransactionDialog
+                    ticker={ticker}
+                    currentQuantity={portfolioData?.quantity || 0}
+                    onClose={() => setShowTradeDialog(false)}
+                    initialType={tradeType}
+                />
+            )}
         </div>
     )
 }

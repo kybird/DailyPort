@@ -1,0 +1,6 @@
+pykrx
+pandas
+requests
+wcwidth
+supabase
+python-dotenv

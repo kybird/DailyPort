@@ -1,10 +1,23 @@
 
 import Link from 'next/link'
 import { LayoutDashboard, Github, Shield, Zap, BarChart3 } from 'lucide-react'
+import { createClient } from '@/utils/supabase/server'
+import { redirect } from 'next/navigation'
 
-export default function LandingPage() {
+export default async function LandingPage() {
+    const supabase = await createClient()
+
+    const {
+        data: { user },
+    } = await supabase.auth.getUser()
+
+    if (user) {
+        return redirect('/dashboard')
+    }
+
     return (
         <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 transition-colors duration-300">
+
             {/* Navigation */}
             <nav className="border-b border-zinc-200 dark:border-zinc-800 bg-white/80 dark:bg-zinc-950/80 backdrop-blur-md sticky top-0 z-50">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex justify-between items-center">
@@ -25,22 +38,22 @@ export default function LandingPage() {
                 {/* Hero Section */}
                 <section className="relative py-24 overflow-hidden">
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
-                        <h1 className="text-5xl md:text-7xl font-black tracking-tight text-zinc-900 dark:text-white mb-6">
-                            내 로컬의 안전함과<br />
-                            <span className="text-blue-600">웹의 편리함을 동시에.</span>
+                        <h1 className="text-5xl md:text-7xl font-black tracking-tight text-zinc-900 dark:text-white mb-6 break-keep">
+                            더 안전하고 현명하게,<br className="hidden md:block" />
+                            <span className="text-blue-600 block md:inline mt-2 md:mt-0">포트폴리오 관리를 시작하세요.</span>
                         </h1>
+
+
                         <p className="max-w-2xl mx-auto text-lg md:text-xl text-zinc-600 dark:text-zinc-400 mb-10 leading-relaxed font-medium">
                             DailyPort는 증권사 API 키를 서버에 저장하지 않습니다.<br />
                             민감한 정보는 로컬에, 분석과 관리는 웹 대시보드에서 안전하게 경험하세요.
                         </p>
-                        <div className="flex flex-col sm:flex-row justify-center gap-4">
-                            <Link href="/signup" className="px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-lg font-bold shadow-xl shadow-blue-500/25 transition-all hover:-translate-y-1 active:scale-95">
-                                무료로 시작하기
+                        <div className="flex justify-center mt-10">
+                            <Link href="/signup" className="px-10 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl text-lg font-bold shadow-xl shadow-blue-500/30 transition-all hover:-translate-y-1 active:scale-95 flex items-center gap-3">
+                                무료로 시작하기 <span className="text-blue-200">→</span>
                             </Link>
-                            <a href="https://github.com/kybird/DailyPort" target="_blank" rel="noreferrer" className="px-8 py-4 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-white rounded-xl text-lg font-bold shadow-sm hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-all hover:-translate-y-1 active:scale-95 flex items-center justify-center gap-2">
-                                <Github size={20} /> GitHub 소스코드
-                            </a>
                         </div>
+
                     </div>
                 </section>
 
@@ -51,24 +64,34 @@ export default function LandingPage() {
                             <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-xl flex items-center justify-center mx-auto">
                                 <Shield size={24} />
                             </div>
-                            <h3 className="text-xl font-bold text-zinc-900 dark:text-white">Zero-Knowledge Storage</h3>
-                            <p className="text-zinc-600 dark:text-zinc-400">서버는 당신의 금융 계정 키를 모릅니다. 모든 서명과 요청은 오직 로컬 환경에서만 수행됩니다.</p>
+                            <h3 className="text-xl font-bold text-zinc-900 dark:text-white">내 투자는 내 공간에</h3>
+                            <p className="text-zinc-600 dark:text-zinc-400 keep-all">
+                                증권사 계정과 포트폴리오 정보가 서버로 전송되지 않습니다.
+                                오직 당신의 <b>로컬 DB</b>에 암호화되어 안전하게 저장됩니다.
+                            </p>
                         </div>
                         <div className="space-y-4">
                             <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-xl flex items-center justify-center mx-auto">
                                 <Zap size={24} />
                             </div>
-                            <h3 className="text-xl font-bold text-zinc-900 dark:text-white">On-Demand Analysis</h3>
-                            <p className="text-zinc-600 dark:text-zinc-400">불필요한 서버 리소스를 낭비하지 않습니다. 당신이 원할 때, 필요한 데이터만 즉시 분석합니다.</p>
+                            <h3 className="text-xl font-bold text-zinc-900 dark:text-white">매일 아침 투자 비서</h3>
+                            <p className="text-zinc-600 dark:text-zinc-400 keep-all">
+                                24시간 차트를 볼 필요 없습니다.
+                                알고리즘이 밤새 발굴한 <b>'수급 급등주(Guru Picks)'</b>를 매일 아침 브리핑해드립니다.
+                            </p>
                         </div>
                         <div className="space-y-4">
                             <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-xl flex items-center justify-center mx-auto">
                                 <BarChart3 size={24} />
                             </div>
-                            <h3 className="text-xl font-bold text-zinc-900 dark:text-white">Hybrid Workflow</h3>
-                            <p className="text-zinc-600 dark:text-zinc-400">구글 시트의 데이터 유연성과 웹 대시보드의 직관성을 하나로 완벽하게 연결했습니다.</p>
+                            <h3 className="text-xl font-bold text-zinc-900 dark:text-white">더 소중한 일상에 집중하세요</h3>
+                            <p className="text-zinc-600 dark:text-zinc-400 keep-all">
+                                하루 종일 호가창을 들여다볼 필요 없습니다.
+                                복잡한 수급 분석은 <b>DailyPort</b>에게 맡기고, 당신은 정리된 결과만 편하게 확인하세요.
+                            </p>
                         </div>
                     </div>
+
                 </section>
             </main>
 
