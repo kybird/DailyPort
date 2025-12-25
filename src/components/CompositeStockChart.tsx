@@ -9,7 +9,8 @@ import {
     LineSeries,
     AreaSeries,
     CrosshairMode,
-    Time
+    Time,
+    IChartApi
 } from 'lightweight-charts'
 import { Settings2, Eye, EyeOff, X, SlidersHorizontal } from 'lucide-react'
 
@@ -169,7 +170,7 @@ export default function CompositeStockChart({ priceData, supplyData }: Composite
             width: priceContainerRef.current.clientWidth,
             height: 400,
             timeScale: { ...commonOptions.timeScale, visible: false },
-        }) as any
+        }) as IChartApi
 
         const candleSeries = priceChart.addSeries(CandlestickSeries, {
             upColor: '#ef4444',
@@ -184,9 +185,9 @@ export default function CompositeStockChart({ priceData, supplyData }: Composite
 
         // SMA Series
         if (config.ma.show) {
-            const ma1 = priceChart.addSeries(LineSeries, { color: '#ec4899', lineWidth: 1.5, title: `MA${config.ma.p1}` })
-            const ma2 = priceChart.addSeries(LineSeries, { color: '#f59e0b', lineWidth: 1.5, title: `MA${config.ma.p2}` })
-            const ma3 = priceChart.addSeries(LineSeries, { color: '#10b981', lineWidth: 1.5, title: `MA${config.ma.p3}` })
+            const ma1 = priceChart.addSeries(LineSeries, { color: '#ec4899', lineWidth: 2, title: `MA${config.ma.p1}` })
+            const ma2 = priceChart.addSeries(LineSeries, { color: '#f59e0b', lineWidth: 2, title: `MA${config.ma.p2}` })
+            const ma3 = priceChart.addSeries(LineSeries, { color: '#10b981', lineWidth: 2, title: `MA${config.ma.p3}` })
             ma1.setData(calculateSMA(closeValues, config.ma.p1))
             ma2.setData(calculateSMA(closeValues, config.ma.p2))
             ma3.setData(calculateSMA(closeValues, config.ma.p3))
@@ -222,7 +223,7 @@ export default function CompositeStockChart({ priceData, supplyData }: Composite
             width: foreignContainerRef.current.clientWidth,
             height: 120,
             timeScale: { ...commonOptions.timeScale, visible: false },
-        }) as any
+        }) as IChartApi
 
         const foreignSeries = foreignChart.addSeries(HistogramSeries, {
             color: '#ef4444',
@@ -236,7 +237,7 @@ export default function CompositeStockChart({ priceData, supplyData }: Composite
             width: institutionContainerRef.current.clientWidth,
             height: 120,
             timeScale: { ...commonOptions.timeScale, visible: true },
-        }) as any
+        }) as IChartApi
 
         const instSeries = instChart.addSeries(HistogramSeries, {
             color: '#f59e0b',
@@ -249,17 +250,17 @@ export default function CompositeStockChart({ priceData, supplyData }: Composite
 
         // --- Synchronization Logic ---
         charts.forEach((chart, index) => {
-            chart.timeScale().subscribeVisibleLogicalRangeChange((range: any) => {
+            chart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
                 if (!range) return
-                charts.forEach((oc, oi) => { if (index !== oi) oc.timeScale().setVisibleLogicalRange(range) })
+                charts.forEach((oc: any, oi) => { if (index !== oi) oc.timeScale().setVisibleLogicalRange(range) })
             })
 
             chart.subscribeCrosshairMove((param: any) => {
                 if (!param.time || !param.point) {
-                    charts.forEach((oc, oi) => { if (index !== oi) oc.setCrosshairPosition(null, null, seriesList[oi]) })
+                    charts.forEach((oc: any, oi) => { if (index !== oi) oc.setCrosshairPosition(null, null, seriesList[oi]) })
                     return
                 }
-                charts.forEach((oc, oi) => { if (index !== oi) oc.setCrosshairPosition(param.point, param.time, seriesList[oi]) })
+                charts.forEach((oc: any, oi) => { if (index !== oi) oc.setCrosshairPosition(param.point, param.time, seriesList[oi]) })
             })
         })
 
@@ -305,7 +306,7 @@ export default function CompositeStockChart({ priceData, supplyData }: Composite
                                             <span className="text-[10px] font-bold text-zinc-400">Period {i + 1}</span>
                                             <input
                                                 type="number"
-                                                value={(config.ma as any)[p]}
+                                                value={(config.ma as unknown as Record<string, number>)[p]}
                                                 onChange={e => setConfig({ ...config, ma: { ...config.ma, [p]: parseInt(e.target.value) || 1 } })}
                                                 className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3 py-2 text-sm font-black focus:ring-2 focus:ring-indigo-500 outline-none"
                                             />
@@ -326,7 +327,7 @@ export default function CompositeStockChart({ priceData, supplyData }: Composite
                                             <span className="text-[10px] font-bold text-zinc-400">EMA {i + 1}</span>
                                             <input
                                                 type="number"
-                                                value={(config.ema as any)[p]}
+                                                value={(config.ema as unknown as Record<string, number>)[p]}
                                                 onChange={e => setConfig({ ...config, ema: { ...config.ema, [p]: parseInt(e.target.value) || 1 } })}
                                                 className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3 py-2 text-sm font-black focus:ring-2 focus:ring-indigo-500 outline-none"
                                             />

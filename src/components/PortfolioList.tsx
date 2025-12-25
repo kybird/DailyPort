@@ -4,9 +4,8 @@ import { useState } from 'react'
 
 import { Trash2, Activity, ArrowLeftRight } from 'lucide-react'
 import { removeTicker } from '@/app/actions'
-import AnalysisPanel from './AnalysisPanel'
 import TransactionDialog from './TransactionDialog'
-import { getStockName } from '@/utils/stockUtils'
+import { getStockName } from '@/utils/stock-utils'
 import { useAnalysis } from '@/context/AnalysisContext'
 
 interface PortfolioItem {

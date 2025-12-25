@@ -5,16 +5,17 @@ import { useState, useEffect } from 'react'
 
 
 import { Activity, X, AlertTriangle, TrendingUp, TrendingDown, RefreshCw, Star, Target, Wallet, ArrowLeftRight, Trash2 } from 'lucide-react'
-import { getAnalysis, AnalysisReport, SupplyChartItem } from '@/app/actions_analysis'
-import { getStockName } from '@/utils/stockUtils'
+import { getAnalysis, AnalysisReport, SupplyChartItem } from '@/app/actions-analysis'
+import { getStockName } from '@/utils/stock-utils'
 import { addToWatchlist, removeFromWatchlist, getWatchlist, sellTicker } from '@/app/actions'
-import { getSettings } from '@/app/actions_settings'
-import { formatKoreanUnit } from '@/utils/formatUtils'
+import { getSettings } from '@/app/actions-settings'
+import { formatKoreanUnit } from '@/utils/format-utils'
 import TransactionDialog from './TransactionDialog'
 
 interface WatchlistItem {
     ticker: string;
 }
+
 
 
 interface AnalysisPanelProps {
@@ -475,7 +476,7 @@ export default function AnalysisPanel({ ticker, onClose, mode = 'portfolio', por
                                         if (btn) btn.disabled = true;
                                         if (btn) btn.innerHTML = 'Sending...';
 
-                                        const res = await import('@/app/actions_notification').then(m => m.sendAnalysisToTelegram(report))
+                                        const res = await import('@/app/actions-notification').then(m => m.sendAnalysisToTelegram(report))
 
                                         if (res.success) alert('Sent to Telegram!')
                                         else alert('Failed: ' + res.error)

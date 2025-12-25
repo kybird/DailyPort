@@ -4,7 +4,7 @@
 import { useState } from 'react'
 import { Plus, Minus, X, Loader2 } from 'lucide-react'
 import { addTicker, sellTicker } from '@/app/actions'
-import { getStockName } from '@/utils/stockUtils'
+import { getStockName } from '@/utils/stock-utils'
 
 interface TransactionDialogProps {
     ticker: string

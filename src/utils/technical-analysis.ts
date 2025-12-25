@@ -140,7 +140,7 @@ export function calculateObjectives(currentPrice: number, candles: HistoricalBar
     else if (rsi < 35) momentumScore = -5
 
     const volRatio = (atr / currentPrice) * 100
-    let volatilityAdj = volRatio < 3 ? 5 : (volRatio > 8 ? -15 : 0)
+    const volatilityAdj = volRatio < 3 ? 5 : (volRatio > 8 ? -15 : 0)
 
     const baseScore = 50 + trendScore + momentumScore + volatilityAdj
 
@@ -176,7 +176,7 @@ export function calculateObjectives(currentPrice: number, candles: HistoricalBar
             if (risk <= 0) continue
 
             // Resistance-aware target
-            let potentialTarget = entry + (risk * cfg.minRR)
+            const potentialTarget = entry + (risk * cfg.minRR)
             let actualTarget = Math.min(potentialTarget, recentHigh > entry ? recentHigh : potentialTarget)
 
             // If we are at the top, target is capped by Resistance

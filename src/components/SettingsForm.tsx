@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Send, Save, Loader2, Info } from 'lucide-react'
-import { getSettings, updateSettings, sendTestTelegram } from '@/app/actions_settings'
+import { getSettings, updateSettings, sendTestTelegram } from '@/app/actions-settings'
 
 export default function SettingsForm() {
     const [loading, setLoading] = useState(true)

@@ -2,7 +2,7 @@
 'use server'
 
 import { sendTelegramMessage } from '@/utils/telegram'
-import { AnalysisReport } from '@/app/actions_analysis'
+import { AnalysisReport } from '@/app/actions-analysis'
 
 export async function sendAnalysisToTelegram(report: AnalysisReport) {
     // Format Message using HTML for better readability

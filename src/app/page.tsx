@@ -1,6 +1,6 @@
 
 import Link from 'next/link'
-import { LayoutDashboard, Shield, Zap, BarChart3 } from 'lucide-react'
+import { LayoutDashboard, Zap, BarChart3 } from 'lucide-react'
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 

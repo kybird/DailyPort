@@ -1,6 +1,6 @@
 'use client'
 
-import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react'
+import React, { createContext, useContext, useState, ReactNode } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 
 interface AnalysisContextType {
@@ -17,9 +17,11 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
     const [activeTicker, setActiveTicker] = useState<string | null>(null)
 
     // Automatically close any residual state on navigation
-    useEffect(() => {
+    const [lastPathname, setLastPathname] = useState(pathname)
+    if (pathname !== lastPathname) {
+        setLastPathname(pathname)
         setActiveTicker(null)
-    }, [pathname])
+    }
 
     const openAnalysis = (ticker: string) => {
         // Instead of opening a side panel, we navigate to the full analysis page

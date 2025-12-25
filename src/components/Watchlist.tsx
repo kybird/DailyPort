@@ -3,10 +3,9 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Trash2, Activity, PlusCircle, Search, Target, ShieldAlert, ArrowRightCircle } from 'lucide-react'
+import { Trash2, Activity, PlusCircle, Search } from 'lucide-react'
 import { removeFromWatchlist, addToWatchlist } from '@/app/actions'
-import { getStockName } from '@/utils/stockUtils'
-import AnalysisPanel from './AnalysisPanel'
+import { getStockName } from '@/utils/stock-utils'
 import StockSearch from './StockSearch'
 import { useAnalysis } from '@/context/AnalysisContext'
 

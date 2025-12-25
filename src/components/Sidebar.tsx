@@ -4,16 +4,18 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { LayoutDashboard, Info, Loader2 } from 'lucide-react'
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 
 export default function Sidebar() {
     const pathname = usePathname()
     const [navigatingTo, setNavigatingTo] = useState<string | null>(null)
 
-    // Reset navigating state when pathname changes
-    useEffect(() => {
+    // Reset navigating state when pathname changes (modern React pattern)
+    const [lastPathname, setLastPathname] = useState(pathname)
+    if (pathname !== lastPathname) {
+        setLastPathname(pathname)
         setNavigatingTo(null)
-    }, [pathname])
+    }
 
     const navItems = [
         {

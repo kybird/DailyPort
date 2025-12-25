@@ -60,9 +60,22 @@ export interface AnalysisReport {
 
 export interface AlgoPick {
     strategy_name: string
-    tickers: string[] // Array of ticker codes
+    tickers: string[]
     date: string
-    details?: any // Rich metadata (JSONB)
+    details?: {
+        status?: string
+        meta_version?: string
+        candidates?: Record<string, {
+            ticker: string
+            rank?: number
+            technical_status?: 'ACTIVE' | 'WAIT' | 'AVOID'
+            metrics?: Record<string, number>
+        }>
+        items?: {
+            ticker: string
+            [key: string]: unknown // Items in Confluence might vary
+        }[]
+    }
 }
 
 export async function getAnalysis(ticker: string): Promise<AnalysisReport | { error: string }> {

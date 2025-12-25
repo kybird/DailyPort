@@ -3,7 +3,7 @@
 
 import { useState } from 'react'
 import { FileSpreadsheet, RefreshCw, AlertTriangle, CheckCircle, X } from 'lucide-react'
-import { checkSheetSync, applySheetSync, ImportResult } from '@/app/actions_sheet'
+import { checkSheetSync, applySheetSync, ImportResult } from '@/app/actions-sheet'
 
 export default function GoogleSheetSyncDialog() {
     const [isOpen, setIsOpen] = useState(false)

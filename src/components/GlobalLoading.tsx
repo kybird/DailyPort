@@ -1,5 +1,5 @@
 
-import { LayoutDashboard, Loader2 } from 'lucide-react'
+import { LayoutDashboard } from 'lucide-react'
 
 interface GlobalLoadingProps {
     fullScreen?: boolean

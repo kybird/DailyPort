@@ -1,9 +1,9 @@
-import { getAnalysis } from '@/app/actions_analysis'
+import { getAnalysis } from '@/app/actions-analysis'
 import Link from 'next/link'
 import { ArrowLeft, Activity, RefreshCw, TrendingUp, TrendingDown, Wallet, ShieldAlert, ArrowRightCircle, ExternalLink } from 'lucide-react'
 import CompositeStockChart from '@/components/CompositeStockChart'
-import { formatKoreanUnit } from '@/utils/formatUtils'
-import { getStockName } from '@/utils/stockUtils'
+import { formatKoreanUnit } from '@/utils/format-utils'
+import { getStockName } from '@/utils/stock-utils'
 
 export default async function AnalysisPage({
     params,
@@ -272,11 +272,15 @@ export default async function AnalysisPage({
                                             </div>
                                         </div>
 
-                                        {/* Score Bar (§12.2) */}
+                                        {/* Score Bar (Qualitative) */}
                                         <div className="space-y-1.5">
                                             <div className="flex justify-between items-center text-[9px] font-bold text-zinc-400 uppercase">
-                                                <span>Confidence Score</span>
-                                                <span>{data.score}/100</span>
+                                                <span>Confidence Level</span>
+                                                <span className="text-zinc-600 dark:text-zinc-300 font-black">
+                                                    {data.score >= 80 ? '강력 (Excellent)' :
+                                                        data.score >= 60 ? '양호 (Good)' :
+                                                            data.score >= 40 ? '중립 (Neutral)' : '주의 (Caution)'}
+                                                </span>
                                             </div>
                                             <div className="w-full h-1.5 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden shadow-inner">
                                                 <div

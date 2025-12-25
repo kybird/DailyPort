@@ -200,6 +200,7 @@ export async function getMarketData(ticker: string): Promise<MarketData | null> 
         }
 
         // Fetch Quote
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let quote: any | undefined;
         try {
             quote = await yahooFinance.quote(yahooTicker)

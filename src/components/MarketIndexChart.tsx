@@ -3,10 +3,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { getKOSPIIntradayData, getKOSDAQIntradayData } from '@/utils/market-index'
 
+import type { IChartApi } from 'lightweight-charts'
+
 // Dynamic import for lightweight-charts to avoid SSR issues
 let createChart: typeof import('lightweight-charts').createChart | null = null
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let LineSeries: any = null
+let LineSeries: typeof import('lightweight-charts').LineSeries | null = null
 
 interface MarketIndexChartProps {
     index: 'KOSPI' | 'KOSDAQ'
@@ -14,7 +15,7 @@ interface MarketIndexChartProps {
 
 export default function MarketIndexChart({ index }: MarketIndexChartProps) {
     const chartContainerRef = useRef<HTMLDivElement>(null)
-    const chartRef = useRef<unknown>(null)
+    const chartRef = useRef<IChartApi | null>(null)
     const [data, setData] = useState<{ time: string, price: number }[]>([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState('')

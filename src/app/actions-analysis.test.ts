@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { getAlgoPicks } from './actions_analysis';
+import { getAlgoPicks } from './actions-analysis';
 
 // Mock supabase server client
 vi.mock('@/utils/supabase/server', () => ({
