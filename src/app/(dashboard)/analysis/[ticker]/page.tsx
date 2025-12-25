@@ -1,6 +1,6 @@
 import { getAnalysis } from '@/app/actions_analysis'
 import Link from 'next/link'
-import { ArrowLeft, Activity, RefreshCw, TrendingUp, TrendingDown, Wallet, ShieldAlert, ArrowRightCircle } from 'lucide-react'
+import { ArrowLeft, Activity, RefreshCw, TrendingUp, TrendingDown, Wallet, ShieldAlert, ArrowRightCircle, ExternalLink } from 'lucide-react'
 import CompositeStockChart from '@/components/CompositeStockChart'
 import { formatKoreanUnit } from '@/utils/formatUtils'
 import { getStockName } from '@/utils/stockUtils'
@@ -110,6 +110,39 @@ export default async function AnalysisPage({
                     </div>
                 </div>
             </div>
+
+            {/* Smart Caution Banner for AVOID Status */}
+            {(technical.trend.status === 'DOWN_TREND' || technical.trend.status === 'DEAD_CROSS' || technical.objectives?.mid?.status === 'AVOID') && (
+                <div className="bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-900/30 rounded-2xl p-6 flex flex-col md:flex-row items-center gap-6 animate-in slide-in-from-top duration-500">
+                    <div className="w-12 h-12 bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 rounded-full flex items-center justify-center shrink-0">
+                        <ShieldAlert size={24} />
+                    </div>
+                    <div className="space-y-1 flex-1 text-center md:text-left">
+                        <h4 className="text-sm font-black text-amber-900 dark:text-amber-400 uppercase tracking-tighter">투자 주의: 기술적/수급 지표 부진</h4>
+                        <p className="text-sm text-amber-700 dark:text-amber-500 font-medium break-keep">
+                            현재 수급 또는 가격 추세가 불안정한 상태입니다. 펀더멘털 지표가 우수하더라도 **지배구조, 공시, 뉴스 등 회사 외적 요인**이 작용하고 있을 가능성이 높으므로, 반드시 아래 외부 정보를 연계하여 다각도로 검토하시기 바랍니다.
+                        </p>
+                    </div>
+                    <div className="flex gap-3 shrink-0">
+                        <a
+                            href={`https://finance.naver.com/item/main.naver?code=${tickerParam.split('.')[0]}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-4 py-2 bg-white dark:bg-zinc-800 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400 text-xs font-bold rounded-xl hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-all flex items-center gap-2"
+                        >
+                            네이버 Pay증권 <ExternalLink size={14} />
+                        </a>
+                        <a
+                            href={`https://dart.fss.or.kr/dsbd001/main.do?text=${tickerParam.split('.')[0]}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-4 py-2 bg-white dark:bg-zinc-800 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400 text-xs font-bold rounded-xl hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-all flex items-center gap-2"
+                        >
+                            DART 공시 <ExternalLink size={14} />
+                        </a>
+                    </div>
+                </div>
+            )}
 
             {/* 1. Main Focus: Enlarged Composite Chart */}
             <div className="w-full">

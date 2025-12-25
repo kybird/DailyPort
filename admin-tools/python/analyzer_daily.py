@@ -306,12 +306,11 @@ def process_watchlist(tickers):
             latest_price = p_history[0]["close"]
             obj_v3 = calculate_objectives_v3(latest_price, p_history)
             
-            # Check §11.2: If all timeframes are AVOID, skip storage
+            # Check §11.2: Proceed even if AVOID to ensure fundamentals/supply are visible in UI
             if obj_v3:
                 all_avoid = all(obj_v3[tf]["status"] == 'AVOID' for tf in ['short', 'mid', 'long'])
                 if all_avoid:
-                    logger.info(f"⏭️ Skipping {code} (Status: AVOID)")
-                    continue
+                    logger.info(f"📊 {code} is Status: AVOID (Uploading minimal report for UI visibility)")
 
             # 2. Supply Analysis
             c_map = {p["date"]: p["close"] for p in p_history[:200]}
@@ -405,8 +404,28 @@ def run_algo_screening():
     GLOBAL_MCAP_MIN = max(300000000000, mcap_threshold_dynamic)
     logger.info(f"📊 Mcap Universe: {u_size} stocks. Threshold: {GLOBAL_MCAP_MIN/1e8:.1f}B Won (Top 70% vs 300B)")
 
+    def get_tech_status(ticker_code):
+        """Fetch history and calculate V3 status for screening safety."""
+        cur.execute("""
+            SELECT close, high, low, date 
+            FROM daily_price 
+            WHERE code = ? 
+            ORDER BY date DESC LIMIT 150
+        """, (ticker_code,))
+        rows = cur.fetchall()
+        if len(rows) < 120: return "UNKNOWN"
+        
+        hist = [dict(r) for r in rows]
+        res = calculate_objectives_v3(hist[0]["close"], hist)
+        if not res: return "UNKNOWN"
+        
+        # If any timeframe is NOT AVOID, we consider it OK/WAIT
+        # But for strict momentum, we'll check 'mid'
+        status = res['mid']['status']
+        return status
+
     strategies_raw = {} # {strategy_id: [candidates]}
-    filter_counts = {s_id: {"Mcap": 0, "NetIncome": 0, "Other": 0} for s_id in STRATEGY_META}
+    filter_counts = {s_id: {"Mcap": 0, "NetIncome": 0, "Technical": 0, "Other": 0} for s_id in STRATEGY_META}
 
     def get_mcap_limit(s_id):
         override = STRATEGY_META[s_id].get("mcap_override")
@@ -443,10 +462,15 @@ def run_algo_screening():
         
         # Scoring
         profit_quality = (d['roe'] or 0) * 0.6 + (d['operating_margin'] or 0) * 0.4
+        
+        # Technical Status for Value Picks (Warning only, no exclusion)
+        t_status = get_tech_status(code)
+        
         val_candidates.append({
             "ticker": code,
             "sort_key": (-profit_quality, d['per'], d['pbr']),
-            "metrics": {"profit_quality": profit_quality, "per": d['per'], "pbr": d['pbr']}
+            "metrics": {"profit_quality": profit_quality, "per": d['per'], "pbr": d['pbr']},
+            "technical_status": t_status
         })
     val_candidates.sort(key=lambda x: x["sort_key"])
     strategies_raw["Value_Picks"] = val_candidates[:15]
@@ -482,10 +506,19 @@ def run_algo_screening():
             continue
             
         co_momentum = min(f_buy, i_buy)
+        
+        # 2. Technical Safety Filter (Strict Exclusion for Momentum)
+        t_status = get_tech_status(code)
+        if t_status == "AVOID":
+            if code in DEBUG_TICKERS: logger.debug(f"[Twin_Engines][{code}] Drop: Technical Status AVOID")
+            filter_counts["Twin_Engines"]["Technical"] += 1
+            continue
+
         twin_candidates.append({
             "ticker": code,
             "sort_key": (-demand_power, -co_momentum, -(f_buy + i_buy)),
-            "metrics": {"demand_power": demand_power, "co_momentum": co_momentum}
+            "metrics": {"demand_power": demand_power, "co_momentum": co_momentum},
+            "technical_status": t_status
         })
     twin_candidates.sort(key=lambda x: x["sort_key"])
     strategies_raw["Twin_Engines"] = twin_candidates[:15]
@@ -525,10 +558,19 @@ def run_algo_screening():
             continue
             
         density = (f_sum / p['market_cap']) * 100
+        
+        # 2. Technical Safety Filter (Strict Exclusion for Momentum)
+        t_status = get_tech_status(code)
+        if t_status == "AVOID":
+            if code in DEBUG_TICKERS: logger.debug(f"[Foreigner_Acc][{code}] Drop: Technical Status AVOID")
+            filter_counts["Foreigner_Accumulation"]["Technical"] += 1
+            continue
+
         acc_candidates.append({
             "ticker": code,
             "sort_key": (-density, -f_sum, box_range),
-            "metrics": {"acc_density": density, "acc_21d": f_sum, "box_range": box_range}
+            "metrics": {"acc_density": density, "acc_21d": f_sum, "box_range": box_range},
+            "technical_status": t_status
         })
     acc_candidates.sort(key=lambda x: x["sort_key"])
     strategies_raw["Foreigner_Accumulation"] = acc_candidates[:15]
@@ -571,6 +613,13 @@ def run_algo_screening():
         if vol_power < 1.5: 
             if code in DEBUG_TICKERS: logger.debug(f"[Trend_Following][{code}] Drop: Vol Power {vol_power:.2f} < 1.5")
             continue
+            
+        # 2. Technical Safety Filter (Strict Exclusion for Momentum)
+        t_status = get_tech_status(code)
+        if t_status == "AVOID":
+            if code in DEBUG_TICKERS: logger.debug(f"[Trend_Following][{code}] Drop: Technical Status AVOID")
+            filter_counts["Trend_Following"]["Technical"] += 1
+            continue
         
         # Trend Score & Breakout Age
         cur.execute("SELECT close, high FROM daily_price WHERE code = ? ORDER BY date DESC LIMIT 120", (code,))
@@ -588,7 +637,8 @@ def run_algo_screening():
         trend_candidates.append({
             "ticker": code,
             "sort_key": (-vol_power, -trend_score, breakout_age),
-            "metrics": {"vol_power": vol_power, "trend_score": trend_score}
+            "metrics": {"vol_power": vol_power, "trend_score": trend_score},
+            "technical_status": t_status
         })
     trend_candidates.sort(key=lambda x: x["sort_key"])
     strategies_raw["Trend_Following"] = trend_candidates[:15]
@@ -596,7 +646,7 @@ def run_algo_screening():
     # --- 🕵️ Confluence & Final Ranking ---
     # Log Filter Summaries
     for s_id, counts in filter_counts.items():
-        logger.info(f"  [{s_id}] Filtered: Mcap={counts['Mcap']}, NetIncome={counts['NetIncome']}, Other={counts['Other']}")
+        logger.info(f"  [{s_id}] Filtered: Mcap={counts['Mcap']}, NetIncome={counts['NetIncome']}, Technical={counts['Technical']}, Other={counts['Other']}")
 
     all_found_tickers = {} # {ticker: {rank_sum, count, groups, best_rank}}
     for s_id, candidates in strategies_raw.items():
@@ -625,7 +675,8 @@ def run_algo_screening():
             "weighted_group_score": weighted_group_score,
             "best_rank": stats["best_rank"],
             "avg_rank": avg_rank,
-            "groups": list(stats["groups"])
+            "groups": list(stats["groups"]),
+            "technical_status": get_tech_status(ticker) # Fetch status for confluence items
         })
 
     # Sort Confluence: Group Score DESC -> Best Rank ASC -> Avg Rank ASC
@@ -648,13 +699,13 @@ def run_algo_screening():
                 "universe_size": u_size,
                 "group_weights": GROUP_WEIGHT
             },
-            "candidates": [
-                {
-                    "ticker": c["ticker"],
+            "candidates": {
+                c["ticker"]: {
                     "rank": i+1,
-                    "metrics": c["metrics"]
+                    "metrics": c["metrics"],
+                    "technical_status": c.get("technical_status", "UNKNOWN")
                 } for i, c in enumerate(candidates[:5])
-            ]
+            }
         }
         picks_payload.append({
             "date": TODAY,
@@ -678,7 +729,8 @@ def run_algo_screening():
                     "weighted_group_score": c["weighted_group_score"],
                     "best_rank": c["best_rank"],
                     "avg_rank": c["avg_rank"],
-                    "groups": c["groups"]
+                    "groups": c["groups"],
+                    "technical_status": c.get("technical_status", "UNKNOWN")
                 } for c in final_confluence
             ]
         }

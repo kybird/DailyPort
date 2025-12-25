@@ -2,7 +2,7 @@
 import { getAlgoPicks } from '@/app/actions_analysis'
 import { getStockName } from '@/utils/stockUtils'
 import Link from 'next/link'
-import { ArrowRight, Trophy, DollarSign, Zap, Box, LineChart } from 'lucide-react'
+import { ArrowRight, Trophy, DollarSign, Zap, Box, LineChart, AlertTriangle, HelpCircle } from 'lucide-react'
 import React from 'react'
 
 // Strategy Icon Mapping
@@ -69,13 +69,17 @@ export default async function AlgoPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {picks.map((pick) => {
                             const Icon = strategyIcons[pick.strategy_name] || strategyIcons['default']
+                            const isNoResults = pick.details?.status === 'NO_QUALIFIED_CANDIDATES'
 
                             return (
-                                <div key={`${pick.strategy_name}-${pick.date}`} className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden hover:shadow-lg transition-all group">
+                                <div
+                                    key={`${pick.strategy_name}-${pick.date}`}
+                                    className={`bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden hover:shadow-lg transition-all group ${isNoResults ? 'grayscale opacity-60' : ''}`}
+                                >
                                     <div className="p-6 border-b border-zinc-100 dark:border-zinc-800 bg-gradient-to-br from-zinc-50 to-white dark:from-zinc-900 dark:to-zinc-950">
                                         <div className="flex justify-between items-start mb-4">
                                             <div className="p-3 bg-white dark:bg-zinc-800 rounded-xl shadow-sm ring-1 ring-zinc-100 dark:ring-zinc-700">
-                                                <Icon className="text-blue-600 dark:text-blue-400" size={24} />
+                                                <Icon className={isNoResults ? 'text-zinc-400' : 'text-blue-600 dark:text-blue-400'} size={24} />
                                             </div>
                                             <span className="text-xs font-mono text-zinc-400">{pick.date}</span>
                                         </div>
@@ -88,23 +92,47 @@ export default async function AlgoPage() {
                                     </div>
                                     <div className="p-4">
                                         <div className="space-y-2">
-                                            {pick.tickers.map((ticker) => (
-                                                <Link
-                                                    key={ticker}
-                                                    href={`/analysis/${ticker}?ref=algo`}
-                                                    className="flex items-center justify-between p-3 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors group/item"
-                                                >
-                                                    <div className="flex items-center gap-3">
-                                                        <span className="font-bold text-zinc-700 dark:text-zinc-200">
-                                                            {getStockName(ticker)}
-                                                        </span>
-                                                        <span className="text-xs font-mono text-zinc-400 bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded">
-                                                            {ticker}
-                                                        </span>
-                                                    </div>
-                                                    <ArrowRight size={14} className="text-zinc-300 group-hover/item:text-blue-500 transition-colors" />
-                                                </Link>
-                                            ))}
+                                            {isNoResults ? (
+                                                <div className="p-8 text-center bg-zinc-50 dark:bg-zinc-800/50 rounded-xl border border-dashed border-zinc-200 dark:border-zinc-700">
+                                                    <p className="text-xs font-bold text-zinc-400">조건을 만족하는 종목이 없습니다</p>
+                                                </div>
+                                            ) : (
+                                                pick.tickers.map((ticker) => {
+                                                    // Handle both 'candidates' object (individual strategies) and 'items' array (Confluence)
+                                                    const candInfo = pick.details?.candidates?.[ticker] ||
+                                                        pick.details?.items?.find((i: any) => i.ticker === ticker)
+                                                    const isAvoid = candInfo?.technical_status === 'AVOID'
+
+                                                    return (
+                                                        <Link
+                                                            key={ticker}
+                                                            href={`/analysis/${ticker}?ref=algo`}
+                                                            className="flex items-center justify-between p-3 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors group/item"
+                                                        >
+                                                            <div className="flex items-center gap-3">
+                                                                <span className="font-bold text-zinc-700 dark:text-zinc-200">
+                                                                    {getStockName(ticker)}
+                                                                </span>
+                                                                <span className="text-xs font-mono text-zinc-400 bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded">
+                                                                    {ticker}
+                                                                </span>
+                                                                {isAvoid && (
+                                                                    <div className="flex items-center gap-1 group/tooltip relative">
+                                                                        <AlertTriangle size={14} className="text-rose-500 animate-pulse" />
+                                                                        <span className="text-[10px] font-black text-rose-500 uppercase tracking-tighter">Caution</span>
+
+                                                                        {/* Simple Tooltip */}
+                                                                        <div className="absolute bottom-full left-0 mb-2 w-48 p-2 bg-zinc-900 text-white text-[10px] rounded shadow-xl opacity-0 group-hover/tooltip:opacity-100 transition-opacity pointer-events-none z-10 border border-white/10">
+                                                                            기술적 주의: 추세 점수 미달(AVOID). 외부 요인 및 공시를 반드시 확인하세요.
+                                                                        </div>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                            <ArrowRight size={14} className="text-zinc-300 group-hover/item:text-blue-500 transition-colors" />
+                                                        </Link>
+                                                    )
+                                                })
+                                            )}
                                         </div>
                                     </div>
                                 </div>
