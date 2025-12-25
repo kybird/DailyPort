@@ -257,7 +257,7 @@ export default function CompositeStockChart({ priceData, supplyData }: Composite
 
             chart.subscribeCrosshairMove((param: any) => {
                 if (!param.time || !param.point) {
-                    charts.forEach((oc: any, oi) => { if (index !== oi) oc.setCrosshairPosition(null, null, seriesList[oi]) })
+                    charts.forEach((oc: any, oi) => { if (index !== oi) oc.setCrosshairPosition(undefined, undefined, seriesList[oi]) })
                     return
                 }
                 charts.forEach((oc: any, oi) => { if (index !== oi) oc.setCrosshairPosition(param.point, param.time, seriesList[oi]) })

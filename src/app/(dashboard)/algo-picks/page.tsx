@@ -72,8 +72,8 @@ export default async function AlgoPage() {
 
                             return (
                                 <div
-                                    key={`${pick.strategy_name} -${pick.date} `}
-                                    className={`bg - white dark: bg - zinc - 900 border border - zinc - 200 dark: border - zinc - 800 rounded - 2xl overflow - hidden hover: shadow - lg transition - all group ${isNoResults ? 'grayscale opacity-60' : ''} `}
+                                    key={`${pick.strategy_name}-${pick.date}`}
+                                    className={`bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden hover:shadow-lg transition-all group ${isNoResults ? 'grayscale opacity-60' : ''}`}
                                 >
                                     <div className="p-6 border-b border-zinc-100 dark:border-zinc-800 bg-gradient-to-br from-zinc-50 to-white dark:from-zinc-900 dark:to-zinc-950">
                                         <div className="flex justify-between items-start mb-4">
@@ -105,7 +105,7 @@ export default async function AlgoPage() {
                                                     return (
                                                         <Link
                                                             key={ticker}
-                                                            href={`/ analysis / ${ticker}?ref = algo`}
+                                                            href={`/analysis/${ticker}?ref=algo`}
                                                             className="flex items-center justify-between p-3 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors group/item"
                                                         >
                                                             <div className="flex items-center gap-3">
@@ -140,6 +140,6 @@ export default async function AlgoPage() {
                     </div>
                 )
             }
-        </div >
+        </div>
     )
 }
