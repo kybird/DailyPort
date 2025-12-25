@@ -1,6 +1,6 @@
 import { getAnalysis } from '@/app/actions_analysis'
 import Link from 'next/link'
-import { ArrowLeft, Activity, RefreshCw, TrendingUp, TrendingDown, Target, Wallet, ShieldAlert, ArrowRightCircle, AlertTriangle } from 'lucide-react'
+import { ArrowLeft, Activity, RefreshCw, TrendingUp, TrendingDown, Wallet, ShieldAlert, ArrowRightCircle } from 'lucide-react'
 import CompositeStockChart from '@/components/CompositeStockChart'
 import { formatKoreanUnit } from '@/utils/formatUtils'
 import { getStockName } from '@/utils/stockUtils'
@@ -203,63 +203,85 @@ export default async function AnalysisPage({
                     </h3>
                     {technical.objectives ? (
                         <div className="space-y-8">
-                            {technical.objectives.isAbnormal && (
-                                <div className="p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/30 rounded-2xl flex items-start gap-3">
-                                    <AlertTriangle size={18} className="text-amber-500 shrink-0 mt-0.5" />
-                                    <div className="text-[11px] font-bold text-amber-700 dark:text-amber-400 leading-relaxed">
-                                        변동성 과다로 인해 표준 ATR 전략 대신 보수적 예외 전략(-5% 손절)이 적용되었습니다. 투자 시 유의 바랍니다.
-                                    </div>
-                                </div>
-                            )}
-                            {[
-                                { label: 'Short-term (단기)', data: technical.objectives.short, color: 'text-zinc-500' },
-                                { label: 'Mid-term (중기)', data: technical.objectives.mid, color: 'text-zinc-900 dark:text-zinc-100' },
-                                { label: 'Long-term (장기)', data: technical.objectives.long, color: 'text-blue-600 font-black' }
-                            ].map((group) => (
-                                <div key={group.label} className="space-y-4">
-                                    <div className="flex items-center justify-between">
-                                        <div className={`text-[11px] font-black uppercase tracking-wider ${group.color}`}>{group.label}</div>
-                                        <div className="flex gap-1">
-                                            {group.data.confidenceFlags.map(flag => (
-                                                <span
-                                                    key={flag}
-                                                    className={`px-1.5 py-0.5 rounded text-[8px] font-bold border ${flag.includes('UPTREND') ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500' :
+                            {(['short', 'mid', 'long'] as const).map((tf) => {
+                                const data = technical.objectives![tf];
+                                if (!data) return null;
+                                const labelMap = { short: 'Short-term (단기)', mid: 'Mid-term (중기)', long: 'Long-term (장기)' };
+                                const colorMap = { short: 'text-zinc-500', mid: 'text-zinc-900 dark:text-zinc-100', long: 'text-blue-600 font-black' };
+                                const statusColor = data.status === 'ACTIVE' ? 'bg-emerald-500' :
+                                    data.status === 'WAIT' ? 'bg-amber-500' : 'bg-zinc-400';
+
+                                return (
+                                    <div key={labelMap[tf]} className="space-y-4">
+                                        <div className="flex items-center justify-between">
+                                            <div className="space-y-1">
+                                                <div className={`text-[11px] font-black uppercase tracking-wider ${colorMap[tf]}`}>{labelMap[tf]}</div>
+                                                <div className="flex items-center gap-2">
+                                                    <span className={`px-2 py-0.5 rounded text-[10px] font-black text-white ${statusColor}`}>
+                                                        {data.status}
+                                                    </span>
+                                                    <span className="text-[10px] font-bold text-zinc-500">{data.strategy}</span>
+                                                </div>
+                                            </div>
+                                            <div className="flex flex-wrap gap-1 justify-end max-w-[150px]">
+                                                {data.confidenceFlags.map(flag => (
+                                                    <span
+                                                        key={flag}
+                                                        className={`px-1.5 py-0.5 rounded text-[8px] font-bold border ${flag.includes('UPTREND') ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500' :
                                                             flag.includes('BROKEN') ? 'bg-rose-500/10 border-rose-500/20 text-rose-500' :
                                                                 flag.includes('WEAK') ? 'bg-amber-500/10 border-amber-500/20 text-amber-500' :
                                                                     'bg-zinc-500/10 border-zinc-500/20 text-zinc-500'
-                                                        }`}
-                                                >
-                                                    {flag}
-                                                </span>
-                                            ))}
+                                                            }`}
+                                                    >
+                                                        {flag}
+                                                    </span>
+                                                ))}
+                                            </div>
                                         </div>
-                                    </div>
 
-                                    {group.data.status === 'ACTIVE' ? (
-                                        <div className="grid grid-cols-3 gap-3">
-                                            <div className="bg-zinc-50 dark:bg-zinc-800/50 p-3 rounded-2xl border border-zinc-100 dark:border-zinc-800 text-center">
-                                                <div className="text-[8px] font-black text-zinc-400 uppercase mb-1">진입</div>
-                                                <div className="text-[12px] font-mono font-black text-zinc-900 dark:text-white">₩{group.data.entry?.toLocaleString()}</div>
+                                        {/* Score Bar (§12.2) */}
+                                        <div className="space-y-1.5">
+                                            <div className="flex justify-between items-center text-[9px] font-bold text-zinc-400 uppercase">
+                                                <span>Confidence Score</span>
+                                                <span>{data.score}/100</span>
                                             </div>
-                                            <div className="bg-rose-50 dark:bg-rose-950/20 p-3 rounded-2xl border border-rose-100 dark:border-rose-900/30 text-center">
-                                                <div className="text-[8px] font-black text-rose-400 uppercase mb-1">손절</div>
-                                                <div className="text-[12px] font-mono font-black text-rose-500">₩{group.data.stop?.toLocaleString()}</div>
-                                            </div>
-                                            <div className="bg-emerald-50 dark:bg-emerald-950/20 p-3 rounded-2xl border border-emerald-100 dark:border-emerald-900/30 text-center">
-                                                <div className="text-[8px] font-black text-emerald-400 uppercase mb-1">목표</div>
-                                                <div className="text-[12px] font-mono font-black text-emerald-500">₩{group.data.target?.toLocaleString()}</div>
+                                            <div className="w-full h-1.5 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden shadow-inner">
+                                                <div
+                                                    className={`h-full transition-all duration-1000 ${statusColor}`}
+                                                    style={{ width: `${data.score}%` }}
+                                                />
                                             </div>
                                         </div>
-                                    ) : (
-                                        <div className="p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-2xl border border-zinc-200 dark:border-zinc-800 border-dashed">
-                                            <div className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 italic flex items-center gap-2">
-                                                <ShieldAlert size={14} className="text-zinc-400" />
-                                                {group.data.reason || "관망(WAIT) 구간입니다."}
+
+                                        {data.status === 'ACTIVE' ? (
+                                            <div className="grid grid-cols-3 gap-3">
+                                                <div className="bg-zinc-50 dark:bg-zinc-800/50 p-3 rounded-2xl border border-zinc-100 dark:border-zinc-800 text-center">
+                                                    <div className="text-[8px] font-black text-zinc-400 uppercase mb-1">진입</div>
+                                                    <div className="text-[12px] font-mono font-black text-zinc-900 dark:text-white">₩{data.entry?.toLocaleString()}</div>
+                                                </div>
+                                                <div className="bg-rose-50 dark:bg-rose-950/20 p-3 rounded-2xl border border-rose-100 dark:border-rose-900/30 text-center">
+                                                    <div className="text-[8px] font-black text-rose-400 uppercase mb-1">손절</div>
+                                                    <div className="text-[12px] font-mono font-black text-rose-500">₩{data.stop?.toLocaleString()}</div>
+                                                </div>
+                                                <div className="bg-emerald-50 dark:bg-emerald-950/20 p-3 rounded-2xl border border-emerald-100 dark:border-emerald-900/30 text-center">
+                                                    <div className="text-[8px] font-black text-emerald-400 uppercase mb-1">목표</div>
+                                                    <div className="text-[12px] font-mono font-black text-emerald-500">₩{data.target?.toLocaleString()}</div>
+                                                </div>
                                             </div>
-                                        </div>
-                                    )}
-                                </div>
-                            ))}
+                                        ) : (
+                                            <div className={`p-4 rounded-2xl border border-dashed ${data.status === 'WAIT' ? 'bg-amber-50 dark:bg-amber-950/10 border-amber-200 dark:border-amber-900/30' :
+                                                'bg-zinc-50 dark:bg-zinc-800/50 border-zinc-200 dark:border-zinc-800'
+                                                }`}>
+                                                <div className={`text-[10px] font-bold italic flex items-center gap-2 ${data.status === 'WAIT' ? 'text-amber-700 dark:text-amber-400' : 'text-zinc-500 dark:text-zinc-400'
+                                                    }`}>
+                                                    <ShieldAlert size={14} className={data.status === 'WAIT' ? 'text-amber-500' : 'text-zinc-400'} />
+                                                    {data.reason}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
                         </div>
                     ) : (
                         <div className="h-64 flex items-center justify-center text-zinc-400 text-sm font-medium">데이터 로딩 중...</div>
@@ -275,17 +297,33 @@ export default async function AnalysisPage({
 
                     <div className="space-y-8">
                         {/* Numerical Supply Metrics (Explicit scale requested) */}
+                        {/* Numerical Supply Metrics (Fixed Lint) */}
                         <div className="grid grid-cols-2 gap-4">
                             <div className="p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-2xl border border-zinc-100 dark:border-zinc-800">
                                 <div className="text-[10px] text-zinc-400 font-bold uppercase mb-2">외인 순매수(20일)</div>
-                                <div className={`text-xl font-mono font-black ${supplyDemand?.metrics?.foreigner_20d_net! > 0 ? 'text-rose-500' : 'text-blue-500'}`}>
-                                    {supplyDemand?.metrics?.foreigner_20d_net! > 0 ? '+' : ''}{formatKoreanUnit(supplyDemand?.metrics?.foreigner_20d_net! || 0)}
+                                <div className={`text-xl font-mono font-black ${(supplyDemand?.metrics?.foreigner_20d_net ?? 0) > 0 ? 'text-rose-500' : 'text-blue-500'}`}>
+                                    {(supplyDemand?.metrics?.foreigner_20d_net ?? 0) > 0 ? '+' : ''}{formatKoreanUnit(supplyDemand?.metrics?.foreigner_20d_net ?? 0)}
                                 </div>
                             </div>
                             <div className="p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-2xl border border-zinc-100 dark:border-zinc-800">
                                 <div className="text-[10px] text-zinc-400 font-bold uppercase mb-2">기관 순매수(20일)</div>
-                                <div className={`text-xl font-mono font-black ${supplyDemand?.metrics?.institution_20d_net! > 0 ? 'text-amber-500' : 'text-indigo-500'}`}>
-                                    {supplyDemand?.metrics?.institution_20d_net! > 0 ? '+' : ''}{formatKoreanUnit(supplyDemand?.metrics?.institution_20d_net! || 0)}
+                                <div className={`text-xl font-mono font-black ${(supplyDemand?.metrics?.institution_20d_net ?? 0) > 0 ? 'text-amber-500' : 'text-indigo-500'}`}>
+                                    {(supplyDemand?.metrics?.institution_20d_net ?? 0) > 0 ? '+' : ''}{formatKoreanUnit(supplyDemand?.metrics?.institution_20d_net ?? 0)}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-2xl border border-zinc-100 dark:border-zinc-800">
+                                <div className="text-[10px] text-zinc-400 font-bold uppercase mb-2">외인 매집 (5일)</div>
+                                <div className={`text-xl font-mono font-black ${(supplyDemand?.metrics?.foreigner_5d_net ?? 0) > 0 ? 'text-rose-500' : 'text-blue-500'}`}>
+                                    {(supplyDemand?.metrics?.foreigner_5d_net ?? 0) > 0 ? '+' : ''}{formatKoreanUnit(supplyDemand?.metrics?.foreigner_5d_net ?? 0)}
+                                </div>
+                            </div>
+                            <div className="p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-2xl border border-zinc-100 dark:border-zinc-800">
+                                <div className="text-[10px] text-zinc-400 font-bold uppercase mb-2">기관 매집 (5일)</div>
+                                <div className={`text-xl font-mono font-black ${(supplyDemand?.metrics?.institution_5d_net ?? 0) > 0 ? 'text-amber-500' : 'text-indigo-500'}`}>
+                                    {(supplyDemand?.metrics?.institution_5d_net ?? 0) > 0 ? '+' : ''}{formatKoreanUnit(supplyDemand?.metrics?.institution_5d_net ?? 0)}
                                 </div>
                             </div>
                         </div>
@@ -355,14 +393,14 @@ export default async function AnalysisPage({
                         <div className="p-6 bg-blue-50/50 dark:bg-blue-900/10 rounded-2xl border border-blue-100/50 dark:border-blue-800/30 space-y-3">
                             <div className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase">Valuation Context</div>
                             <p className="text-sm font-medium leading-relaxed text-zinc-600 dark:text-zinc-300 italic">
-                                "{(() => {
+                                &ldquo;{(() => {
                                     const per = fundamentals?.per || 0;
                                     const pbr = fundamentals?.pbr || 0;
                                     if (per > 0 && per < 8) return '수익성 대비 주가가 상당히 저평가되어 있는 기술적 저평가 구간입니다.';
                                     if (per > 35) return '미래 성장성에 대한 기대치가 높거나, 현재 실적 대비 고평가 판단이 필요합니다.';
                                     if (pbr < 0.8) return '자산 가치 대비 거래 가격이 낮아 자산주로서의 매력이 부각될 수 있습니다.';
                                     return '현재 시장의 표준적인 밸류에이션 범위 내에서 거래되고 있습니다.';
-                                })()}"
+                                })()}&rdquo;
                             </p>
                         </div>
 

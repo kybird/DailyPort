@@ -152,12 +152,13 @@ def fetch_and_update_financials(year, quarter, corp_code=None):
             if df_target.empty:
                 continue
 
-            # Extract Revenue (매출액) and Operating Income (영업이익)
+            # Extract Revenue, Operating Income, Net Income, and Total Equity
             # Account ID: 'account_nm' or 'account_id'
-            # Usually: '매출액' or '수익(매출액)', '영업이익' or '영업이익(손실)'
             
             rev = 0
             op_inc = 0
+            net_inc = 0
+            equity = 0
             
             # Helper to find value by name
             def get_amt(df, names):
@@ -181,11 +182,14 @@ def fetch_and_update_financials(year, quarter, corp_code=None):
 
             rev = get_amt(df_target, ['매출액', '수익', '영업수익'])
             op_inc = get_amt(df_target, ['영업이익'])
+            net_inc = get_amt(df_target, ['당기순이익'])
+            equity = get_amt(df_target, ['자본총계'])
             
             if rev == 0:
                 continue
                 
             op_margin = (op_inc / rev) * 100
+            roe = (net_inc / equity * 100) if equity != 0 else 0
             
             # Map valid period
             # Q1: apply to 04-01 ~ 05-15 (Approx publication) -> No, standard usage "Q1 data applies until Q2 comes"
@@ -211,14 +215,14 @@ def fetch_and_update_financials(year, quarter, corp_code=None):
             
             cursor.execute("""
                 UPDATE daily_price
-                SET operating_margin = ?
+                SET operating_margin = ?, roe = ?
                 WHERE code = ? AND date >= ?
-            """, (op_margin, s_code, s_date))
+            """, (op_margin, roe, s_code, s_date))
             
             success += 1
             if success % 10 == 0:
                 conn.commit()
-                print(f"   Updated {s_code} (OM: {op_margin:.2f}%) [Forward Fill from {s_date}]")
+                print(f"   Updated {s_code} (OM: {op_margin:.2f}%, ROE: {roe:.2f}%) [Forward Fill from {s_date}]")
                 
         except Exception as e:
             logger.warning(f"Error {s_code}: {e}")
@@ -228,11 +232,34 @@ def fetch_and_update_financials(year, quarter, corp_code=None):
     conn.close()
     logger.info(f"✅ Finished Financial Sync for {year} Q{quarter}. Updated {success} tickers.")
 
+def get_default_quarter():
+    """
+    Determine the most likely available quarter based on current month.
+    """
+    now = datetime.now()
+    month = now.month
+    year = now.year
+    
+    # Reports usually out by:
+    # Q1: 5/15, Q2: 8/15, Q3: 11/15, Q4: 3/31(next year)
+    if month <= 4:
+        return 4, year - 1
+    elif month <= 6:
+        return 1, year
+    elif month <= 9:
+        return 2, year
+    else:
+        return 3, year
+
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument("--year", type=int, default=datetime.now().year)
-    parser.add_argument("--quarter", type=int, required=True)
+    parser.add_argument("--year", type=int, help="Year")
+    parser.add_argument("--quarter", type=int, help="Quarter (1-4)")
     args = parser.parse_args()
     
-    fetch_and_update_financials(args.year, args.quarter)
+    def_q, def_y = get_default_quarter()
+    target_year = args.year if args.year else def_y
+    target_quarter = args.quarter if args.quarter else def_q
+    
+    fetch_and_update_financials(target_year, target_quarter)

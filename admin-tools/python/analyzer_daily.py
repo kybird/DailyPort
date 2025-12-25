@@ -41,44 +41,153 @@ def get_db_cursor():
 
 
 
-def analyze_technicals_bulk(rows):
+def calculate_objectives_v3(current_price, history_rows):
     """
-    Rows: List of SQLite rows (date, close) ordered by date DESC
+    Python implementation of Trading Objective V3 §7, §8, §9
+    history_rows: newest first (close, high, low)
     """
-    count = len(rows)
-    if count < 5:
-        return {"signal": "NEUTRAL", "summary": "데이터 부족 (5일 미만)", "trend": "NEUTRAL", "ma5": None, "ma20": None}
+    if len(history_rows) < 120:
+        return None
+
+    # SMA Calculations (Newest first, but SMA needs oldest first or reversed indexing)
+    closes = [r["close"] for r in history_rows]
+    highs = [r["high"] for r in history_rows]
+    lows = [r["low"] for r in history_rows]
+
+    def sma(period):
+        if len(closes) < period: return None
+        return sum(closes[:period]) / period
+
+    def atr(period=14):
+        if len(history_rows) < period + 1: return None
+        tr_sum = 0
+        for i in range(period):
+            h = highs[i]
+            l = lows[i]
+            pc = closes[i+1]
+            tr = max(h - l, abs(h - pc), abs(l - pc))
+            tr_sum += tr
+        return tr_sum / period
+
+    def rsi(period=14):
+        if len(closes) < period + 1: return 50
+        deltas = []
+        for i in range(period):
+            deltas.append(closes[i] - closes[i+1])
+        gains = [d if d > 0 else 0 for d in deltas]
+        losses = [abs(d) if d < 0 else 0 for d in deltas]
+        avg_gain = sum(gains) / period
+        avg_loss = sum(losses) / period
+        if avg_loss == 0: return 100
+        rs = avg_gain / avg_loss
+        return 100 - (100 / (1 + rs))
+
+    ma5, ma10, ma20, ma60, ma120 = sma(5), sma(10), sma(20), sma(60), sma(120)
+    current_atr = atr(14)
+    current_rsi = rsi(14)
+
+    recent_high = max(highs[:20])
+    recent_low_short = min(lows[:20])
+    recent_low_mid = min(lows[:60])
+    recent_low_long = min(lows[:120])
+
+    def solve(timeframe):
+        # 1. Scoring Logic (§7)
+        trend_score = 0
+        if ma20 and ma60 and ma120:
+            if ma20 > ma60 > ma120: trend_score = 30
+            elif ma20 > ma60: trend_score = 20
+            else: trend_score = -30
         
-    closes = [r["close"] for r in rows] # Newest first
-    ma5 = sum(closes[:5]) / 5
-    
-    # Optional MA20
-    ma20 = sum(closes[:20]) / 20 if count >= 20 else ma5
-    
-    # Prev values for cross detection
-    if count >= 21:
-        prev_ma5 = sum(closes[1:6]) / 5
-        prev_ma20 = sum(closes[1:21]) / 20
+        momentum_score = 0
+        if 50 <= current_rsi <= 65: momentum_score = 10
+        elif current_rsi > 70: momentum_score = -10
+        elif current_rsi < 30: momentum_score = -5
+
+        volatility_adj = 0
+        vol_ratio = (current_atr / current_price) * 100 if current_atr else 0
+        if vol_ratio < 3: volatility_adj = 5
+        elif vol_ratio > 8: volatility_adj = -15
+
+        base_score = 50 + trend_score + momentum_score + volatility_adj
+
+        # 2. Entry / Stop / Target (§8)
+        entry = current_price
+        multiplier, rr, min_low = 2.0, 2.5, recent_low_mid
         
-        # Golden Cross
-        if prev_ma5 < prev_ma20 and ma5 >= ma20:
-            return {"signal": "BUY", "summary": "✨ 5일선이 20일선을 돌파했습니다 (골든크로스)", "trend": "UP_TREND", "ma5": ma5, "ma20": ma20}
-        # Dead Cross
-        elif prev_ma5 > prev_ma20 and ma5 <= ma20:
-            return {"signal": "SELL", "summary": "⚠️ 5일선이 20일선을 하향 이탈했습니다 (데드크로스)", "trend": "DOWN_TREND", "ma5": ma5, "ma20": ma20}
-    
-    # Fallback status
-    status = "UP_TREND" if ma5 >= ma20 else "DOWN_TREND"
-    summary = f"단기 이평선({ma5:,.0f}원) {'상향' if status == 'UP_TREND' else '하향'}세"
-    if count < 20:
-        summary += " (20일 데이터 부족)"
+        if timeframe == 'short':
+            entry = min(current_price, ma5 or current_price, ma10 or current_price)
+            multiplier, rr, min_low = 1.5, 2.0, recent_low_short
+        elif timeframe == 'mid':
+            entry = min(current_price, ma20 or current_price)
+            multiplier, rr, min_low = 2.0, 2.5, recent_low_mid
+        else:
+            entry = min(current_price, ma60 or current_price)
+            multiplier, rr, min_low = 3.0, 3.0, recent_low_long
+
+        stop = entry - (current_atr * multiplier) if current_atr else entry * 0.95
+        stop = max(stop, min_low)
+
+        risk_penalty = 0
+        if entry > 0 and (entry - stop) / entry < 0.03: risk_penalty -= 10
         
+        target = entry + (entry - stop) * rr
+        target = min(target, recent_high if recent_high > entry else target)
+
+        if (entry - stop) > 0 and (target - entry) / (entry - stop) < 2.0: risk_penalty -= 10
+
+        final_score = max(0, min(100, base_score + risk_penalty))
+
+        # 3. Status Mapping (§6)
+        status = 'AVOID'
+        if final_score >= 70: status = 'ACTIVE'
+        elif final_score >= 40: status = 'WAIT'
+
+        # 4. Flags (§5)
+        flags = []
+        if ma20 and ma60 and ma120 and ma20 > ma60 > ma120: flags.append('UPTREND_CONFIRMED')
+        if ma20 and ma60 and ma20 < ma60: flags.append('BROKEN_TREND')
+        if ma20 and abs(current_price - ma20) / ma20 < 0.01: flags.append('TREND_WEAK')
+        if current_rsi > 70: flags.append('OVERBOUGHT')
+        if current_rsi < 30: flags.append('OVERSOLD')
+        if vol_ratio > 5: flags.append('HIGH_VOLATILITY')
+
+        # 5. Strategy (§9)
+        strategy = 'NO_TRADE'
+        if status == 'AVOID' or 'BROKEN_TREND' in flags:
+            strategy = 'NO_TRADE'
+        elif 'UPTREND_CONFIRMED' in flags and current_rsi < 65:
+            strategy = 'PULLBACK_TREND'
+        elif 'HIGH_VOLATILITY' in flags and current_price >= recent_high:
+            strategy = 'BREAKOUT'
+        elif 'OVERSOLD' in flags and 'TREND_WEAK' in flags:
+            strategy = 'MEAN_REVERSION'
+
+        # 6. Stop/Target Rules (§8)
+        if stop >= entry or target <= entry:
+            status = 'WAIT'
+
+        # Human Reason (§10)
+        reason = ""
+        if status == 'AVOID': reason = f"점수 미달 ({final_score}점). 하락 추세 또는 과도한 리스크로 인해 제외됩니다."
+        elif status == 'WAIT': reason = f"관망 구간 ({final_score}점). 지지선 확인 또는 추세 강화가 필요합니다."
+        else: reason = f"정배열 및 모멘텀 양호 ({final_score}점). {strategy} 전략 기반 매수 검토."
+
+        return {
+            "status": status,
+            "score": final_score,
+            "strategy": strategy,
+            "confidenceFlags": flags,
+            "reason": reason,
+            "entry": round(entry, -1) if status == 'ACTIVE' else None,
+            "stop": round(stop, -1) if status == 'ACTIVE' else None,
+            "target": round(target, -1) if status == 'ACTIVE' else None
+        }
+
     return {
-        "signal": "NEUTRAL", 
-        "summary": summary, 
-        "trend": status,
-        "ma5": ma5, 
-        "ma20": ma20 if count >= 20 else None
+        "short": solve('short'),
+        "mid": solve('mid'),
+        "long": solve('long')
     }
 
 def process_watchlist(tickers):
@@ -89,15 +198,13 @@ def process_watchlist(tickers):
     if not tickers:
         return
 
-    # Normalize tickers (strip .KS, .KQ) for SQLite lookup
     normalized_tickers = list(set([t.split('.')[0] for t in tickers]))
     cur = get_db_cursor()
     
-    # Bulk fetch price and supply data for all tickers at once
     placeholders = ','.join(['?'] * len(normalized_tickers))
     
     price_sql = f"""
-        SELECT code, date, close, market_cap, per, pbr
+        SELECT code, date, close, high, low, market_cap, per, pbr
         FROM daily_price 
         WHERE code IN ({placeholders})
         ORDER BY code, date DESC
@@ -117,7 +224,6 @@ def process_watchlist(tickers):
         cur.execute(supply_sql, normalized_tickers)
         supply_rows = cur.fetchall()
         
-            # Group by code
         price_map = {}
         for r in price_rows:
             if r["code"] not in price_map: price_map[r["code"]] = []
@@ -135,15 +241,21 @@ def process_watchlist(tickers):
             
             if not p_history: continue
             
-            # 1. Technical Analysis
-            tech = analyze_technicals_bulk(p_history[:200])
+            # 1. Technical Analysis V3
+            latest_price = p_history[0]["close"]
+            obj_v3 = calculate_objectives_v3(latest_price, p_history)
             
-            # 2. Supply Analysis (Extended to 200 days)
-            # Create a quick date -> close map
+            # Check §11.2: If all timeframes are AVOID, skip storage
+            if obj_v3:
+                all_avoid = all(obj_v3[tf]["status"] == 'AVOID' for tf in ['short', 'mid', 'long'])
+                if all_avoid:
+                    logger.info(f"⏭️ Skipping {code} (Status: AVOID)")
+                    continue
+
+            # 2. Supply Analysis
             c_map = {p["date"]: p["close"] for p in p_history[:200]}
             supply_chart = []
             
-            # Calculate accumulation metrics
             f_net_5 = sum(s["foreigner"] for s in s_history[:5])
             i_net_5 = sum(s["institution"] for s in s_history[:5])
             f_net_20 = sum(s["foreigner"] for s in s_history[:20])
@@ -157,18 +269,20 @@ def process_watchlist(tickers):
                     "close": c_map.get(s["date"])
                 })
             
-            # 3. Fundamentals (Calculated from latest price data)
-            latest_p = p_history[0] if p_history else {}
-            
+            # 3. Merge & Summary
+            latest_p = p_history[0]
+            # Use mid-term strategy for overall summary if ACTIVE, otherwise reason
+            main_obj = obj_v3["mid"] if obj_v3 else None
+            summary = main_obj["reason"] if main_obj else "데이터 분석 중..."
+
             report = {
                 "date": TODAY,
                 "ticker": code,
                 "report_data": {
-                    "signal": tech["signal"],
-                    "summary": tech["summary"],
-                    "trend": tech.get("trend", "NEUTRAL"),
-                    "ma5": tech.get("ma5"),
-                    "ma20": tech.get("ma20"),
+                    "v3_objectives": obj_v3,
+                    "summary": summary,
+                    "trend": main_obj["status"] if main_obj else "NEUTRAL",
+                    "technical_score": main_obj["score"] if main_obj else 0,
                     "supply_chart": supply_chart,
                     "metrics": {
                         "foreigner_5d_net": f_net_5,
@@ -185,10 +299,9 @@ def process_watchlist(tickers):
             }
             reports.append(report)
 
-        # Change on_conflict to "ticker" only to keep only the latest report in Supabase
-        if reports: # Only upsert if there are reports to avoid empty payload errors
+        if reports:
             supabase.table("daily_analysis_reports").upsert(reports, on_conflict="ticker").execute()
-            logger.info(f"✅ Uploaded {len(reports)} detailed reports to Supabase (Latest Only).")
+            logger.info(f"✅ Uploaded {len(reports)} V3 reports to Supabase.")
             
     except Exception as e:
         logger.error(f"Watchlist processing failed: {e}")

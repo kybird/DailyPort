@@ -12,21 +12,34 @@ export interface HistoricalBar {
 }
 
 export type ConfidenceFlag =
-    | "UPTREND_CONFIRMED"
-    | "TREND_WEAK"
-    | "OVERBOUGHT"
-    | "OVERSOLD"
-    | "HIGH_VOLATILITY"
-    | "LOW_VOLATILITY"
-    | "BROKEN_TREND"
+    | 'UPTREND_CONFIRMED'
+    | 'BROKEN_TREND'
+    | 'TREND_WEAK'
+    | 'OVERBOUGHT'
+    | 'OVERSOLD'
+    | 'HIGH_VOLATILITY'
 
-export interface ObjectiveResult {
-    status: 'ACTIVE' | 'WAIT'
+export type StrategyType =
+    | 'PULLBACK_TREND'
+    | 'BREAKOUT'
+    | 'MEAN_REVERSION'
+    | 'NO_TRADE'
+
+export interface ObjectiveV3 {
+    status: 'ACTIVE' | 'WAIT' | 'AVOID'
+    score: number            // 0 ~ 100
+    strategy: StrategyType
     confidenceFlags: ConfidenceFlag[]
-    reason?: string
+    reason: string
     entry: number | null
     stop: number | null
     target: number | null
+}
+
+export interface TradingObjectiveV3Result {
+    short: ObjectiveV3 | null
+    mid: ObjectiveV3 | null
+    long: ObjectiveV3 | null
 }
 
 export interface TechnicalAnalysisResult {
@@ -49,12 +62,7 @@ export interface TechnicalAnalysisResult {
         ma5: number
         ma20: number
     }
-    objectives?: {
-        short: ObjectiveResult
-        mid: ObjectiveResult
-        long: ObjectiveResult
-        isAbnormal?: boolean
-    } | null
+    objectives?: TradingObjectiveV3Result | null
 }
 
 /**
@@ -66,9 +74,13 @@ function roundToMarketUnit(price: number): number {
     return Math.round(price / 1000) * 1000
 }
 
-export function calculateObjectives(currentPrice: number, candles: HistoricalBar[] | undefined) {
+function clamp(value: number, min: number, max: number): number {
+    return Math.min(Math.max(value, min), max)
+}
+
+export function calculateObjectives(currentPrice: number, candles: HistoricalBar[] | undefined): TradingObjectiveV3Result | null {
     if (!candles || candles.length < 120) {
-        console.warn(`[calculateObjectives] Insufficient data: ${candles?.length || 0} bars. V2.1 requires at least 120 for MA120.`)
+        console.warn(`[calculateObjectives] Insufficient data: ${candles?.length || 0} bars. V3 requires at least 120.`)
         return null
     }
 
@@ -76,164 +88,179 @@ export function calculateObjectives(currentPrice: number, candles: HistoricalBar
     const lows = candles.map(c => c.low)
     const closes = candles.map(c => c.close)
 
-    // 1. Indicators
-    const atr14Arr = ATR.calculate({ high: highs, low: lows, close: closes, period: 14 })
-    const rsi14Arr = RSI.calculate({ values: closes, period: 14 })
-
-    // SMA Calculations
+    // SMA: 5, 10, 20, 60, 120
     const ma5Arr = SMA.calculate({ values: closes, period: 5 })
     const ma10Arr = SMA.calculate({ values: closes, period: 10 })
     const ma20Arr = SMA.calculate({ values: closes, period: 20 })
     const ma60Arr = SMA.calculate({ values: closes, period: 60 })
     const ma120Arr = SMA.calculate({ values: closes, period: 120 })
 
-    const atr = atr14Arr[atr14Arr.length - 1] || currentPrice * 0.03
-    const rsi = rsi14Arr[rsi14Arr.length - 1] || 50
+    // ATR: 14
+    const atr14Arr = ATR.calculate({ high: highs, low: lows, close: closes, period: 14 })
+
+    // RSI: 14
+    const rsi14Arr = RSI.calculate({ values: closes, period: 14 })
 
     const ma5 = ma5Arr[ma5Arr.length - 1]
     const ma10 = ma10Arr[ma10Arr.length - 1]
     const ma20 = ma20Arr[ma20Arr.length - 1]
     const ma60 = ma60Arr[ma60Arr.length - 1]
     const ma120 = ma120Arr[ma120Arr.length - 1]
+    const atr = atr14Arr[atr14Arr.length - 1]
+    const rsi = rsi14Arr[rsi14Arr.length - 1]
 
-    // 2. Trend Rules
-    const isShortUptrend = ma5 > ma10 && ma10 > ma20
-    const isMidUptrend = ma20 > ma60
-    const isLongUptrend = ma20 > ma60 && ma60 > ma120
+    const recentHigh = Math.max(...highs.slice(-20))
+    const recentLowShort = Math.min(...lows.slice(-20))
+    const recentLowMid = Math.min(...lows.slice(-60))
+    const recentLowLong = Math.min(...lows.slice(-120))
 
-    const isRsiNeutral = rsi >= 40 && rsi <= 60
-
-    // 3. Resistance & Support Proxies
-    const high20 = Math.max(...highs.slice(-20))
-    const high60 = Math.max(...highs.slice(-60))
-    const high120 = Math.max(...highs.slice(-120))
-    const low20 = Math.min(...lows.slice(-20))
-    const low60 = Math.min(...lows.slice(-60))
-    const low120 = Math.min(...lows.slice(-120))
-
-    let isAbnormal = false
-
-    const solve = (timeframe: 'short' | 'mid' | 'long'): ObjectiveResult => {
+    const solve = (timeframe: 'short' | 'mid' | 'long'): ObjectiveV3 => {
         const flags: ConfidenceFlag[] = []
-        let status: 'ACTIVE' | 'WAIT' = 'ACTIVE'
-        let reason: string | undefined = undefined
+        let reason = ""
 
-        // Common Flags
-        if (rsi >= 70) flags.push("OVERBOUGHT")
-        if (rsi <= 30) flags.push("OVERSOLD")
-
-        const volatility = (atr / currentPrice) * 100
-        if (volatility > 5) flags.push("HIGH_VOLATILITY")
-        else if (volatility < 1.5) flags.push("LOW_VOLATILITY")
-
-        let entryVal = currentPrice
-        let stopMultiplier = 2.0
-        let rr = 2.5
-        let minLow = low20
-        let resistance = high20
-
-        switch (timeframe) {
-            case 'short':
-                if (isShortUptrend) flags.push("UPTREND_CONFIRMED")
-                else {
-                    flags.push("BROKEN_TREND")
-                    if (isRsiNeutral) {
-                        status = 'WAIT'
-                        reason = "Short-term trend broken and momentum is neutral."
-                    }
-                }
-                entryVal = Math.min(currentPrice, ma5 || currentPrice, ma10 || currentPrice)
-                stopMultiplier = 1.5
-                rr = 2.0
-                minLow = low20
-                resistance = high20
-                break
-            case 'mid':
-                if (isMidUptrend) flags.push("UPTREND_CONFIRMED")
-                else {
-                    flags.push("BROKEN_TREND")
-                    status = 'WAIT'
-                    reason = "No clear mid-term uptrend (MA20 < MA60)."
-                }
-
-                // Secondary check for mid-term: neutral/unclear trend even if not technically "broken"
-                if (status === 'ACTIVE') {
-                    const priceToMa20 = Math.abs(currentPrice - ma20) / ma20
-                    if (priceToMa20 < 0.01 && isRsiNeutral) {
-                        status = 'WAIT'
-                        reason = "Trend strength unclear and momentum is neutral."
-                        flags.push("TREND_WEAK")
-                    }
-                }
-
-                entryVal = Math.min(currentPrice, ma20 || currentPrice)
-                stopMultiplier = 2.0
-                rr = 2.5
-                minLow = low60
-                resistance = high60
-                break
-            case 'long':
-                if (isLongUptrend) flags.push("UPTREND_CONFIRMED")
-                else {
-                    flags.push("BROKEN_TREND")
-                    status = 'WAIT'
-                    reason = "Broken long-term trend (MA20/60/120 alignment failure)."
-                }
-                entryVal = Math.min(currentPrice, ma60 || currentPrice)
-                stopMultiplier = 3.0
-                rr = 3.0
-                minLow = low120
-                resistance = high120
-                break
-        }
-
-        if (status === 'WAIT') {
+        // Indicator Checks
+        if (ma5 === undefined || ma10 === undefined || ma20 === undefined || ma60 === undefined || ma120 === undefined || atr === undefined || rsi === undefined) {
             return {
                 status: 'WAIT',
-                confidenceFlags: flags,
-                reason,
+                score: 50,
+                strategy: 'NO_TRADE',
+                confidenceFlags: [],
+                reason: "지표 계산 실패 (데이터 부족)",
                 entry: null,
                 stop: null,
                 target: null
             }
         }
 
-        let stop = entryVal - (atr * stopMultiplier)
-        stop = Math.max(stop, minLow)
+        // 1. Scoring Logic (§7)
+        let trendScore = 0
+        if (ma20 > ma60 && ma60 > ma120) trendScore = 30
+        else if (ma20 > ma60) trendScore = 20
+        else trendScore = -30
 
-        if (stop >= entryVal) {
-            console.warn(`[calculateObjectives] Abnormal Case: stop(${stop}) >= entry(${entryVal}) for ${timeframe}. Falling back to 5% SL.`)
-            stop = entryVal * 0.95
-            isAbnormal = true
+        let momentumScore = 0
+        if (rsi >= 50 && rsi <= 65) momentumScore = 10
+        else if (rsi > 70) momentumScore = -10
+        else if (rsi < 30) momentumScore = -5
+
+        let volatilityAdj = 0
+        const volRatio = (atr / currentPrice) * 100
+        if (volRatio < 3) volatilityAdj = 5
+        else if (volRatio > 8) volatilityAdj = -15
+
+        // Initial score for status check (Partial score without penalty)
+        let baseScore = 50 + trendScore + momentumScore + volatilityAdj
+
+        // 2. Entry / Stop / Target (§8)
+        let entryVal: number = currentPrice
+        let multiplier = 2.0
+        let rr = 2.5
+        let minLow = recentLowMid
+
+        if (timeframe === 'short') {
+            entryVal = Math.min(currentPrice, ma5, ma10)
+            multiplier = 1.5
+            rr = 2.0
+            minLow = recentLowShort
+        } else if (timeframe === 'mid') {
+            entryVal = Math.min(currentPrice, ma20)
+            multiplier = 2.0
+            rr = 2.5
+            minLow = recentLowMid
+        } else {
+            entryVal = Math.min(currentPrice, ma60)
+            multiplier = 3.0
+            rr = 3.0
+            minLow = recentLowLong
         }
 
-        const risk = entryVal - stop
-        let target = entryVal + (risk * rr)
-        target = Math.min(target, resistance > entryVal ? resistance : target)
+        let stopVal = entryVal - (atr * multiplier)
+        stopVal = Math.max(stopVal, minLow)
 
-        if (target <= entryVal) {
-            target = entryVal * (1 + (0.05 * rr))
+        let riskPenalty = 0
+        // Spec says: stop / entry < 3% -> -10. This is likely a typo in spec for "Risk percentage"
+        // Interpretation: (entry - stop) / entry < 0.03
+        if ((entryVal - stopVal) / entryVal < 0.03) riskPenalty -= 10
+
+        let targetVal = entryVal + (entryVal - stopVal) * rr
+        targetVal = Math.min(targetVal, recentHigh > entryVal ? recentHigh : targetVal)
+
+        if ((targetVal - entryVal) / (entryVal - stopVal) < 2.0) riskPenalty -= 10
+
+        const finalScore = clamp(baseScore + riskPenalty, 0, 100)
+
+        // 3. Status Determination (§6)
+        let status: 'ACTIVE' | 'WAIT' | 'AVOID' = 'AVOID'
+        if (finalScore >= 70) status = 'ACTIVE'
+        else if (finalScore >= 40) status = 'WAIT'
+
+        // 4. Flags (§5)
+        if (ma20 > ma60 && ma60 > ma120) flags.push('UPTREND_CONFIRMED')
+        if (ma20 < ma60) flags.push('BROKEN_TREND')
+        if (Math.abs(currentPrice - ma20) / ma20 < 0.01) flags.push('TREND_WEAK')
+        if (rsi > 70) flags.push('OVERBOUGHT')
+        if (rsi < 30) flags.push('OVERSOLD')
+        if (volRatio > 5) flags.push('HIGH_VOLATILITY')
+
+        // 5. Strategy (§9)
+        let strategy: StrategyType = 'NO_TRADE'
+        if (status === 'AVOID' || flags.includes('BROKEN_TREND')) {
+            strategy = 'NO_TRADE'
+        } else if (flags.includes('UPTREND_CONFIRMED') && rsi < 65) {
+            strategy = 'PULLBACK_TREND'
+        } else if (flags.includes('HIGH_VOLATILITY') && currentPrice >= recentHigh) {
+            strategy = 'BREAKOUT'
+        } else if (flags.includes('OVERSOLD') && flags.includes('TREND_WEAK')) {
+            strategy = 'MEAN_REVERSION'
+        }
+
+        // 6. Stop/Target Rules & Reason (§8, §10)
+        let finalReason = ""
+        if (stopVal >= entryVal) {
+            status = 'WAIT'
+            finalReason = "손절가가 진입가보다 높거나 같습니다. (변동성 과다)"
+        }
+        if (targetVal <= entryVal) {
+            status = 'WAIT'
+            finalReason = "목표가가 진입가보다 낮거나 같습니다. (익절 공간 부족)"
+        }
+
+        if (status === 'AVOID') {
+            finalReason = finalReason || `점수가 너무 낮습니다 (${finalScore}점). 하락 추세 또는 리스크가 큽니다.`
+        } else if (status === 'WAIT') {
+            finalReason = finalReason || `현재 관망 구간입니다 (${finalScore}점). 추세 확인이 필요합니다.`
+        } else {
+            finalReason = `추세 정배열 및 모멘텀 양호 (${finalScore}점). ${strategy} 전략 유효.`
+        }
+
+        // Nullify if not ACTIVE (§6.2)
+        let finalEntry: number | null = entryVal
+        let finalStop: number | null = stopVal
+        let finalTarget: number | null = targetVal
+
+        if (status !== 'ACTIVE') {
+            finalEntry = null
+            finalStop = null
+            finalTarget = null
         }
 
         return {
-            status: 'ACTIVE',
+            status,
+            score: finalScore,
+            strategy,
             confidenceFlags: flags,
-            entry: roundToMarketUnit(entryVal),
-            stop: roundToMarketUnit(stop),
-            target: roundToMarketUnit(target)
+            reason: finalReason.trim(),
+            entry: finalEntry ? roundToMarketUnit(finalEntry) : null,
+            stop: finalStop ? roundToMarketUnit(finalStop) : null,
+            target: finalTarget ? roundToMarketUnit(finalTarget) : null
         }
     }
 
-    const objectives = {
+    return {
         short: solve('short'),
         mid: solve('mid'),
-        long: solve('long'),
-        isAbnormal
+        long: solve('long')
     }
-
-    console.info(`[calculateObjectives] Calculated V2.1 Objectives:`, objectives)
-
-    return objectives
 }
 
 export function analyzeTechnical(marketData: MarketData): TechnicalAnalysisResult {

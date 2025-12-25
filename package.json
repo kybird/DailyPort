@@ -1,37 +1,45 @@
 {
-  "name": "daily_port",
-  "version": "0.1.0",
-  "private": true,
-  "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "eslint"
-  },
-  "dependencies": {
-    "@supabase/ssr": "^0.8.0",
-    "@supabase/supabase-js": "^2.89.0",
-    "clsx": "^2.1.1",
-    "csv-parse": "^6.1.0",
-    "google-auth-library": "^10.5.0",
-    "google-spreadsheet": "^5.0.2",
-    "lightweight-charts": "^5.1.0",
-    "lucide-react": "^0.562.0",
-    "next": "16.1.0",
-    "react": "19.2.3",
-    "react-dom": "19.2.3",
-    "tailwind-merge": "^3.4.0",
-    "technicalindicators": "^3.1.0",
-    "yahoo-finance2": "^3.10.2"
-  },
-  "devDependencies": {
-    "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "eslint": "^9",
-    "eslint-config-next": "16.1.0",
-    "tailwindcss": "^4",
-    "typescript": "^5"
-  }
+    "name": "daily_port",
+    "version": "0.1.0",
+    "private": true,
+    "scripts": {
+        "dev": "next dev",
+        "build": "next build",
+        "start": "next start",
+        "lint": "eslint",
+        "test": "vitest",
+        "test:run": "vitest run"
+    },
+    "dependencies": {
+        "@supabase/ssr": "^0.8.0",
+        "@supabase/supabase-js": "^2.89.0",
+        "clsx": "^2.1.1",
+        "csv-parse": "^6.1.0",
+        "google-auth-library": "^10.5.0",
+        "google-spreadsheet": "^5.0.2",
+        "lightweight-charts": "^5.1.0",
+        "lucide-react": "^0.562.0",
+        "next": "16.1.0",
+        "react": "19.2.3",
+        "react-dom": "19.2.3",
+        "tailwind-merge": "^3.4.0",
+        "technicalindicators": "^3.1.0",
+        "yahoo-finance2": "^3.10.2"
+    },
+    "devDependencies": {
+        "@tailwindcss/postcss": "^4",
+        "@testing-library/jest-dom": "^6.9.1",
+        "@testing-library/react": "^16.3.1",
+        "@testing-library/user-event": "^14.6.1",
+        "@types/node": "^20.19.27",
+        "@types/react": "^19.2.7",
+        "@types/react-dom": "^19.2.3",
+        "@vitejs/plugin-react": "^5.1.2",
+        "eslint": "^9",
+        "eslint-config-next": "16.1.0",
+        "jsdom": "^27.3.0",
+        "tailwindcss": "^4",
+        "typescript": "^5",
+        "vitest": "^4.0.16"
+    }
 }

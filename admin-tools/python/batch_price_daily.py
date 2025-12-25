@@ -185,7 +185,7 @@ def sync_daily_price(start_date=None, end_date=None):
             
             cursor.executemany("""
                 UPDATE daily_price 
-                SET per=?, pbr=?, div_yield=?, roe=?
+                SET per=?, pbr=?, div_yield=?, roe=COALESCE(NULLIF(roe, 0), ?)
                 WHERE code=? AND date=?
             """, fund_updates)
             

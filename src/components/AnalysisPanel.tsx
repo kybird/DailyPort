@@ -53,7 +53,7 @@ export default function AnalysisPanel({ ticker, onClose, mode = 'portfolio', por
 
             // Check if already in watchlist
             const watchlist = await getWatchlist()
-            setIsWatched(watchlist?.some((item: any) => item.ticker === ticker) || false)
+            setIsWatched(watchlist?.some((item: WatchlistItem) => item.ticker === ticker) || false)
 
             // Check telegram settings
             const settings = await getSettings()
@@ -223,65 +223,89 @@ export default function AnalysisPanel({ ticker, onClose, mode = 'portfolio', por
                             </div>
                         </div>
 
-                        {/* 3.5. Suggested Objectives */}
+                        {/* 3.5. Suggested Objectives V3 */}
                         {report.technical.objectives && (
-                            <div className="bg-zinc-900 dark:bg-black p-5 rounded-2xl border border-zinc-800 shadow-xl overflow-hidden relative">
-                                <div className="absolute top-0 right-0 p-3 opacity-10">
-                                    <Target size={40} className="text-white" />
-                                </div>
-                                <h3 className="font-black !text-white mb-4 text-xs uppercase tracking-[0.2em] flex items-center gap-2">
-                                    <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse" />
-                                    진입 참고가 (SUGGESTED)
-                                </h3>
-                                <div className="space-y-4">
-                                    {[
-                                        { label: '단기', data: report.technical.objectives.short, color: 'text-zinc-400' },
-                                        { label: '중기', data: report.technical.objectives.mid, color: 'text-zinc-200' },
-                                        { label: '장기', data: report.technical.objectives.long, color: 'text-blue-400' }
-                                    ].map((group) => (
-                                        <div key={group.label} className="grid grid-cols-1 gap-2">
+                            <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5 space-y-6 shadow-xl">
+                                {[
+                                    { label: 'Short-term (단기)', data: report.technical.objectives.short, color: 'text-zinc-400' },
+                                    { label: 'Mid-term (중기)', data: report.technical.objectives.mid, color: 'text-zinc-200' },
+                                    { label: 'Long-term (장기)', data: report.technical.objectives.long, color: 'text-blue-400' }
+                                ].map((group) => {
+                                    if (!group.data) return null;
+
+                                    const statusColor = group.data.status === 'ACTIVE' ? 'bg-emerald-500' :
+                                        group.data.status === 'WAIT' ? 'bg-amber-500' : 'bg-zinc-600';
+
+                                    return (
+                                        <div key={group.label} className="space-y-3">
                                             <div className="flex items-center justify-between">
-                                                <div className={`text-[10px] font-black uppercase tracking-widest ${group.color}`}>{group.label}</div>
-                                                <div className="flex gap-1 overflow-x-auto">
+                                                <div className="space-y-1">
+                                                    <div className={`text-[10px] font-black uppercase tracking-wider ${group.color}`}>{group.label}</div>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className={`px-1.5 py-0.5 rounded text-[8px] font-black text-white ${statusColor}`}>
+                                                            {group.data.status}
+                                                        </span>
+                                                        <span className="text-[9px] font-bold text-zinc-500">{group.data.strategy}</span>
+                                                    </div>
+                                                </div>
+                                                <div className="flex flex-wrap gap-1 justify-end max-w-[120px]">
                                                     {group.data.confidenceFlags.map(flag => (
-                                                        <span key={flag} className="px-1 py-0.5 rounded-[4px] bg-white/5 border border-white/10 text-[7px] text-zinc-400 font-bold whitespace-nowrap">
+                                                        <span
+                                                            key={flag}
+                                                            className={`px-1 py-0.5 rounded-[4px] text-[7px] font-bold border ${flag.includes('UPTREND') ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500' :
+                                                                flag.includes('BROKEN') ? 'bg-rose-500/10 border-rose-500/20 text-rose-500' :
+                                                                    flag.includes('WEAK') ? 'bg-amber-500/10 border-amber-500/20 text-amber-500' :
+                                                                        'bg-white/5 border-white/10 text-zinc-400'
+                                                                }`}
+                                                        >
                                                             {flag}
                                                         </span>
                                                     ))}
                                                 </div>
                                             </div>
 
+                                            {/* Score Bar */}
+                                            <div className="space-y-1">
+                                                <div className="flex justify-between items-center text-[8px] font-bold text-zinc-500 uppercase">
+                                                    <span>Confidence</span>
+                                                    <span>{group.data.score}/100</span>
+                                                </div>
+                                                <div className="w-full h-1 bg-zinc-800 rounded-full overflow-hidden">
+                                                    <div
+                                                        className={`h-full transition-all duration-1000 ${statusColor}`}
+                                                        style={{ width: `${group.data.score}%` }}
+                                                    />
+                                                </div>
+                                            </div>
+
                                             {group.data.status === 'ACTIVE' ? (
                                                 <div className="grid grid-cols-3 gap-2">
-                                                    <div className="bg-zinc-800/50 p-2 rounded-lg border border-zinc-700/50">
-                                                        <div className="text-[8px] font-bold text-zinc-500 uppercase">진입</div>
-                                                        <div className="text-xs font-mono font-bold text-zinc-300">₩{group.data.entry?.toLocaleString()}</div>
+                                                    <div className="bg-zinc-800/30 p-2 rounded-xl border border-zinc-800 text-center">
+                                                        <div className="text-[7px] font-black text-zinc-500 uppercase mb-0.5">진입</div>
+                                                        <div className="text-[10px] font-mono font-black text-zinc-100">₩{group.data.entry?.toLocaleString()}</div>
                                                     </div>
-                                                    <div className="bg-rose-900/20 p-2 rounded-lg border border-rose-900/30">
-                                                        <div className="text-[8px] font-bold text-rose-500 uppercase">손절</div>
-                                                        <div className="text-xs font-mono font-bold text-rose-400">₩{group.data.stop?.toLocaleString()}</div>
+                                                    <div className="bg-rose-950/20 p-2 rounded-xl border border-rose-900/30 text-center">
+                                                        <div className="text-[7px] font-black text-rose-400 uppercase mb-0.5">손절</div>
+                                                        <div className="text-[10px] font-mono font-black text-rose-500">₩{group.data.stop?.toLocaleString()}</div>
                                                     </div>
-                                                    <div className="bg-emerald-900/20 p-2 rounded-lg border border-emerald-900/30">
-                                                        <div className="text-[8px] font-bold text-emerald-500 uppercase">목표</div>
-                                                        <div className="text-xs font-mono font-bold text-emerald-400">₩{group.data.target?.toLocaleString()}</div>
+                                                    <div className="bg-emerald-950/20 p-2 rounded-xl border border-emerald-900/30 text-center">
+                                                        <div className="text-[7px] font-black text-emerald-400 uppercase mb-0.5">목표</div>
+                                                        <div className="text-[10px] font-mono font-black text-emerald-500">₩{group.data.target?.toLocaleString()}</div>
                                                     </div>
                                                 </div>
                                             ) : (
-                                                <div className="p-3 bg-zinc-800/30 rounded-lg border border-dashed border-zinc-700/50">
-                                                    <div className="text-[9px] font-bold text-zinc-500 italic flex items-center gap-1.5">
-                                                        <div className="w-1 h-1 bg-zinc-600 rounded-full" />
-                                                        {group.data.reason || "관망(WAIT) 구간입니다."}
+                                                <div className={`p-3 rounded-xl border border-dashed ${group.data.status === 'WAIT' ? 'bg-amber-950/10 border-amber-900/30' : 'bg-zinc-800/30 border-zinc-700/50'
+                                                    }`}>
+                                                    <div className={`text-[9px] font-bold italic flex items-center gap-2 ${group.data.status === 'WAIT' ? 'text-amber-400' : 'text-zinc-500'
+                                                        }`}>
+                                                        <Target size={12} className={group.data.status === 'WAIT' ? 'text-amber-500' : 'text-zinc-600'} />
+                                                        {group.data.reason}
                                                     </div>
                                                 </div>
                                             )}
                                         </div>
-                                    ))}
-                                </div>
-                                {mode === 'watchlist' && (
-                                    <div className="mt-4 text-[10px] text-zinc-500 leading-relaxed">
-                                        💡 본 가격은 투자 참고 자료일 뿐, 투자 권유가 아닙니다.
-                                    </div>
-                                )}
+                                    );
+                                })}
                             </div>
                         )}
                         {/* 4. Supply & Demand */}

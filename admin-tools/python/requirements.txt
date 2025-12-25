@@ -6,3 +6,6 @@ supabase
 python-dotenv
 finance-datareader
 opendartreader
+pytest
+pytest-cov
+pytest-mock
