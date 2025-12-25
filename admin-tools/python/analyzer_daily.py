@@ -213,39 +213,49 @@ def run_algo_screening():
         return
 
     # Strategy 1: Value Picks (High Quality)
-    # V2: Market ROE >= 10, Operating Margin >= 5 (Accounting), PBR < 1.1, PER < 12
-    # Note: ROE = PBR/PER * 100 for daily data proxy, or use direct ROE if available.
-    # We use operating_margin from DB which is backfilled from Quarterly data.
+    # V2: Market Cap >= 100B, 5D Avg Vol >= 1B, ROE >= 10, Op Margin >= 5, PBR < 1.1, PER < 12
+    # Also exclude inactive/admin stocks via Join.
     
     cur.execute("""
-        SELECT code FROM daily_price 
-        WHERE date = ?
-        AND per > 0 AND per < 12
-        AND pbr > 0.3 AND pbr < 1.1
-        AND roe >= 10            -- Market-based ROE proxy (Calculated in batch or query)
-        AND operating_margin >= 5 -- Accounting-based Quality
-        ORDER BY per ASC, pbr ASC
+        SELECT p.code FROM daily_price p
+        JOIN tickers t ON p.code = t.code
+        WHERE p.date = ?
+        AND t.is_active = 1
+        AND p.per > 0 AND p.per < 12
+        AND p.pbr > 0.3 AND p.pbr < 1.1
+        AND p.roe >= 10            
+        AND p.operating_margin >= 5 
+        AND p.market_cap >= 100000000000 
+        AND (
+            SELECT AVG(trading_value) FROM daily_price p2 
+            WHERE p2.code = p.code AND p2.date <= p.date 
+            ORDER BY date DESC LIMIT 5
+        ) >= 1000000000
+        ORDER BY p.per ASC, p.pbr ASC
         LIMIT 15
     """, (max_price_date,))
-    value_picks = [r["code"] for r in cur.fetchall()]
+    value_picks = [r[0] for r in cur.fetchall()]
     
-    # Strategy 2: Twin Engines (Solid Short-term)
-    # V2: Supply Intensity >= 0.05% of Market Cap
-    #     Continuity: Net buy in 2 of last 3 days
-    #     Entry: Close < 20MA * 1.1
-    #     Soft Filter: Operating Margin >= 0
+    # Strategy 2: Twin Engines
+    # V2: Supply Intensity >= 0.05%, Continuity 2/3, Entry < 20MA + 10%, Mcap > 100B
     
-    # Needs complex JOIN or Python processing. Python is easier for "Continuity".
-    # Fetch candidates first (Twin Buy Today)
     cur.execute("""
         SELECT s.code, s.foreigner, s.institution, p.market_cap, p.close, p.operating_margin
         FROM daily_supply s
         JOIN daily_price p ON s.code = p.code AND s.date = p.date
+        JOIN tickers t ON s.code = t.code
         WHERE s.date = ?
+        AND t.is_active = 1
         AND s.foreigner > 0 AND s.institution > 0
-        AND p.operating_margin >= 0 -- Soft Quality Filter
+        AND p.market_cap >= 100000000000
+        AND p.operating_margin >= 0 
+        AND (
+            SELECT AVG(trading_value) FROM daily_price p2 
+            WHERE p2.code = p.code AND p2.date <= p.date 
+            ORDER BY date DESC LIMIT 5
+        ) >= 1000000000
         ORDER BY (s.foreigner + s.institution) DESC
-        LIMIT 50
+        LIMIT 100
     """, (max_supply_date,))
     
     raw_twin_candidates = [dict(r) for r in cur.fetchall()]
@@ -293,8 +303,9 @@ def run_algo_screening():
         if len(twin_picks) >= 15: break
 
     # Strategy 3: Foreigner Accumulation (Smart Money)
-    # V2: Box Compression < 10%, Price Support > 60MA/120MA, Vol Drying
-    #     Filter: Operating Margin > 0
+    # V2: Box Compression < 10%, Price Support > 60MA/120MA, Vol Drying, Mcap > 100B
+    
+    # We need EMA/MA for "Price Support". Let's fetch candidates filtering by Box & Vol first.
     sql_accumulation = """
         WITH RecentSupply AS (
             SELECT code, SUM(foreigner) as f_sum
@@ -303,12 +314,14 @@ def run_algo_screening():
             GROUP BY code
             HAVING f_sum > 0
         ),
-        RecentPrice AS (
+        RecentStats AS (
             SELECT code, 
                    MAX(close) as h_price, 
                    MIN(close) as l_price,
                    AVG(volume) as avg_vol_20,
-                   MAX(operating_margin) as op_margin -- Use latest
+                   MAX(operating_margin) as op_margin,
+                   MAX(market_cap) as mcap,
+                   MAX(trading_value) as t_val
             FROM daily_price
             WHERE date >= strftime('%Y%m%d', 'now', '-21 days')
             GROUP BY code
@@ -320,38 +333,52 @@ def run_algo_screening():
             WHERE date >= strftime('%Y%m%d', 'now', '-5 days')
             GROUP BY code
         )
-        SELECT s.code
+        SELECT s.code, p.op_margin, p.mcap
         FROM RecentSupply s
-        JOIN RecentPrice p ON s.code = p.code
+        JOIN RecentStats p ON s.code = p.code
         JOIN Recent5Day v5 ON s.code = v5.code
         WHERE (p.h_price - p.l_price) / p.l_price < 0.10     -- Box Compression
         AND v5.avg_vol_5 < p.avg_vol_20                       -- Volume Drying
-        AND p.op_margin > 0                                   -- Avoid Loss Makers
+        AND p.op_margin > 0                                   -- Quality
+        AND p.mcap >= 100000000000                            -- Global Mcap
+        AND p.t_val >= 1000000000                             -- Global Liq
         ORDER BY s.f_sum DESC
-        LIMIT 15
+        LIMIT 50
     """
+    acc_candidates = []
     try:
         cur.execute(sql_accumulation)
-        acc_picks = [r["code"] for r in cur.fetchall()]
+        acc_candidates = [dict(r) for r in cur.fetchall()]
     except Exception as e:
         logger.error(f"Accumulation query failed: {e}")
-        acc_picks = []
 
-    # Strategy 4: Trend Following (Volume Breakout)
-    # V2: Volume > 20MA_Vol * 1.5, RSI < 70, Upper Wick < Body
-    #     Filter: Operating Margin > -5 (Avoid extreme junk)
-    
-    # We need complex calculation (RSI, Candle Wick).
-    # Doing it in SQL is hard. Let's fetch candidates and filter in Python.
-    # Candidates: Volume Spike + Trend Aligned
+    acc_picks = []
+    for cand in acc_candidates:
+        code = cand['code']
+        # 4. Price Support (Current > 60MA or 120MA)
+        cur.execute("SELECT close FROM daily_price WHERE code = ? ORDER BY date DESC LIMIT 120", (code,))
+        hist_closes = [r[0] for r in cur.fetchall()]
+        if len(hist_closes) < 60: continue
+        
+        curr_price = hist_closes[0]
+        ma60 = sum(hist_closes[:60]) / 60
+        ma120 = sum(hist_closes) / 120 if len(hist_closes) >= 120 else ma60
+        
+        if curr_price > ma60 or curr_price > ma120:
+            acc_picks.append(code)
+            if len(acc_picks) >= 15: break
+
+    # Strategy 4: Trend Following
+    # V2: Vol Spike > 1.5x, RSI < 70, Upper Wick < Body, Op Margin > -5, Mcap > 100B
     
     cur.execute("""
         SELECT p.code, p.close, p.open, p.high, p.low, p.volume, p.operating_margin
         FROM daily_price p
         WHERE p.date = ?
+        AND p.market_cap >= 100000000000
+        AND p.trading_value >= 1000000000
         AND p.operating_margin > -5
-        AND p.close > p.open -- Green Candle
-        AND p.volume > 0
+        AND p.close > p.open 
     """, (max_price_date,))
     
     trend_candidates = [dict(r) for r in cur.fetchall()]
@@ -388,11 +415,39 @@ def run_algo_screening():
             continue
             
         # 3. RSI Check (< 70)
-        # Need more history for RSI (14)
-        # We can implement simple RSI or just skip if too heavy.
-        # Let's verify RSI roughly by checking if recent move isn't too vertical?
-        # Or fetch 14 days and calc.
-        # Let's skip RSI for now to keep performance acceptable, or implement later.
+        # Fetch 15 days of closes (14 changes)
+        cur.execute("""
+            SELECT close FROM daily_price 
+            WHERE code = ? AND date <= ? 
+            ORDER BY date DESC LIMIT 15
+        """, (code, max_price_date))
+        rsi_hist = [r[0] for r in cur.fetchall()]
+        rsi_hist.reverse() # Oldest first
+        
+        if len(rsi_hist) >= 15:
+            # Simple RSI calculation
+            gains = []
+            losses = []
+            for i in range(1, len(rsi_hist)):
+                delta = rsi_hist[i] - rsi_hist[i-1]
+                if delta > 0:
+                    gains.append(delta)
+                    losses.append(0)
+                else:
+                    gains.append(0)
+                    losses.append(abs(delta))
+            
+            avg_gain = sum(gains) / 14
+            avg_loss = sum(losses) / 14
+            
+            if avg_loss == 0:
+                rsi = 100
+            else:
+                rs = avg_gain / avg_loss
+                rsi = 100 - (100 / (1 + rs))
+                
+            if rsi > 70:
+                continue # Overbought
         
         trend_picks.append(code)
         if len(trend_picks) >= 15: break
