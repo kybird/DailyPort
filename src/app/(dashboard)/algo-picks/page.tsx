@@ -29,16 +29,16 @@ export default async function AlgoPage() {
         <div className="space-y-10">
             <header className="flex flex-col md:flex-row md:items-end justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-black text-zinc-900 dark:text-white flex items-center gap-3">
+                    <h1 className="text-3xl font-black text-neutral-900 dark:text-white flex items-center gap-3">
                         <Zap className="text-amber-500" />
                         Algo Picks
                     </h1>
                     <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-4 mt-2">
-                        <p className="text-zinc-500">
+                        <p className="text-neutral-500">
                             마지막 분석일 기준으로 수급과 펀더멘털을 스크리닝한 결과입니다. (장중 실시간 데이터는 미포함)
                         </p>
                         {picks.length > 0 && (
-                            <span className="text-xs font-bold px-2 py-1 bg-zinc-100 dark:bg-zinc-800 text-zinc-500 rounded-lg w-fit">
+                            <span className="text-xs font-bold px-2 py-1 bg-neutral-100 dark:bg-neutral-800 text-neutral-500 rounded-lg w-fit">
                                 최근 분석일: {picks[0].date}
                             </span>
                         )}
@@ -55,12 +55,12 @@ export default async function AlgoPage() {
 
             {
                 picks.length === 0 ? (
-                    <div className="bg-zinc-50 dark:bg-zinc-900 rounded-xl p-10 text-center border border-zinc-200 dark:border-zinc-800">
-                        <div className="w-16 h-16 bg-zinc-100 dark:bg-zinc-800 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <Trophy className="text-zinc-300" size={32} />
+                    <div className="bg-neutral-50 dark:bg-neutral-900 rounded-xl p-10 text-center border border-neutral-200 dark:border-neutral-800">
+                        <div className="w-16 h-16 bg-neutral-100 dark:bg-neutral-800 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <Trophy className="text-neutral-300" size={32} />
                         </div>
-                        <h3 className="text-lg font-bold text-zinc-700 dark:text-zinc-300">No Picks Available</h3>
-                        <p className="text-zinc-500 mt-2">
+                        <h3 className="text-lg font-bold text-neutral-700 dark:text-neutral-300">No Picks Available</h3>
+                        <p className="text-neutral-500 mt-2">
                             Run the daily analyzer to generate new screening results.
                         </p>
                     </div>
@@ -73,27 +73,27 @@ export default async function AlgoPage() {
                             return (
                                 <div
                                     key={`${pick.strategy_name}-${pick.date}`}
-                                    className={`bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden hover:shadow-lg transition-all group ${isNoResults ? 'grayscale opacity-60' : ''}`}
+                                    className={`bg-white dark:bg-neutral-900/50 border border-neutral-200/60 dark:border-white/5 rounded-2xl overflow-hidden hover:shadow-lg backdrop-blur-sm transition-all group ${isNoResults ? 'grayscale opacity-60' : 'shadow-md'}`}
                                 >
-                                    <div className="p-6 border-b border-zinc-100 dark:border-zinc-800 bg-gradient-to-br from-zinc-50 to-white dark:from-zinc-900 dark:to-zinc-950">
+                                    <div className="p-6 border-b border-neutral-100 dark:border-neutral-800 bg-gradient-to-br from-neutral-50 to-white dark:from-neutral-900 dark:to-neutral-950">
                                         <div className="flex justify-between items-start mb-4">
-                                            <div className="p-3 bg-white dark:bg-zinc-800 rounded-xl shadow-sm ring-1 ring-zinc-100 dark:ring-zinc-700">
-                                                <Icon className={isNoResults ? 'text-zinc-400' : 'text-blue-600 dark:text-blue-400'} size={24} />
+                                            <div className="p-3 bg-white dark:bg-neutral-800 rounded-xl shadow-sm ring-1 ring-neutral-100 dark:ring-neutral-700">
+                                                <Icon className={isNoResults ? 'text-neutral-400' : 'text-blue-600 dark:text-blue-400'} size={24} />
                                             </div>
-                                            <span className="text-xs font-mono text-zinc-400">{pick.date}</span>
+                                            <span className="text-xs font-mono text-neutral-400">{pick.date}</span>
                                         </div>
-                                        <h3 className="text-xl font-black text-zinc-900 dark:text-white mb-2">
+                                        <h3 className="text-xl font-black text-neutral-900 dark:text-white mb-2">
                                             {pick.strategy_name.replace(/_/g, ' ')}
                                         </h3>
-                                        <p className="text-sm text-zinc-500 leading-relaxed">
+                                        <p className="text-sm text-neutral-500 leading-relaxed">
                                             {strategyDescriptions[pick.strategy_name] || 'Algorithmic screening strategy.'}
                                         </p>
                                     </div>
                                     <div className="p-4">
                                         <div className="space-y-2">
                                             {isNoResults ? (
-                                                <div className="p-8 text-center bg-zinc-50 dark:bg-zinc-800/50 rounded-xl border border-dashed border-zinc-200 dark:border-zinc-700">
-                                                    <p className="text-xs font-bold text-zinc-400">조건을 만족하는 종목이 없습니다</p>
+                                                <div className="p-8 text-center bg-neutral-50 dark:bg-neutral-800/50 rounded-xl border border-dashed border-neutral-200 dark:border-neutral-700">
+                                                    <p className="text-xs font-bold text-neutral-400">조건을 만족하는 종목이 없습니다</p>
                                                 </div>
                                             ) : (
                                                 pick.tickers.map((ticker) => {
@@ -106,13 +106,13 @@ export default async function AlgoPage() {
                                                         <Link
                                                             key={ticker}
                                                             href={`/analysis/${ticker}?ref=algo`}
-                                                            className="flex items-center justify-between p-3 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors group/item"
+                                                            className="flex items-center justify-between p-3 rounded-xl hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors group/item"
                                                         >
                                                             <div className="flex items-center gap-3">
-                                                                <span className="font-bold text-zinc-700 dark:text-zinc-200">
+                                                                <span className="font-bold text-neutral-700 dark:text-neutral-200">
                                                                     {getStockName(ticker)}
                                                                 </span>
-                                                                <span className="text-xs font-mono text-zinc-400 bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded">
+                                                                <span className="text-xs font-mono text-neutral-600 dark:text-neutral-400 bg-stone-200 dark:bg-neutral-800 px-1.5 py-0.5 rounded">
                                                                     {ticker}
                                                                 </span>
                                                                 {isAvoid && (
@@ -121,13 +121,13 @@ export default async function AlgoPage() {
                                                                         <span className="text-[10px] font-black text-rose-500 uppercase tracking-tighter">Caution</span>
 
                                                                         {/* Simple Tooltip */}
-                                                                        <div className="absolute bottom-full left-0 mb-2 w-48 p-2 bg-zinc-900 text-white text-[10px] rounded shadow-xl opacity-0 group-hover/tooltip:opacity-100 transition-opacity pointer-events-none z-10 border border-white/10">
+                                                                        <div className="absolute bottom-full left-0 mb-2 w-48 p-2 bg-neutral-900 text-white text-[10px] rounded shadow-xl opacity-0 group-hover/tooltip:opacity-100 transition-opacity pointer-events-none z-10 border border-white/10">
                                                                             기술적 주의: 추세 점수 미달(AVOID). 외부 요인 및 공시를 반드시 확인하세요.
                                                                         </div>
                                                                     </div>
                                                                 )}
                                                             </div>
-                                                            <ArrowRight size={14} className="text-zinc-300 group-hover/item:text-blue-500 transition-colors" />
+                                                            <ArrowRight size={14} className="text-neutral-300 group-hover/item:text-blue-500 transition-colors" />
                                                         </Link>
                                                     )
                                                 })

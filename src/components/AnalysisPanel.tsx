@@ -202,10 +202,10 @@ export default function AnalysisPanel({ ticker, onClose, mode = 'portfolio', por
 
                         {/* 3. Technical Indicators */}
                         <div>
-                            <h3 className="font-bold text-zinc-700 dark:text-zinc-300 mb-3 text-sm">기술 지표 (Technical)</h3>
+                            <h3 className="font-bold text-zinc-700 dark:text-zinc-300 mb-3 text-sm">기술 지표</h3>
                             <div className="grid grid-cols-2 gap-4">
-                                <div className="bg-zinc-50 dark:bg-zinc-950 p-3 rounded-xl border border-zinc-100 dark:border-zinc-800">
-                                    <div className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase">RSI (14)</div>
+                                <div className="bg-stone-200 dark:bg-zinc-950 p-3 rounded-xl border border-zinc-100 dark:border-zinc-800">
+                                    <div className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase">RSI</div>
                                     <div className="font-black text-lg text-zinc-900 dark:text-white mt-1">
                                         {report.technical.rsi.value.toFixed(1)}
                                         <div className={`text-[10px] mt-1 inline-block px-2 py-0.5 rounded-full font-bold shadow-sm ${report.technical.rsi.status === 'OVERBOUGHT' ? 'bg-rose-500 text-white' :
@@ -215,8 +215,8 @@ export default function AnalysisPanel({ ticker, onClose, mode = 'portfolio', por
                                         </div>
                                     </div>
                                 </div>
-                                <div className="bg-zinc-50 dark:bg-zinc-950 p-3 rounded-xl border border-zinc-100 dark:border-zinc-800">
-                                    <div className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase">Trend (EMA)</div>
+                                <div className="bg-stone-200 dark:bg-zinc-950 p-3 rounded-xl border border-zinc-100 dark:border-zinc-800">
+                                    <div className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase">추세</div>
                                     <div className="font-black text-sm text-zinc-900 dark:text-white mt-2">
                                         {report.technical.trend.status}
                                     </div>
@@ -228,9 +228,9 @@ export default function AnalysisPanel({ ticker, onClose, mode = 'portfolio', por
                         {report.technical.objectives && (
                             <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5 space-y-6 shadow-xl">
                                 {[
-                                    { label: 'Short-term (단기)', data: report.technical.objectives.short, color: 'text-zinc-400' },
-                                    { label: 'Mid-term (중기)', data: report.technical.objectives.mid, color: 'text-zinc-200' },
-                                    { label: 'Long-term (장기)', data: report.technical.objectives.long, color: 'text-blue-400' }
+                                    { label: '단기 매매', data: report.technical.objectives.short, color: 'text-zinc-400' },
+                                    { label: '중기 스윙', data: report.technical.objectives.mid, color: 'text-zinc-600' },
+                                    { label: '장기 투자', data: report.technical.objectives.long, color: 'text-blue-500' }
                                 ].map((group) => {
                                     if (!group.data) return null;
 
@@ -311,7 +311,7 @@ export default function AnalysisPanel({ ticker, onClose, mode = 'portfolio', por
                         )}
                         {/* 4. Supply & Demand */}
                         <div className="space-y-4">
-                            <h3 className="font-bold text-zinc-700 dark:text-zinc-300 text-sm">수급 현황 (Supply & Demand)</h3>
+                            <h3 className="font-bold text-zinc-700 dark:text-zinc-300 text-sm">수급 현황</h3>
                             {report.supplyDemand ? (
                                 <div className="space-y-4">
                                     <div className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-100 dark:border-zinc-800 rounded-xl p-4 space-y-4">
@@ -319,7 +319,7 @@ export default function AnalysisPanel({ ticker, onClose, mode = 'portfolio', por
                                             <div className="flex justify-between items-end border-b border-zinc-100 dark:border-zinc-800 pb-2">
                                                 <div className="space-y-1">
                                                     <div className="flex items-center gap-1">
-                                                        <span className="text-[10px] text-zinc-500 dark:text-zinc-400 font-black uppercase tracking-tighter">Foreign (오늘)</span>
+                                                        <span className="text-[10px] text-zinc-500 dark:text-zinc-400 font-black uppercase tracking-tighter">외국인 (오늘)</span>
                                                         {report.supplyDemand.dataDate && (
                                                             <span className="text-[8px] text-zinc-400 font-mono">[{report.supplyDemand.dataDate}]</span>
                                                         )}
@@ -333,7 +333,7 @@ export default function AnalysisPanel({ ticker, onClose, mode = 'portfolio', por
                                             <div className="flex justify-between items-end border-b border-zinc-100 dark:border-zinc-800 pb-2">
                                                 <div className="space-y-1">
                                                     <div className="flex items-center gap-1">
-                                                        <span className="text-[10px] text-zinc-500 dark:text-zinc-400 font-black uppercase tracking-tighter">Institution (오늘)</span>
+                                                        <span className="text-[10px] text-zinc-500 dark:text-zinc-400 font-black uppercase tracking-tighter">기관 (오늘)</span>
                                                         {report.supplyDemand.dataDate && (
                                                             <span className="text-[8px] text-zinc-400 font-mono">[{report.supplyDemand.dataDate}]</span>
                                                         )}

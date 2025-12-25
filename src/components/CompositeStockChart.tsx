@@ -10,9 +10,11 @@ import {
     AreaSeries,
     CrosshairMode,
     Time,
-    IChartApi
+    IChartApi,
+    BaselineSeries
 } from 'lightweight-charts'
 import { Settings2, Eye, EyeOff, X, SlidersHorizontal } from 'lucide-react'
+import { useTheme } from '@/context/ThemeContext'
 
 interface CompositeStockChartProps {
     priceData: {
@@ -94,12 +96,15 @@ export default function CompositeStockChart({ priceData, supplyData, objectives 
     })
     const [selectedObjective, setSelectedObjective] = useState<'short' | 'mid' | 'long' | null>(null)
 
+    const { theme } = useTheme()
+
     useEffect(() => {
         if (!priceContainerRef.current || !foreignContainerRef.current || !institutionContainerRef.current) return
 
-        const isDark = document.documentElement.classList.contains('dark')
-        const textColor = isDark ? '#a1a1aa' : '#71717a'
-        const gridColor = isDark ? '#27272a' : '#f4f4f5'
+        const isDark = theme === 'dark'
+        const textColor = isDark ? '#a3a3a3' : '#333333' // neutral-400 : gray-800
+        const gridColor = isDark ? '#262626' : '#f5f5f5' // neutral-800 : neutral-100
+        const borderColor = isDark ? '#262626' : '#e5e5e5' // neutral-800 : neutral-200
 
         const commonOptions = {
             layout: {
@@ -111,6 +116,10 @@ export default function CompositeStockChart({ priceData, supplyData, objectives 
                 horzLines: { color: gridColor },
             },
             crosshair: { mode: CrosshairMode.Normal },
+            rightPriceScale: {
+                borderColor: borderColor,
+                minimumWidth: 90,
+            },
             timeScale: {
                 borderVisible: false,
                 visible: true,
@@ -187,15 +196,59 @@ export default function CompositeStockChart({ priceData, supplyData, objectives 
         })
         candleSeries.setData(formattedPrice)
 
-        // 🎯 Trading Objectives Price Lines
+        // 🎯 Trading Objectives Price Lines & Visual Zones (RR Boxes)
         if (selectedObjective && objectives?.[selectedObjective]) {
             const obj = objectives[selectedObjective]
+            const lastBar = formattedPrice[formattedPrice.length - 1]
+            const boxWidth = 50 // Show zone for the last 50 bars
+            const startIndex = Math.max(0, formattedPrice.length - boxWidth)
+            const zoneData = formattedPrice.slice(startIndex).map(p => ({ time: p.time }))
+
+
+
+            // 🟩 Profit Zone (Target) - Green filling Up from Entry
+            if (obj.entry && obj.target) {
+                const profitZone = priceChart.addSeries(BaselineSeries, {
+                    baseValue: { type: 'price', price: obj.entry },
+                    topLineColor: 'rgba(16, 185, 129, 0.5)', // Green Line
+                    topFillColor1: 'rgba(16, 185, 129, 0.2)', // Green Grad 1
+                    topFillColor2: 'rgba(16, 185, 129, 0.05)', // Green Grad 2
+                    bottomLineColor: 'transparent',
+                    bottomFillColor1: 'transparent',
+                    bottomFillColor2: 'transparent',
+                    lineWidth: 1,
+                    priceLineVisible: false,
+                    lastValueVisible: false,
+                    autoscaleInfoProvider: () => null,
+                })
+                profitZone.setData(zoneData.map(d => ({ ...d, value: obj.target })))
+            }
+
+            // 🟥 Loss Zone (Stop) - Red filling Down from Entry
+            if (obj.entry && obj.stop) {
+                const lossZone = priceChart.addSeries(BaselineSeries, {
+                    baseValue: { type: 'price', price: obj.entry },
+                    topLineColor: 'transparent',
+                    topFillColor1: 'transparent',
+                    topFillColor2: 'transparent',
+                    bottomLineColor: 'rgba(239, 68, 68, 0.5)', // Red Line
+                    bottomFillColor1: 'rgba(239, 68, 68, 0.05)', // Red Grad 1
+                    bottomFillColor2: 'rgba(239, 68, 68, 0.2)', // Red Grad 2
+                    lineWidth: 1,
+                    priceLineVisible: false,
+                    lastValueVisible: false,
+                    autoscaleInfoProvider: () => null,
+                })
+                lossZone.setData(zoneData.map(d => ({ ...d, value: obj.stop })))
+            }
+
+            // Price Lines for levels
             if (obj.entry) {
                 candleSeries.createPriceLine({
                     price: obj.entry,
                     color: '#a1a1aa',
                     lineWidth: 2,
-                    lineStyle: 2, // Dashed
+                    lineStyle: 2,
                     axisLabelVisible: true,
                     title: `📍 진입가 (손익비: ${obj.rr?.toFixed(1)})`,
                 })
@@ -203,9 +256,9 @@ export default function CompositeStockChart({ priceData, supplyData, objectives 
             if (obj.target) {
                 candleSeries.createPriceLine({
                     price: obj.target,
-                    color: '#10b981',
+                    color: '#10b981', // Green
                     lineWidth: 2,
-                    lineStyle: 0, // Solid
+                    lineStyle: 0,
                     axisLabelVisible: true,
                     title: '🎯 목표가',
                 })
@@ -213,9 +266,9 @@ export default function CompositeStockChart({ priceData, supplyData, objectives 
             if (obj.stop) {
                 candleSeries.createPriceLine({
                     price: obj.stop,
-                    color: '#ef4444',
+                    color: '#ef4444', // Red
                     lineWidth: 2,
-                    lineStyle: 0, // Solid
+                    lineStyle: 0,
                     axisLabelVisible: true,
                     title: '🛑 손절가',
                 })
@@ -245,17 +298,12 @@ export default function CompositeStockChart({ priceData, supplyData, objectives 
         // Bollinger Bands
         if (config.bb.show) {
             const bb = calculateBollingerBands(closeValues, config.bb.p, config.bb.sd)
-            const upper = priceChart.addSeries(LineSeries, { color: 'rgba(56, 189, 248, 0.4)', lineWidth: 1, title: 'BB Upper' })
-            const lower = priceChart.addSeries(LineSeries, { color: 'rgba(56, 189, 248, 0.4)', lineWidth: 1, title: 'BB Lower' })
-            const bg = priceChart.addSeries(AreaSeries, {
-                topColor: 'rgba(56, 189, 248, 0.05)',
-                bottomColor: 'rgba(56, 189, 248, 0.05)',
-                lineVisible: false,
-                priceLineVisible: false,
-            })
+            const upper = priceChart.addSeries(LineSeries, { color: 'rgba(56, 189, 248, 0.6)', lineWidth: 1, title: 'BB Upper' })
+            const lower = priceChart.addSeries(LineSeries, { color: 'rgba(56, 189, 248, 0.6)', lineWidth: 1, title: 'BB Lower' })
             upper.setData(bb.map(d => ({ time: d.time, value: d.upper })))
             lower.setData(bb.map(d => ({ time: d.time, value: d.lower })))
-            bg.setData(bb.map(d => ({ time: d.time, value: d.upper, bottomValue: d.lower })))
+            // Note: Single AreaSeries range fill is not supported in standard lightweight-charts
+            // Removing problematic bg series that was filling to bottom.
         }
 
         // 2. Foreigner Chart Init
@@ -297,13 +345,38 @@ export default function CompositeStockChart({ priceData, supplyData, objectives 
             })
 
             chart.subscribeCrosshairMove((param: any) => {
-                if (!param.time || !param.point) {
-                    charts.forEach((oc: any, oi) => { if (index !== oi) oc.setCrosshairPosition(undefined, undefined, seriesList[oi]) })
-                    return
-                }
-                charts.forEach((oc: any, oi) => { if (index !== oi) oc.setCrosshairPosition(param.point, param.time, seriesList[oi]) })
-            })
-        })
+                charts.forEach((oc: any, oi) => {
+                    if (index !== oi) {
+                        // Ensure series exists before syncing
+                        const targetSeries = seriesList[oi];
+                        if (!targetSeries) return;
+
+                        if (!param.time || !param.point) {
+                            // If clearing, we pass explicitly null or use clearCrosshairPosition if available?
+                            // Lightweight charts requires setCrosshairPosition(0, 0, series) to clear, or null.
+                            // But some versions crash on null. Let's try skipping clear if it crashes, 
+                            // or better: Check if we have valid data.
+                            // For now, let's wrap in try-catch to prevent crashing the whole app.
+                            try {
+                                oc.clearCrosshairPosition(); // Try clear method
+                            } catch {
+                                try {
+                                    oc.setCrosshairPosition(null, null, targetSeries);
+                                } catch (e) {
+                                    // Ignore clear errors
+                                }
+                            }
+                        } else {
+                            try {
+                                oc.setCrosshairPosition(0, param.time, targetSeries);
+                            } catch (e) {
+                                // Ignore sync errors
+                            }
+                        }
+                    }
+                });
+            });
+        });
 
         priceChart.timeScale().fitContent()
 
@@ -316,10 +389,10 @@ export default function CompositeStockChart({ priceData, supplyData, objectives 
             window.removeEventListener('resize', handleResize)
             charts.forEach(c => c.remove())
         }
-    }, [priceData, supplyData, config, objectives, selectedObjective])
+    }, [priceData, supplyData, config, objectives, selectedObjective, theme])
 
     return (
-        <div className="relative flex flex-col gap-0 w-full bg-white dark:bg-zinc-900 rounded-3xl p-4 border border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden">
+        <div className="relative flex flex-col gap-0 w-full bg-white dark:bg-neutral-900/50 rounded-3xl p-4 border border-neutral-200/60 dark:border-white/5 shadow-md backdrop-blur-sm overflow-hidden">
             {/* --- Chart Settings Modal --- */}
             {showSettings && (
                 <div className="absolute inset-0 z-50 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md flex items-center justify-center p-6">
@@ -327,7 +400,7 @@ export default function CompositeStockChart({ priceData, supplyData, objectives 
                         <div className="flex justify-between items-center mb-8">
                             <h2 className="text-xl font-black text-zinc-900 dark:text-white flex items-center gap-2">
                                 <SlidersHorizontal className="w-5 h-5 text-indigo-500" />
-                                Indicator Settings
+                                보조지표 설정 (Settings)
                             </h2>
                             <button onClick={() => setShowSettings(false)} className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-700 rounded-full transition-colors">
                                 <X className="w-5 h-5" />
@@ -338,13 +411,13 @@ export default function CompositeStockChart({ priceData, supplyData, objectives 
                             {/* SMA Settings */}
                             <div className="space-y-4">
                                 <div className="flex justify-between items-center">
-                                    <label className="text-sm font-bold text-zinc-900 dark:text-white uppercase tracking-wider">Moving Average (SMA)</label>
+                                    <label className="text-sm font-bold text-zinc-900 dark:text-white uppercase tracking-wider">단순 이동평균</label>
                                     <input type="checkbox" checked={config.ma.show} onChange={e => setConfig({ ...config, ma: { ...config.ma, show: e.target.checked } })} className="w-10 h-5 accent-indigo-500 rounded-full" />
                                 </div>
                                 <div className="grid grid-cols-3 gap-3">
                                     {['p1', 'p2', 'p3'].map((p, i) => (
                                         <div key={p} className="space-y-1">
-                                            <span className="text-[10px] font-bold text-zinc-400">Period {i + 1}</span>
+                                            <span className="text-[10px] font-bold text-zinc-400">기간 {i + 1}</span>
                                             <input
                                                 type="number"
                                                 value={(config.ma as unknown as Record<string, number>)[p]}
@@ -359,7 +432,7 @@ export default function CompositeStockChart({ priceData, supplyData, objectives 
                             {/* EMA Settings */}
                             <div className="space-y-4">
                                 <div className="flex justify-between items-center">
-                                    <label className="text-sm font-bold text-zinc-900 dark:text-white uppercase tracking-wider">Exponential MA (EMA)</label>
+                                    <label className="text-sm font-bold text-zinc-900 dark:text-white uppercase tracking-wider">지수 이동평균</label>
                                     <input type="checkbox" checked={config.ema.show} onChange={e => setConfig({ ...config, ema: { ...config.ema, show: e.target.checked } })} className="w-10 h-5 accent-indigo-500 rounded-full" />
                                 </div>
                                 <div className="grid grid-cols-2 gap-3">
@@ -380,12 +453,12 @@ export default function CompositeStockChart({ priceData, supplyData, objectives 
                             {/* BB Settings */}
                             <div className="space-y-4">
                                 <div className="flex justify-between items-center">
-                                    <label className="text-sm font-bold text-zinc-900 dark:text-white uppercase tracking-wider">Bollinger Bands (BB)</label>
+                                    <label className="text-sm font-bold text-zinc-900 dark:text-white uppercase tracking-wider">볼린저 밴드</label>
                                     <input type="checkbox" checked={config.bb.show} onChange={e => setConfig({ ...config, bb: { ...config.bb, show: e.target.checked } })} className="w-10 h-5 accent-indigo-500 rounded-full" />
                                 </div>
                                 <div className="grid grid-cols-2 gap-3">
                                     <div className="space-y-1">
-                                        <span className="text-[10px] font-bold text-zinc-400">Period</span>
+                                        <span className="text-[10px] font-bold text-zinc-400">기간</span>
                                         <input
                                             type="number"
                                             value={config.bb.p}
@@ -394,7 +467,7 @@ export default function CompositeStockChart({ priceData, supplyData, objectives 
                                         />
                                     </div>
                                     <div className="space-y-1">
-                                        <span className="text-[10px] font-bold text-zinc-400">Std Dev</span>
+                                        <span className="text-[10px] font-bold text-zinc-400">표준편차 (Std Dev)</span>
                                         <input
                                             type="number"
                                             step="0.1"
@@ -411,7 +484,7 @@ export default function CompositeStockChart({ priceData, supplyData, objectives 
                             onClick={() => setShowSettings(false)}
                             className="w-full mt-10 bg-indigo-600 hover:bg-indigo-700 text-white font-black py-4 rounded-2xl shadow-lg shadow-indigo-500/30 transition-all uppercase tracking-widest text-xs"
                         >
-                            Apply Indicators
+                            지표 설정 완료
                         </button>
                     </div>
                 </div>
@@ -420,7 +493,7 @@ export default function CompositeStockChart({ priceData, supplyData, objectives 
             <div className="px-4 pt-2 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
                 <div className="space-y-1">
                     <h3 className="text-sm font-black text-zinc-900 dark:text-white uppercase tracking-widest flex items-center gap-2">
-                        Advanced Market Diagnostics
+                        정밀 차트 진단
                     </h3>
                     <div className="flex flex-wrap gap-x-4 gap-y-1 text-[9px] font-bold">
                         {config.ma.show && (
@@ -437,28 +510,28 @@ export default function CompositeStockChart({ priceData, supplyData, objectives 
                             </>
                         )}
                         {config.bb.show && (
-                            <span className="flex items-center gap-1.5 text-sky-400"><div className="w-2 h-1.5 bg-sky-400/20 border border-sky-400/40 rounded-sm" /> Bollinger Bands ({config.bb.p}, {config.bb.sd})</span>
+                            <span className="flex items-center gap-1.5 text-sky-400"><div className="w-2 h-1.5 bg-sky-400/20 border border-sky-400/40 rounded-sm" /> 볼린저 밴드 ({config.bb.p}, {config.bb.sd})</span>
                         )}
                     </div>
                 </div>
 
-                <div className="flex items-center gap-2 bg-zinc-50 dark:bg-zinc-800/50 p-1.5 rounded-xl border border-zinc-100 dark:border-zinc-800">
-                    <div className="flex gap-1 pr-2 border-r border-zinc-200 dark:border-zinc-700">
+                <div className="flex items-center gap-2 bg-neutral-50 dark:bg-neutral-800/50 p-1.5 rounded-xl border border-neutral-100 dark:border-neutral-800">
+                    <div className="flex gap-1 pr-2 border-r border-neutral-200 dark:border-neutral-700">
                         <button
                             onClick={() => setConfig({ ...config, ma: { ...config.ma, show: !config.ma.show } })}
-                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black transition-all ${config.ma.show ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm ring-1 ring-zinc-200 dark:ring-zinc-600' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black transition-all ${config.ma.show ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white shadow-sm ring-1 ring-neutral-200 dark:ring-neutral-600' : 'text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300'}`}
                         >
                             {config.ma.show ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />} MA
                         </button>
                         <button
                             onClick={() => setConfig({ ...config, ema: { ...config.ema, show: !config.ema.show } })}
-                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black transition-all ${config.ema.show ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm ring-1 ring-zinc-200 dark:ring-zinc-600' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black transition-all ${config.ema.show ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white shadow-sm ring-1 ring-neutral-200 dark:ring-neutral-600' : 'text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300'}`}
                         >
                             {config.ema.show ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />} EMA
                         </button>
                         <button
                             onClick={() => setConfig({ ...config, bb: { ...config.bb, show: !config.bb.show } })}
-                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black transition-all ${config.bb.show ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm ring-1 ring-zinc-200 dark:ring-zinc-600' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black transition-all ${config.bb.show ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white shadow-sm ring-1 ring-neutral-200 dark:ring-neutral-600' : 'text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300'}`}
                         >
                             {config.bb.show ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />} BB
                         </button>
@@ -466,26 +539,26 @@ export default function CompositeStockChart({ priceData, supplyData, objectives 
                     <div className="flex items-center gap-2">
                         <button
                             onClick={() => setSelectedObjective(selectedObjective === 'short' ? null : 'short')}
-                            className={`px-3 py-1 text-[10px] font-black rounded-lg border transition-all ${selectedObjective === 'short' ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 border-zinc-900' : 'bg-transparent text-zinc-500 border-zinc-200 dark:border-zinc-800'}`}
+                            className={`px-3 py-1 text-[10px] font-black rounded-lg border transition-all ${selectedObjective === 'short' ? 'bg-neutral-900 dark:bg-neutral-100 text-white dark:text-neutral-900 border-neutral-900' : 'bg-transparent text-neutral-500 border-neutral-200 dark:border-neutral-800'}`}
                         >
                             단기
                         </button>
                         <button
                             onClick={() => setSelectedObjective(selectedObjective === 'mid' ? null : 'mid')}
-                            className={`px-3 py-1 text-[10px] font-black rounded-lg border transition-all ${selectedObjective === 'mid' ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 border-zinc-900' : 'bg-transparent text-zinc-500 border-zinc-200 dark:border-zinc-800'}`}
+                            className={`px-3 py-1 text-[10px] font-black rounded-lg border transition-all ${selectedObjective === 'mid' ? 'bg-neutral-900 dark:bg-neutral-100 text-white dark:text-neutral-900 border-neutral-900' : 'bg-transparent text-neutral-500 border-neutral-200 dark:border-neutral-800'}`}
                         >
                             중기
                         </button>
                         <button
                             onClick={() => setSelectedObjective(selectedObjective === 'long' ? null : 'long')}
-                            className={`px-3 py-1 text-[10px] font-black rounded-lg border transition-all ${selectedObjective === 'long' ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 border-zinc-900' : 'bg-transparent text-zinc-500 border-zinc-200 dark:border-zinc-800'}`}
+                            className={`px-3 py-1 text-[10px] font-black rounded-lg border transition-all ${selectedObjective === 'long' ? 'bg-neutral-900 dark:bg-neutral-100 text-white dark:text-neutral-900 border-neutral-900' : 'bg-transparent text-neutral-500 border-neutral-200 dark:border-neutral-800'}`}
                         >
                             장기
                         </button>
-                        <div className="w-[1px] h-4 bg-zinc-200 dark:bg-zinc-800 mx-1" />
+                        <div className="w-[1px] h-4 bg-neutral-200 dark:bg-neutral-800 mx-1" />
                         <button
                             onClick={() => setShowSettings(!showSettings)}
-                            className={`p-2 rounded-xl transition-all ${showSettings ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400'}`}
+                            className={`p-2 rounded-xl transition-all ${showSettings ? 'bg-neutral-900 dark:bg-neutral-100 text-white dark:text-neutral-900' : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400'}`}
                         >
                             <Settings2 size={18} />
                         </button>
@@ -495,30 +568,24 @@ export default function CompositeStockChart({ priceData, supplyData, objectives 
 
             <div className="space-y-1">
                 <div className="relative group">
-                    <div className="absolute top-4 left-4 z-10 text-[10px] font-black text-zinc-400 dark:text-zinc-500 bg-white/50 dark:bg-black/50 px-2 py-0.5 rounded-md backdrop-blur-sm pointer-events-none uppercase">Price (Candles)</div>
+                    <div className="absolute top-4 left-4 z-10 text-[10px] font-black text-neutral-400 dark:text-neutral-500 bg-white/50 dark:bg-black/50 px-2 py-0.5 rounded-md backdrop-blur-sm pointer-events-none uppercase">주가 (가격)</div>
                     <div ref={priceContainerRef} className="w-full" />
                 </div>
 
-                <div className="h-[1px] bg-zinc-100 dark:bg-zinc-800" />
+                <div className="h-[1px] bg-neutral-100 dark:bg-neutral-800" />
 
                 <div className="relative group">
-                    <div className="absolute top-2 left-4 z-10 text-[10px] font-black text-rose-400 bg-white/50 dark:bg-black/50 px-2 py-0.5 rounded-md backdrop-blur-sm pointer-events-none uppercase">Foreigner Supply</div>
+                    <div className="absolute top-2 left-4 z-10 text-[10px] font-black text-rose-400 bg-white/50 dark:bg-black/50 px-2 py-0.5 rounded-md backdrop-blur-sm pointer-events-none uppercase">외국인 순매수 (단위: 억)</div>
                     <div ref={foreignContainerRef} className="w-full" />
                 </div>
 
                 <div className="relative group">
-                    <div className="absolute top-2 left-4 z-10 text-[10px] font-black text-amber-500 bg-white/50 dark:bg-black/50 px-2 py-0.5 rounded-md backdrop-blur-sm pointer-events-none uppercase">Institution Supply</div>
+                    <div className="absolute top-2 left-4 z-10 text-[10px] font-black text-amber-500 bg-white/50 dark:bg-black/50 px-2 py-0.5 rounded-md backdrop-blur-sm pointer-events-none uppercase">기관 순매수 (단위: 억)</div>
                     <div ref={institutionContainerRef} className="w-full" />
                 </div>
             </div>
 
-            <div className="px-4 pb-2 pt-4 flex justify-between items-center text-[10px] text-zinc-400 font-medium border-t border-zinc-50 dark:border-zinc-800 mt-2">
-                <div className="flex items-center gap-2">
-                    <SlidersHorizontal className="w-3 h-3" />
-                    <span>Synchronized 3-Pane (Pro Mode)</span>
-                </div>
-                <span>MA/EMA/BB Customizable Toolset</span>
-            </div>
         </div>
+
     )
 }

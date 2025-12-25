@@ -14,6 +14,8 @@ export const metadata: Metadata = {
     description: "Secure, local-first stock analysis combining the safety of local API storage with the convenience of web-based tools.",
 };
 
+import { ThemeProvider } from "@/context/ThemeContext";
+
 export default function RootLayout({
     children,
 }: Readonly<{
@@ -24,12 +26,12 @@ export default function RootLayout({
             <body
                 className={`${notoSansKr.className} antialiased bg-background text-foreground transition-colors duration-300`}
             >
-
-                <main className="min-h-screen">
-                    {children}
-                </main>
+                <ThemeProvider>
+                    <main className="min-h-screen">
+                        {children}
+                    </main>
+                </ThemeProvider>
             </body>
-
         </html>
     );
 }

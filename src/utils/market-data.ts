@@ -11,6 +11,7 @@ export interface MarketData {
     currentPrice: number
     marketCap?: number
     per?: number
+    pbr?: number
     eps?: number
     high52Week?: number
     low52Week?: number
@@ -167,7 +168,8 @@ export async function getKOSDAQIndexData(): Promise<IndexData[]> {
 
 
 
-export async function getMarketData(ticker: string): Promise<MarketData | null> {
+// Internal function to perform the actual fetch
+async function fetchMarketDataInternal(ticker: string): Promise<MarketData | null> {
     const supabase = await createClient()
 
     // 1. Check Cache (Supabase)
@@ -285,3 +287,12 @@ export async function getMarketData(ticker: string): Promise<MarketData | null> 
         return null
     }
 }
+
+// Exported cached function
+import { unstable_cache } from 'next/cache'
+
+export const getMarketData = unstable_cache(
+    async (ticker: string) => fetchMarketDataInternal(ticker),
+    ['market-data'],
+    { revalidate: 60 } // Cache for 60 seconds
+)

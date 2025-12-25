@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { getKOSPIIntradayData, getKOSDAQIntradayData } from '@/utils/market-index'
-
+import { useTheme } from '@/context/ThemeContext'
 import type { IChartApi } from 'lightweight-charts'
 
 // Dynamic import for lightweight-charts to avoid SSR issues
@@ -14,6 +14,7 @@ interface MarketIndexChartProps {
 }
 
 export default function MarketIndexChart({ index }: MarketIndexChartProps) {
+    const { theme } = useTheme()
     const chartContainerRef = useRef<HTMLDivElement>(null)
     const chartRef = useRef<IChartApi | null>(null)
     const [data, setData] = useState<{ time: string, price: number }[]>([])
@@ -63,17 +64,17 @@ export default function MarketIndexChart({ index }: MarketIndexChartProps) {
     useEffect(() => {
         if (!chartContainerRef.current || !createChart || !LineSeries || data.length === 0) return
 
-        const isDark = document.documentElement.classList.contains('dark')
+        const isDark = theme === 'dark'
 
         const chart = createChart(chartContainerRef.current, {
             layout: {
-                background: { color: isDark ? '#18181b' : '#ffffff' },
-                textColor: isDark ? '#a1a1aa' : '#333333',
+                background: { color: isDark ? '#171717' : '#ffffff' }, // neutral-900 : white
+                textColor: isDark ? '#a3a3a3' : '#333333', // neutral-400 : gray-800
                 fontFamily: 'Inter, system-ui, sans-serif',
             },
             grid: {
-                vertLines: { color: isDark ? '#27272a' : '#f0f0f0' },
-                horzLines: { color: isDark ? '#27272a' : '#f0f0f0' },
+                vertLines: { color: isDark ? '#262626' : '#f5f5f5' }, // neutral-800 : neutral-100
+                horzLines: { color: isDark ? '#262626' : '#f5f5f5' },
             },
             localization: {
                 locale: 'ko-KR',
@@ -84,13 +85,13 @@ export default function MarketIndexChart({ index }: MarketIndexChartProps) {
             timeScale: {
                 timeVisible: true,
                 secondsVisible: false,
-                borderColor: isDark ? '#27272a' : '#cccccc',
+                borderColor: isDark ? '#262626' : '#cccccc',
                 barSpacing: 10,
                 fixLeftEdge: true,
                 fixRightEdge: true,
             },
             rightPriceScale: {
-                borderColor: isDark ? '#27272a' : '#cccccc',
+                borderColor: isDark ? '#262626' : '#cccccc',
                 scaleMargins: {
                     top: 0.2,
                     bottom: 0.2,
@@ -98,16 +99,16 @@ export default function MarketIndexChart({ index }: MarketIndexChartProps) {
             },
             crosshair: {
                 vertLine: {
-                    color: isDark ? '#52525b' : '#94a3b8',
+                    color: isDark ? '#525252' : '#94a3b8', // neutral-600
                     width: 1,
                     style: 2, // Dashed
-                    labelBackgroundColor: isDark ? '#27272a' : '#475569',
+                    labelBackgroundColor: isDark ? '#262626' : '#475569',
                 },
                 horzLine: {
-                    color: isDark ? '#52525b' : '#94a3b8',
+                    color: isDark ? '#525252' : '#94a3b8',
                     width: 1,
                     style: 2, // Dashed
-                    labelBackgroundColor: isDark ? '#27272a' : '#475569',
+                    labelBackgroundColor: isDark ? '#262626' : '#475569',
                 },
             },
             handleScroll: false,
@@ -150,15 +151,15 @@ export default function MarketIndexChart({ index }: MarketIndexChartProps) {
             window.removeEventListener('resize', handleResize)
             chart.remove()
         }
-    }, [data, index])
+    }, [data, index, theme])
 
     const currentPrice = data.length > 0 ? data[data.length - 1].price : 0
 
     return (
-        <div className="bg-white dark:bg-zinc-900 p-6 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm transition-colors">
+        <div className="bg-white dark:bg-neutral-900/50 p-6 rounded-2xl border border-neutral-200/60 dark:border-white/5 shadow-md backdrop-blur-sm transition-colors">
             <div className="flex justify-between items-center mb-4">
-                <h3 className="text-sm font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">{index} Index</h3>
-                <div className="text-xl font-black text-zinc-900 dark:text-white">
+                <h3 className="text-sm font-black text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">{index} Index</h3>
+                <div className="text-xl font-black text-neutral-900 dark:text-white">
                     {data.length > 0 ? currentPrice.toLocaleString(undefined, { minimumFractionDigits: 2 }) : '-'}
                 </div>
             </div>

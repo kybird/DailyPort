@@ -32,5 +32,13 @@ This document tracks planned improvements and architectural goals for the DailyP
 - **Implementation**: Expand `technical-analysis.ts` to include Bollinger Bands, MACD, and Volume Profile.
 - **Goal**: Provide professional-grade technical insights for complex investment decisions.
 
+### 5. Yahoo Finance Quota Fallback (Python Bridge)
+- **Problem**: Persistent `429 Quota Exceeded` errors from Yahoo Finance API for popular tickers.
+- **Proposed Solution**:
+    - Implement a fallback mechanism that triggers a local Python script (e.g., using `FinanceDataReader` or `pykrx` as robust local sources).
+    - If Node.js `getMarketData` fails repeatedly, call `admin-tools/python/fetch_quote.py` via child_process.
+    - Parse the Python stdout JSON and return it as `MarketData`.
+- **Trigger**: Automatic fallback on >3 consecutive Yahoo failures.
+
 ---
-*Last Updated: 2025-12-24*
+*Last Updated: 2025-12-26*

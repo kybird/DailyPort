@@ -34,12 +34,14 @@ export interface ObjectiveV3 {
     entry: number | null
     stop: number | null
     target: number | null
+    rr: number | null
 }
 
 export interface TradingObjectiveV3Result {
     short: ObjectiveV3 | null
     mid: ObjectiveV3 | null
     long: ObjectiveV3 | null
+    isAbnormal?: boolean
 }
 
 export interface TechnicalAnalysisResult {
@@ -237,7 +239,8 @@ export function calculateObjectives(currentPrice: number, candles: HistoricalBar
             reason,
             entry: status !== 'AVOID' && bestCandidate ? roundToMarketUnit(bestCandidate.entry) : null,
             stop: status !== 'AVOID' && bestCandidate ? roundToMarketUnit(bestCandidate.stop) : null,
-            target: status !== 'AVOID' && bestCandidate ? roundToMarketUnit(bestCandidate.target) : null
+            target: status !== 'AVOID' && bestCandidate ? roundToMarketUnit(bestCandidate.target) : null,
+            rr: status !== 'AVOID' && bestCandidate ? bestCandidate.rr : null
         }
     }
 

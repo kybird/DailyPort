@@ -107,8 +107,27 @@ def calculate_objectives_v3(current_price, history_rows):
     Python implementation of Trading Objective V3 §7, §8, §9
     history_rows: newest first (close, high, low)
     """
-    if len(history_rows) < 120:
+    if len(history_rows) < 20:
         return None
+        
+    # Partial History Handler (20 ~ 119 days)
+    # Return a safe "WAIT" status instead of None so UI works
+    if len(history_rows) < 120:
+        # Create a dummy "WAIT" objective
+        dummy_obj = {
+            "status": "WAIT",
+            "score": 0,
+            "strategy": "NO_TRADE",
+            "confidenceFlags": ["TREND_WEAK"],
+            "reason": "데이터 부족으로 정밀 분석 불가 (신규 상장 등)",
+            "entry": None, "stop": None, "target": None, "rr": 0
+        }
+        return {
+            "short": dummy_obj,
+            "mid": dummy_obj,
+            "long": dummy_obj,
+            "is_abnormal": True
+        }
 
     closes = [r["close"] for r in history_rows]
     highs = [r["high"] for r in history_rows]
@@ -136,6 +155,7 @@ def calculate_objectives_v3(current_price, history_rows):
         return 100 - (100 / (1 + (gains / losses)))
 
     def find_swing_lows(window=5):
+        if len(lows) < window * 2 + 1: return []
         sw = []
         for i in range(window, len(lows) - window):
             curr = lows[i]
@@ -146,23 +166,24 @@ def calculate_objectives_v3(current_price, history_rows):
     ma5, ma10, ma20, ma60, ma120 = sma(5), sma(10), sma(20), sma(60), sma(120)
     current_atr = atr(14)
     current_rsi = rsi(14)
-    recent_high = max(highs[:60])
+    recent_high = max(highs[:min(len(highs), 60)])
     swing_lows = find_swing_lows(5)
 
     def solve(timeframe):
         # 1. Base Score
         trend_score = 0
-        if ma20 and ma60 and ma120:
-            if ma20 > ma60 > ma120: trend_score = 30
-            elif ma20 > ma60: trend_score = 20
-            else: trend_score = -30
+        if ma20 and ma60:
+            if ma20 > ma60: trend_score = 20
+            else: trend_score = -20
+            # Bonus for long-term alignment
+            if ma120 and ma60 > ma120: trend_score += 10
         
         momentum_score = 0
         if 50 <= current_rsi <= 65: momentum_score = 15
         elif current_rsi > 70: momentum_score = -10
         elif current_rsi < 35: momentum_score = -5
 
-        vol_ratio = (current_atr / current_price) * 100 if current_atr else 0
+        vol_ratio = (current_atr / current_price) * 100 if current_atr and current_price else 0
         vol_adj = 5 if vol_ratio < 3 else (-15 if vol_ratio > 8 else 0)
         base_score = 50 + trend_score + momentum_score + vol_adj
 
@@ -175,11 +196,14 @@ def calculate_objectives_v3(current_price, history_rows):
         c = cfgs[timeframe]
 
         # 3. Candidates
-        raw = [ma5, ma10, ma20, ma60, ma120] + (swing_lows[-5:] if swing_lows else [])
+        # Filter out None values for short history stocks
+        valid_mas = [m for m in [ma5, ma10, ma20, ma60, ma120] if m is not None]
+        raw = valid_mas + (swing_lows[-5:] if swing_lows else [])
         candidates = sorted(list(set([p for p in raw if p and p <= current_price * 1.02])), reverse=True)
 
         best = None
         for entry in candidates:
+            # Safe checking for swing lows
             nearby_sw = sorted([sl for sl in swing_lows if sl < entry], reverse=True)
             n_sw = nearby_sw[0] if nearby_sw else None
             
@@ -203,7 +227,12 @@ def calculate_objectives_v3(current_price, history_rows):
         # 4. Status & Reason
         status, strategy, reason = 'AVOID', 'NO_TRADE', "적정 진입가가 없습니다."
         flags = []
-        if ma20 and ma60 and ma120 and ma20 > ma60 > ma120: flags.append('UPTREND_CONFIRMED')
+        
+        # Safe flag checks
+        if ma20 and ma60 and ma20 > ma60:
+             if ma120 and ma60 > ma120: flags.append('UPTREND_CONFIRMED')
+             else: flags.append('UPTREND_WEAK') # Partial uptrend
+             
         if ma20 and ma60 and ma20 < ma60: flags.append('BROKEN_TREND')
         if vol_ratio > 10: flags.append('HIGH_VOLATILITY')
         if current_rsi > 70: flags.append('OVERBOUGHT')
@@ -212,7 +241,7 @@ def calculate_objectives_v3(current_price, history_rows):
         if best:
             prox_val = (current_price - best['entry']) / best['entry']
             if prox_val <= c['prox']:
-                status = 'ACTIVE' if base_score >= 70 else 'WAIT'
+                status = 'ACTIVE' if base_score >= 60 else 'WAIT' # Slightly lower threshold for partial data
                 reason = f"주요 지지선 근처 진입 가능 (손익비: {best.get('rr', 0):.1f})." if status == 'ACTIVE' else "지지선 근처이나 추세 확인 필요."
             else:
                 reason = f"보수적 진입 대기 (목표가: {round(best['entry'], -1):,})."
@@ -237,7 +266,8 @@ def calculate_objectives_v3(current_price, history_rows):
     return {
         "short": solve('short'),
         "mid": solve('mid'),
-        "long": solve('long')
+        "long": solve('long'),
+        "is_abnormal": len(history_rows) < 120 # Flag as abnormal if history is short
     }
 
     return {

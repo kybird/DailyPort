@@ -73,7 +73,7 @@ export default function StockSearch({ onSelect }: StockSearchProps) {
                                     <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-tighter">{stock.market}</span>
                                 </div>
                             </div>
-                            <span className="text-xs text-zinc-500 dark:text-zinc-500 font-mono font-bold bg-zinc-100 dark:bg-zinc-800 px-2 py-1 rounded-md">{stock.ticker}</span>
+                            <span className="text-xs text-zinc-600 dark:text-zinc-500 font-mono font-bold bg-stone-200 dark:bg-zinc-800 px-2 py-1 rounded-md">{stock.ticker}</span>
                         </li>
                     ))}
                 </ul>

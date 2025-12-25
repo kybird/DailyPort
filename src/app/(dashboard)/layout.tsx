@@ -24,7 +24,7 @@ export default async function DashboardLayout({
 
     return (
         <AnalysisProvider>
-            <div className="flex min-h-screen bg-zinc-50 dark:bg-zinc-950 transition-colors duration-300">
+            <div className="flex min-h-screen bg-stone-200 dark:bg-black transition-colors duration-300">
                 {/* Sidebar - Mobile hidden for now, simple implementation */}
                 <Sidebar />
 
