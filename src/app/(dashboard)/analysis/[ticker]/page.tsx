@@ -217,21 +217,47 @@ export default async function AnalysisPage({
                                 { label: 'Long-term (장기)', data: technical.objectives.long, color: 'text-blue-600 font-black' }
                             ].map((group) => (
                                 <div key={group.label} className="space-y-4">
-                                    <div className={`text-[11px] font-black uppercase tracking-wider ${group.color}`}>{group.label}</div>
-                                    <div className="grid grid-cols-3 gap-3">
-                                        <div className="bg-zinc-50 dark:bg-zinc-800/50 p-3 rounded-2xl border border-zinc-100 dark:border-zinc-800 text-center">
-                                            <div className="text-[8px] font-black text-zinc-400 uppercase mb-1">진입</div>
-                                            <div className="text-[12px] font-mono font-black text-zinc-900 dark:text-white">₩{group.data.entry.toLocaleString()}</div>
-                                        </div>
-                                        <div className="bg-rose-50 dark:bg-rose-950/20 p-3 rounded-2xl border border-rose-100 dark:border-rose-900/30 text-center">
-                                            <div className="text-[8px] font-black text-rose-400 uppercase mb-1">손절</div>
-                                            <div className="text-[12px] font-mono font-black text-rose-500">₩{group.data.stop.toLocaleString()}</div>
-                                        </div>
-                                        <div className="bg-emerald-50 dark:bg-emerald-950/20 p-3 rounded-2xl border border-emerald-100 dark:border-emerald-900/30 text-center">
-                                            <div className="text-[8px] font-black text-emerald-400 uppercase mb-1">목표</div>
-                                            <div className="text-[12px] font-mono font-black text-emerald-500">₩{group.data.target.toLocaleString()}</div>
+                                    <div className="flex items-center justify-between">
+                                        <div className={`text-[11px] font-black uppercase tracking-wider ${group.color}`}>{group.label}</div>
+                                        <div className="flex gap-1">
+                                            {group.data.confidenceFlags.map(flag => (
+                                                <span
+                                                    key={flag}
+                                                    className={`px-1.5 py-0.5 rounded text-[8px] font-bold border ${flag.includes('UPTREND') ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500' :
+                                                            flag.includes('BROKEN') ? 'bg-rose-500/10 border-rose-500/20 text-rose-500' :
+                                                                flag.includes('WEAK') ? 'bg-amber-500/10 border-amber-500/20 text-amber-500' :
+                                                                    'bg-zinc-500/10 border-zinc-500/20 text-zinc-500'
+                                                        }`}
+                                                >
+                                                    {flag}
+                                                </span>
+                                            ))}
                                         </div>
                                     </div>
+
+                                    {group.data.status === 'ACTIVE' ? (
+                                        <div className="grid grid-cols-3 gap-3">
+                                            <div className="bg-zinc-50 dark:bg-zinc-800/50 p-3 rounded-2xl border border-zinc-100 dark:border-zinc-800 text-center">
+                                                <div className="text-[8px] font-black text-zinc-400 uppercase mb-1">진입</div>
+                                                <div className="text-[12px] font-mono font-black text-zinc-900 dark:text-white">₩{group.data.entry?.toLocaleString()}</div>
+                                            </div>
+                                            <div className="bg-rose-50 dark:bg-rose-950/20 p-3 rounded-2xl border border-rose-100 dark:border-rose-900/30 text-center">
+                                                <div className="text-[8px] font-black text-rose-400 uppercase mb-1">손절</div>
+                                                <div className="text-[12px] font-mono font-black text-rose-500">₩{group.data.stop?.toLocaleString()}</div>
+                                            </div>
+                                            <div className="bg-emerald-50 dark:bg-emerald-950/20 p-3 rounded-2xl border border-emerald-100 dark:border-emerald-900/30 text-center">
+                                                <div className="text-[8px] font-black text-emerald-400 uppercase mb-1">목표</div>
+                                                <div className="text-[12px] font-mono font-black text-emerald-500">₩{group.data.target?.toLocaleString()}</div>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-2xl border border-zinc-200 dark:border-zinc-800 border-dashed">
+                                            <div className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 italic flex items-center gap-2">
+                                                <ShieldAlert size={14} className="text-zinc-400" />
+                                                {group.data.reason || "관망(WAIT) 구간입니다."}
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             ))}
                         </div>

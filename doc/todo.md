@@ -16,6 +16,10 @@ This document tracks planned improvements and architectural goals for the DailyP
 - **Implementation**: Moved from fixed percentages to **ATR-based stop-loss** and **Risk/Reward based target prices**.
 - **Result**: Provides stock-specific, volatility-adjusted trading plans with safety checks and resistance constraints.
 
+### 4. Trading Objectives V2.1 (Confidence & Wait States) [DONE]
+ - **Implementation**: Introduce `WAIT` / `ACTIVE` states based on trend confirmation (MA120/MA60).
+ - **Goal**: Add technical confidence flags (RSI, Volatility) to let users know *why* a suggestion is made or why they should wait. (See [trading_objective_v2_1_plan.md](file:///c:/Project/DailyPort/doc/trading_objective_v2_1_plan.md))
+
 ## 📈 Long-term Improvements
 
 ### 3. Enhanced Caching Layer
