@@ -206,7 +206,7 @@ export function calculateObjectives(currentPrice: number, candles: HistoricalBar
                 status = baseScore >= 70 ? 'ACTIVE' : 'WAIT'
                 reason = status === 'ACTIVE'
                     ? `주요 지지선 근처 진입 가능 (RR: ${bestCandidate.rr.toFixed(1)}).`
-                    : `지지선 근처이나 추세 확인 필요 (${baseScore}점).`
+                    : `지지선 근처이나 추세 확인 필요.`
             } else {
                 status = 'WAIT'
                 reason = `보수적 진입 대기 (목표 지지선: ₩${roundToMarketUnit(bestCandidate.entry).toLocaleString()}).`

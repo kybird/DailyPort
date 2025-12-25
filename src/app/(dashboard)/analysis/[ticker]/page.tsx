@@ -95,6 +95,11 @@ export default async function AnalysisPage({
                                     시가총액 {formatKoreanUnit(fundamentals.market_cap)}
                                 </span>
                             )}
+                            {fundamentals?.revenue && (
+                                <span className="flex items-center gap-2 px-3 py-1 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-full border border-blue-100 dark:border-blue-800/50">
+                                    매출 {formatKoreanUnit(fundamentals.revenue)}
+                                </span>
+                            )}
                             <span className="opacity-50">갱신: {generatedAt ? new Date(generatedAt).toLocaleString() : 'Just now'}</span>
                         </div>
                     </div>
@@ -388,6 +393,24 @@ export default async function AnalysisPage({
                         {/* MA Trends */}
                         <div className="p-5 bg-gradient-to-r from-zinc-50 to-white dark:from-zinc-800/50 dark:to-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 space-y-3">
                             <div className="text-[10px] font-black text-zinc-400 uppercase">Moving Average Comparison</div>
+                            {fundamentals?.revenue && (
+                                <div className="flex justify-between items-center py-2">
+                                    <span className="text-zinc-500 font-bold">연간 매출액</span>
+                                    <span className="text-zinc-900 dark:text-white font-black">{formatKoreanUnit(fundamentals.revenue)}</span>
+                                </div>
+                            )}
+                            {fundamentals?.netIncome && (
+                                <div className="flex justify-between items-center py-2">
+                                    <span className="text-zinc-500 font-bold">당기순이익</span>
+                                    <span className={`font-black ${fundamentals.netIncome >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                                        {formatKoreanUnit(fundamentals.netIncome)}
+                                    </span>
+                                </div>
+                            )}
+                            <div className="flex justify-between items-center py-2">
+                                <span className="text-zinc-500 font-bold">PER</span>
+                                <span className="text-zinc-900 dark:text-white font-black">{fundamentals?.per?.toFixed(2) || '-'}배</span>
+                            </div>
                             <div className="flex justify-between items-end">
                                 <div className="space-y-1">
                                     <div className="text-[8px] font-bold text-zinc-400 uppercase">MA(5) Short</div>

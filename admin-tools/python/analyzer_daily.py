@@ -213,9 +213,8 @@ def calculate_objectives_v3(current_price, history_rows):
             prox_val = (current_price - best['entry']) / best['entry']
             if prox_val <= c['prox']:
                 status = 'ACTIVE' if base_score >= 70 else 'WAIT'
-                reason = f"주요 지지선 근처 (RR: {best['rr']:.1f})."
+                reason = f"주요 지지선 근처 (RR: {best['rr']:.1f})." if status == 'ACTIVE' else "지지선 근처이나 추세 확인 필요."
             else:
-                status = 'WAIT'
                 reason = f"보수적 진입 대기 (목표가: {round(best['entry'], -1):,})."
         else:
             reason = "손익비 부적합 (저항 인접 또는 리스크 과다)."
@@ -349,7 +348,9 @@ def process_watchlist(tickers):
                     "fundamentals": {
                         "market_cap": latest_p.get("market_cap"),
                         "per": latest_p.get("per"),
-                        "pbr": latest_p.get("pbr")
+                        "pbr": latest_p.get("pbr"),
+                        "revenue": latest_p.get("revenue"),
+                        "net_income": latest_p.get("net_income")
                     }
                 }
             }

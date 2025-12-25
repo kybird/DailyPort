@@ -215,9 +215,9 @@ def fetch_and_update_financials(year, quarter, corp_code=None):
             
             cursor.execute("""
                 UPDATE daily_price
-                SET operating_margin = ?, roe = ?
+                SET operating_margin = ?, roe = ?, revenue = ?, net_income = ?
                 WHERE code = ? AND date >= ?
-            """, (op_margin, roe, s_code, s_date))
+            """, (op_margin, roe, rev, net_inc, s_code, s_date))
             
             success += 1
             if success % 10 == 0:

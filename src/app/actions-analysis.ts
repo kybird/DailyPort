@@ -37,6 +37,8 @@ export interface AnalysisReport {
         market_cap: number | null
         per: number | null
         pbr: number | null
+        revenue?: number | null
+        netIncome?: number | null
     }
     portfolio?: {
         quantity: number
@@ -224,7 +226,11 @@ export async function getAnalysis(ticker: string): Promise<AnalysisReport | { er
         },
         technical,
         supplyDemand: supplyInfo,
-        fundamentals: fundamentalInfo, // Fixed field name
+        fundamentals: {
+            ...fundamentalInfo,
+            revenue: (fundamentalInfo as any)?.revenue,
+            netIncome: (fundamentalInfo as any)?.net_income
+        },
         algoAnalysis: algoInfo,
         portfolio: portfolioInfo,
         summary: summaries.join(' '),
