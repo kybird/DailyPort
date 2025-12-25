@@ -110,7 +110,6 @@ def calculate_objectives_v3(current_price, history_rows):
     if len(history_rows) < 120:
         return None
 
-    # SMA Calculations (Newest first, but SMA needs oldest first or reversed indexing)
     closes = [r["close"] for r in history_rows]
     highs = [r["high"] for r in history_rows]
     lows = [r["low"] for r in history_rows]
@@ -123,37 +122,35 @@ def calculate_objectives_v3(current_price, history_rows):
         if len(history_rows) < period + 1: return None
         tr_sum = 0
         for i in range(period):
-            h = highs[i]
-            l = lows[i]
-            pc = closes[i+1]
+            h, l, pc = highs[i], lows[i], closes[i+1]
             tr = max(h - l, abs(h - pc), abs(l - pc))
             tr_sum += tr
         return tr_sum / period
 
     def rsi(period=14):
         if len(closes) < period + 1: return 50
-        deltas = []
-        for i in range(period):
-            deltas.append(closes[i] - closes[i+1])
-        gains = [d if d > 0 else 0 for d in deltas]
-        losses = [abs(d) if d < 0 else 0 for d in deltas]
-        avg_gain = sum(gains) / period
-        avg_loss = sum(losses) / period
-        if avg_loss == 0: return 100
-        rs = avg_gain / avg_loss
-        return 100 - (100 / (1 + rs))
+        deltas = [closes[i] - closes[i+1] for i in range(period)]
+        gains = sum([d for d in deltas if d > 0]) / period
+        losses = sum([abs(d) for d in deltas if d < 0]) / period
+        if losses == 0: return 100
+        return 100 - (100 / (1 + (gains / losses)))
+
+    def find_swing_lows(window=5):
+        sw = []
+        for i in range(window, len(lows) - window):
+            curr = lows[i]
+            if curr <= min(lows[i-window:i]) and curr <= min(lows[i+1:i+1+window]):
+                sw.append(curr)
+        return sw
 
     ma5, ma10, ma20, ma60, ma120 = sma(5), sma(10), sma(20), sma(60), sma(120)
     current_atr = atr(14)
     current_rsi = rsi(14)
-
-    recent_high = max(highs[:20])
-    recent_low_short = min(lows[:20])
-    recent_low_mid = min(lows[:60])
-    recent_low_long = min(lows[:120])
+    recent_high = max(highs[:60])
+    swing_lows = find_swing_lows(5)
 
     def solve(timeframe):
-        # 1. Scoring Logic (§7)
+        # 1. Base Score
         trend_score = 0
         if ma20 and ma60 and ma120:
             if ma20 > ma60 > ma120: trend_score = 30
@@ -161,89 +158,88 @@ def calculate_objectives_v3(current_price, history_rows):
             else: trend_score = -30
         
         momentum_score = 0
-        if 50 <= current_rsi <= 65: momentum_score = 10
+        if 50 <= current_rsi <= 65: momentum_score = 15
         elif current_rsi > 70: momentum_score = -10
-        elif current_rsi < 30: momentum_score = -5
+        elif current_rsi < 35: momentum_score = -5
 
-        volatility_adj = 0
         vol_ratio = (current_atr / current_price) * 100 if current_atr else 0
-        if vol_ratio < 3: volatility_adj = 5
-        elif vol_ratio > 8: volatility_adj = -15
+        vol_adj = 5 if vol_ratio < 3 else (-15 if vol_ratio > 8 else 0)
+        base_score = 50 + trend_score + momentum_score + vol_adj
 
-        base_score = 50 + trend_score + momentum_score + volatility_adj
+        # 2. RR Configurations
+        cfgs = {
+            'short': {'mul': 1.5, 'min_rr': 2.0, 'max_risk': 0.05, 'prox': 0.02},
+            'mid':   {'mul': 2.0, 'min_rr': 2.5, 'max_risk': 0.10, 'prox': 0.04},
+            'long':  {'mul': 3.0, 'min_rr': 3.0, 'max_risk': 0.15, 'prox': 0.06}
+        }
+        c = cfgs[timeframe]
 
-        # 2. Entry / Stop / Target (§8)
-        entry = current_price
-        multiplier, rr, min_low = 2.0, 2.5, recent_low_mid
-        
-        if timeframe == 'short':
-            entry = min(current_price, ma5 or current_price, ma10 or current_price)
-            multiplier, rr, min_low = 1.5, 2.0, recent_low_short
-        elif timeframe == 'mid':
-            entry = min(current_price, ma20 or current_price)
-            multiplier, rr, min_low = 2.0, 2.5, recent_low_mid
-        else:
-            entry = min(current_price, ma60 or current_price)
-            multiplier, rr, min_low = 3.0, 3.0, recent_low_long
+        # 3. Candidates
+        raw = [ma5, ma10, ma20, ma60, ma120] + (swing_lows[-5:] if swing_lows else [])
+        candidates = sorted(list(set([p for p in raw if p and p <= current_price * 1.02])), reverse=True)
 
-        stop = entry - (current_atr * multiplier) if current_atr else entry * 0.95
-        stop = max(stop, min_low)
+        best = None
+        for entry in candidates:
+            nearby_sw = sorted([sl for sl in swing_lows if sl < entry], reverse=True)
+            n_sw = nearby_sw[0] if nearby_sw else None
+            
+            stop = entry - (current_atr * c['mul']) if current_atr else entry * 0.95
+            if n_sw and n_sw > stop * 0.95: stop = n_sw
+            
+            risk = entry - stop
+            if risk <= 0: continue
+            
+            pot_target = entry + (risk * c['min_rr'])
+            target = min(pot_target, recent_high if recent_high > entry else pot_target)
+            
+            if recent_high > entry and (recent_high - entry) < risk * 1.5:
+                target = recent_high
+                
+            rr = (target - entry) / risk
+            if rr >= c['min_rr'] and (risk/entry) <= c['max_risk']:
+                best = {"entry": entry, "stop": stop, "target": target, "rr": rr}
+                break
 
-        risk_penalty = 0
-        if entry > 0 and (entry - stop) / entry < 0.03: risk_penalty -= 10
-        
-        target = entry + (entry - stop) * rr
-        target = min(target, recent_high if recent_high > entry else target)
-
-        if (entry - stop) > 0 and (target - entry) / (entry - stop) < 2.0: risk_penalty -= 10
-
-        final_score = max(0, min(100, base_score + risk_penalty))
-
-        # 3. Status Mapping (§6)
-        status = 'AVOID'
-        if final_score >= 70: status = 'ACTIVE'
-        elif final_score >= 40: status = 'WAIT'
-
-        # 4. Flags (§5)
+        # 4. Status & Reason
+        status, strategy, reason = 'AVOID', 'NO_TRADE', "적정 진입가가 없습니다."
         flags = []
         if ma20 and ma60 and ma120 and ma20 > ma60 > ma120: flags.append('UPTREND_CONFIRMED')
         if ma20 and ma60 and ma20 < ma60: flags.append('BROKEN_TREND')
-        if ma20 and abs(current_price - ma20) / ma20 < 0.01: flags.append('TREND_WEAK')
+        if vol_ratio > 10: flags.append('HIGH_VOLATILITY')
         if current_rsi > 70: flags.append('OVERBOUGHT')
         if current_rsi < 30: flags.append('OVERSOLD')
-        if vol_ratio > 5: flags.append('HIGH_VOLATILITY')
 
-        # 5. Strategy (§9)
-        strategy = 'NO_TRADE'
-        if status == 'AVOID' or 'BROKEN_TREND' in flags:
-            strategy = 'NO_TRADE'
-        elif 'UPTREND_CONFIRMED' in flags and current_rsi < 65:
-            strategy = 'PULLBACK_TREND'
-        elif 'HIGH_VOLATILITY' in flags and current_price >= recent_high:
-            strategy = 'BREAKOUT'
-        elif 'OVERSOLD' in flags and 'TREND_WEAK' in flags:
-            strategy = 'MEAN_REVERSION'
+        if best:
+            prox_val = (current_price - best['entry']) / best['entry']
+            if prox_val <= c['prox']:
+                status = 'ACTIVE' if base_score >= 70 else 'WAIT'
+                reason = f"주요 지지선 근처 (RR: {best['rr']:.1f})."
+            else:
+                status = 'WAIT'
+                reason = f"보수적 진입 대기 (목표가: {round(best['entry'], -1):,})."
+        else:
+            reason = "손익비 부적합 (저항 인접 또는 리스크 과다)."
 
-        # 6. Stop/Target Rules (§8)
-        if stop >= entry or target <= entry:
-            status = 'WAIT'
-
-        # Human Reason (§10)
-        reason = ""
-        if status == 'AVOID': reason = f"점수 미달 ({final_score}점). 하락 추세 또는 과도한 리스크로 인해 제외됩니다."
-        elif status == 'WAIT': reason = f"관망 구간 ({final_score}점). 지지선 확인 또는 추세 강화가 필요합니다."
-        else: reason = f"정배열 및 모멘텀 양호 ({final_score}점). {strategy} 전략 기반 매수 검토."
+        if status != 'AVOID':
+            if 'UPTREND_CONFIRMED' in flags: strategy = 'PULLBACK_TREND'
+            elif 'OVERSOLD' in flags: strategy = 'MEAN_REVERSION'
 
         return {
             "status": status,
-            "score": final_score,
+            "score": int(max(0, min(100, base_score))),
             "strategy": strategy,
             "confidenceFlags": flags,
             "reason": reason,
-            "entry": round(entry, -1) if status == 'ACTIVE' else None,
-            "stop": round(stop, -1) if status == 'ACTIVE' else None,
-            "target": round(target, -1) if status == 'ACTIVE' else None
+            "entry": round(best['entry'], -1) if best and status != 'AVOID' else None,
+            "stop": round(best['stop'], -1) if best and status != 'AVOID' else None,
+            "target": round(best['target'], -1) if best and status != 'AVOID' else None
         }
+
+    return {
+        "short": solve('short'),
+        "mid": solve('mid'),
+        "long": solve('long')
+    }
 
     return {
         "short": solve('short'),

@@ -103,14 +103,25 @@ export async function getAnalysis(ticker: string): Promise<AnalysisReport | { er
     // 3. Generate Summary & Merge Data
     const summaries: string[] = []
 
-    // Price Summary
-    if ((marketData.changePercent || 0) > 0) summaries.push('주가 상승세.')
-    else summaries.push('주가 하락세.')
+    // Price & Trend Summary
+    const change = marketData.changePercent || 0
+    const isUpTrend = technical.trend.status === 'UP_TREND' || technical.trend.status === 'GOLDEN_CROSS'
 
-    // Technical Summary
-    if (technical.rsi.status === 'OVERBOUGHT') summaries.push('RSI 과매수.')
+    if (change > 2) summaries.push('주가 강세.')
+    else if (change > 0) summaries.push('주가 소폭 상승.')
+    else if (change > -1 && isUpTrend) summaries.push('상승 추세 내 단기 숨고르기.')
+    else if (change > -3 && isUpTrend) summaries.push('상승 중 단기 조정 국면.')
+    else if (change < -2) summaries.push('주가 하락세.')
+    else summaries.push('주가 소폭 조정.')
+
+    // Technical Context
+    if (technical.rsi.status === 'OVERBOUGHT') summaries.push('RSI 과열 신호.')
+    else if (technical.rsi.status === 'OVERSOLD') summaries.push('RSI 과매도 구간.')
+
     if (technical.trend.status === 'GOLDEN_CROSS') summaries.push('골든크로스 발생.')
-    if (technical.trend.status === 'UP_TREND') summaries.push('이평선 정배열.')
+    if (technical.trend.status === 'UP_TREND') summaries.push('이평선 정배열 유지.')
+    if (technical.trend.status === 'DEAD_CROSS') summaries.push('데드크로스 경계 필요.')
+    if (technical.trend.status === 'DOWN_TREND') summaries.push('이평선 역배열 진행.')
 
     let supplyInfo = undefined
     let algoInfo = undefined

@@ -78,6 +78,22 @@ function clamp(value: number, min: number, max: number): number {
     return Math.min(Math.max(value, min), max)
 }
 
+/**
+ * Finds local minimums (Swing Lows) within a given window
+ */
+function findSwingLows(lows: number[], window: number = 5): number[] {
+    const swingLows: number[] = []
+    for (let i = window; i < lows.length - window; i++) {
+        const currentLow = lows[i]
+        const leftSide = lows.slice(i - window, i)
+        const rightSide = lows.slice(i + 1, i + 1 + window)
+        if (currentLow <= Math.min(...leftSide) && currentLow <= Math.min(...rightSide)) {
+            swingLows.push(currentLow)
+        }
+    }
+    return swingLows
+}
+
 export function calculateObjectives(currentPrice: number, candles: HistoricalBar[] | undefined): TradingObjectiveV3Result | null {
     if (!candles || candles.length < 120) {
         console.warn(`[calculateObjectives] Insufficient data: ${candles?.length || 0} bars. V3 requires at least 120.`)
@@ -88,17 +104,13 @@ export function calculateObjectives(currentPrice: number, candles: HistoricalBar
     const lows = candles.map(c => c.low)
     const closes = candles.map(c => c.close)
 
-    // SMA: 5, 10, 20, 60, 120
+    // Indicators
     const ma5Arr = SMA.calculate({ values: closes, period: 5 })
     const ma10Arr = SMA.calculate({ values: closes, period: 10 })
     const ma20Arr = SMA.calculate({ values: closes, period: 20 })
     const ma60Arr = SMA.calculate({ values: closes, period: 60 })
     const ma120Arr = SMA.calculate({ values: closes, period: 120 })
-
-    // ATR: 14
     const atr14Arr = ATR.calculate({ high: highs, low: lows, close: closes, period: 14 })
-
-    // RSI: 14
     const rsi14Arr = RSI.calculate({ values: closes, period: 14 })
 
     const ma5 = ma5Arr[ma5Arr.length - 1]
@@ -109,150 +121,123 @@ export function calculateObjectives(currentPrice: number, candles: HistoricalBar
     const atr = atr14Arr[atr14Arr.length - 1]
     const rsi = rsi14Arr[rsi14Arr.length - 1]
 
-    const recentHigh = Math.max(...highs.slice(-20))
-    const recentLowShort = Math.min(...lows.slice(-20))
-    const recentLowMid = Math.min(...lows.slice(-60))
-    const recentLowLong = Math.min(...lows.slice(-120))
+    if (ma5 === undefined || ma20 === undefined || ma60 === undefined || ma120 === undefined || atr === undefined || rsi === undefined) {
+        return null
+    }
+
+    const recentHigh = Math.max(...highs.slice(-60)) // Increased window to 60 for better resistance detection
+    const swingLows = findSwingLows(lows, 5)
+
+    // Base Scoring (Trend & Momentum)
+    let trendScore = 0
+    if (ma20 > ma60 && ma60 > ma120) trendScore = 30
+    else if (ma20 > ma60) trendScore = 20
+    else trendScore = -30
+
+    let momentumScore = 0
+    if (rsi >= 50 && rsi <= 65) momentumScore = 15 // Favors healthy accumulation
+    else if (rsi > 70) momentumScore = -10        // Overextended
+    else if (rsi < 35) momentumScore = -5
+
+    const volRatio = (atr / currentPrice) * 100
+    let volatilityAdj = volRatio < 3 ? 5 : (volRatio > 8 ? -15 : 0)
+
+    const baseScore = 50 + trendScore + momentumScore + volatilityAdj
 
     const solve = (timeframe: 'short' | 'mid' | 'long'): ObjectiveV3 => {
         const flags: ConfidenceFlag[] = []
-        let reason = ""
 
-        // Indicator Checks
-        if (ma5 === undefined || ma10 === undefined || ma20 === undefined || ma60 === undefined || ma120 === undefined || atr === undefined || rsi === undefined) {
-            return {
-                status: 'WAIT',
-                score: 50,
-                strategy: 'NO_TRADE',
-                confidenceFlags: [],
-                reason: "지표 계산 실패 (데이터 부족)",
-                entry: null,
-                stop: null,
-                target: null
+        // 1. Define RR Tiers & Constraints
+        const rrConfig = {
+            short: { multiplier: 1.5, minRR: 2.0, maxRisk: 0.05, proximityPct: 0.02 },
+            mid: { multiplier: 2.0, minRR: 2.5, maxRisk: 0.10, proximityPct: 0.04 },
+            long: { multiplier: 3.0, minRR: 3.0, maxRisk: 0.15, proximityPct: 0.06 }
+        }
+        const cfg = rrConfig[timeframe]
+
+        // 2. Collect Candidate Supports
+        const rawCandidates = [ma5, ma10, ma20, ma60, ma120, ...swingLows.slice(-5)]
+        const candidates = Array.from(new Set(rawCandidates))
+            .filter(p => p <= currentPrice * 1.02) // Only look at supports below or very near
+            .sort((a, b) => b - a)                 // Prioritize closest supports
+
+        let bestCandidate: { entry: number, stop: number, target: number, rr: number } | null = null
+
+        // 3. Evaluate Candidates
+        for (const entry of candidates) {
+            // Find strongest nearby swing low for stop
+            const nearestSwingLow = swingLows.filter(sl => sl < entry).sort((a, b) => b - a)[0]
+            let stop = entry - (atr * cfg.multiplier)
+            if (nearestSwingLow && nearestSwingLow > stop * 0.95) {
+                stop = nearestSwingLow // Use swing low if it's logically close
+            }
+
+            const risk = entry - stop
+            if (risk <= 0) continue
+
+            // Resistance-aware target
+            let potentialTarget = entry + (risk * cfg.minRR)
+            let actualTarget = Math.min(potentialTarget, recentHigh > entry ? recentHigh : potentialTarget)
+
+            // If we are at the top, target is capped by Resistance
+            if (recentHigh > entry && (recentHigh - entry) < risk * 1.5) {
+                // Not enough room to resistance for a good RR
+                actualTarget = recentHigh
+            }
+
+            const currentRR = (actualTarget - entry) / risk
+            const riskPct = risk / entry
+
+            if (currentRR >= cfg.minRR && riskPct <= cfg.maxRisk) {
+                bestCandidate = { entry, stop, target: actualTarget, rr: currentRR }
+                break // Found the first (highest) valid support
             }
         }
 
-        // 1. Scoring Logic (§7)
-        let trendScore = 0
-        if (ma20 > ma60 && ma60 > ma120) trendScore = 30
-        else if (ma20 > ma60) trendScore = 20
-        else trendScore = -30
+        // 4. Status & Strategy
+        let status: 'ACTIVE' | 'WAIT' | 'AVOID' = 'AVOID'
+        let strategy: StrategyType = 'NO_TRADE'
+        let reason = ""
 
-        let momentumScore = 0
-        if (rsi >= 50 && rsi <= 65) momentumScore = 10
-        else if (rsi > 70) momentumScore = -10
-        else if (rsi < 30) momentumScore = -5
+        if (bestCandidate) {
+            const proximity = (currentPrice - bestCandidate.entry) / bestCandidate.entry
 
-        let volatilityAdj = 0
-        const volRatio = (atr / currentPrice) * 100
-        if (volRatio < 3) volatilityAdj = 5
-        else if (volRatio > 8) volatilityAdj = -15
-
-        // Initial score for status check (Partial score without penalty)
-        let baseScore = 50 + trendScore + momentumScore + volatilityAdj
-
-        // 2. Entry / Stop / Target (§8)
-        let entryVal: number = currentPrice
-        let multiplier = 2.0
-        let rr = 2.5
-        let minLow = recentLowMid
-
-        if (timeframe === 'short') {
-            entryVal = Math.min(currentPrice, ma5, ma10)
-            multiplier = 1.5
-            rr = 2.0
-            minLow = recentLowShort
-        } else if (timeframe === 'mid') {
-            entryVal = Math.min(currentPrice, ma20)
-            multiplier = 2.0
-            rr = 2.5
-            minLow = recentLowMid
+            if (proximity <= cfg.proximityPct) {
+                status = baseScore >= 70 ? 'ACTIVE' : 'WAIT'
+                reason = status === 'ACTIVE'
+                    ? `주요 지지선 근처 진입 가능 (RR: ${bestCandidate.rr.toFixed(1)}).`
+                    : `지지선 근처이나 추세 확인 필요 (${baseScore}점).`
+            } else {
+                status = 'WAIT'
+                reason = `보수적 진입 대기 (목표 지지선: ₩${roundToMarketUnit(bestCandidate.entry).toLocaleString()}).`
+            }
         } else {
-            entryVal = Math.min(currentPrice, ma60)
-            multiplier = 3.0
-            rr = 3.0
-            minLow = recentLowLong
+            status = 'AVOID'
+            reason = "손익비가 산출되는 적절한 진입 지지선이 없습니다 (저항 근접 또는 리스크 과다)."
         }
 
-        let stopVal = entryVal - (atr * multiplier)
-        stopVal = Math.max(stopVal, minLow)
-
-        let riskPenalty = 0
-        // Spec says: stop / entry < 3% -> -10. This is likely a typo in spec for "Risk percentage"
-        // Interpretation: (entry - stop) / entry < 0.03
-        if ((entryVal - stopVal) / entryVal < 0.03) riskPenalty -= 10
-
-        let targetVal = entryVal + (entryVal - stopVal) * rr
-        targetVal = Math.min(targetVal, recentHigh > entryVal ? recentHigh : targetVal)
-
-        if ((targetVal - entryVal) / (entryVal - stopVal) < 2.0) riskPenalty -= 10
-
-        const finalScore = clamp(baseScore + riskPenalty, 0, 100)
-
-        // 3. Status Determination (§6)
-        let status: 'ACTIVE' | 'WAIT' | 'AVOID' = 'AVOID'
-        if (finalScore >= 70) status = 'ACTIVE'
-        else if (finalScore >= 40) status = 'WAIT'
-
-        // 4. Flags (§5)
+        // 5. Flags
         if (ma20 > ma60 && ma60 > ma120) flags.push('UPTREND_CONFIRMED')
         if (ma20 < ma60) flags.push('BROKEN_TREND')
-        if (Math.abs(currentPrice - ma20) / ma20 < 0.01) flags.push('TREND_WEAK')
+        if ((currentPrice - ma20) / ma20 > 0.10) flags.push('HIGH_VOLATILITY') // Extension as proxy for volatility
         if (rsi > 70) flags.push('OVERBOUGHT')
         if (rsi < 30) flags.push('OVERSOLD')
-        if (volRatio > 5) flags.push('HIGH_VOLATILITY')
 
-        // 5. Strategy (§9)
-        let strategy: StrategyType = 'NO_TRADE'
-        if (status === 'AVOID' || flags.includes('BROKEN_TREND')) {
-            strategy = 'NO_TRADE'
-        } else if (flags.includes('UPTREND_CONFIRMED') && rsi < 65) {
-            strategy = 'PULLBACK_TREND'
-        } else if (flags.includes('HIGH_VOLATILITY') && currentPrice >= recentHigh) {
-            strategy = 'BREAKOUT'
-        } else if (flags.includes('OVERSOLD') && flags.includes('TREND_WEAK')) {
-            strategy = 'MEAN_REVERSION'
-        }
-
-        // 6. Stop/Target Rules & Reason (§8, §10)
-        let finalReason = ""
-        if (stopVal >= entryVal) {
-            status = 'WAIT'
-            finalReason = "손절가가 진입가보다 높거나 같습니다. (변동성 과다)"
-        }
-        if (targetVal <= entryVal) {
-            status = 'WAIT'
-            finalReason = "목표가가 진입가보다 낮거나 같습니다. (익절 공간 부족)"
-        }
-
-        if (status === 'AVOID') {
-            finalReason = finalReason || `점수가 너무 낮습니다 (${finalScore}점). 하락 추세 또는 리스크가 큽니다.`
-        } else if (status === 'WAIT') {
-            finalReason = finalReason || `현재 관망 구간입니다 (${finalScore}점). 추세 확인이 필요합니다.`
-        } else {
-            finalReason = `추세 정배열 및 모멘텀 양호 (${finalScore}점). ${strategy} 전략 유효.`
-        }
-
-        // Nullify if not ACTIVE (§6.2)
-        let finalEntry: number | null = entryVal
-        let finalStop: number | null = stopVal
-        let finalTarget: number | null = targetVal
-
-        if (status !== 'ACTIVE') {
-            finalEntry = null
-            finalStop = null
-            finalTarget = null
+        // Strategy mapping based on findings
+        if (status !== 'AVOID') {
+            if (flags.includes('UPTREND_CONFIRMED')) strategy = 'PULLBACK_TREND'
+            else if (flags.includes('OVERSOLD')) strategy = 'MEAN_REVERSION'
         }
 
         return {
             status,
-            score: finalScore,
+            score: clamp(baseScore, 0, 100),
             strategy,
             confidenceFlags: flags,
-            reason: finalReason.trim(),
-            entry: finalEntry ? roundToMarketUnit(finalEntry) : null,
-            stop: finalStop ? roundToMarketUnit(finalStop) : null,
-            target: finalTarget ? roundToMarketUnit(finalTarget) : null
+            reason,
+            entry: status !== 'AVOID' && bestCandidate ? roundToMarketUnit(bestCandidate.entry) : null,
+            stop: status !== 'AVOID' && bestCandidate ? roundToMarketUnit(bestCandidate.stop) : null,
+            target: status !== 'AVOID' && bestCandidate ? roundToMarketUnit(bestCandidate.target) : null
         }
     }
 
