@@ -240,21 +240,40 @@ export default function AnalysisPanel({ ticker, onClose, mode = 'portfolio', por
                                         { label: '장기', data: report.technical.objectives.long, color: 'text-blue-400' }
                                     ].map((group) => (
                                         <div key={group.label} className="grid grid-cols-1 gap-2">
-                                            <div className={`text-[10px] font-black uppercase tracking-widest ${group.color}`}>{group.label}</div>
-                                            <div className="grid grid-cols-3 gap-2">
-                                                <div className="bg-zinc-800/50 p-2 rounded-lg border border-zinc-700/50">
-                                                    <div className="text-[8px] font-bold text-zinc-500 uppercase">진입</div>
-                                                    <div className="text-xs font-mono font-bold text-zinc-300">₩{group.data.entry.toLocaleString()}</div>
-                                                </div>
-                                                <div className="bg-rose-900/20 p-2 rounded-lg border border-rose-900/30">
-                                                    <div className="text-[8px] font-bold text-rose-500 uppercase">손절</div>
-                                                    <div className="text-xs font-mono font-bold text-rose-400">₩{group.data.stop.toLocaleString()}</div>
-                                                </div>
-                                                <div className="bg-emerald-900/20 p-2 rounded-lg border border-emerald-900/30">
-                                                    <div className="text-[8px] font-bold text-emerald-500 uppercase">목표</div>
-                                                    <div className="text-xs font-mono font-bold text-emerald-400">₩{group.data.target.toLocaleString()}</div>
+                                            <div className="flex items-center justify-between">
+                                                <div className={`text-[10px] font-black uppercase tracking-widest ${group.color}`}>{group.label}</div>
+                                                <div className="flex gap-1 overflow-x-auto">
+                                                    {group.data.confidenceFlags.map(flag => (
+                                                        <span key={flag} className="px-1 py-0.5 rounded-[4px] bg-white/5 border border-white/10 text-[7px] text-zinc-400 font-bold whitespace-nowrap">
+                                                            {flag}
+                                                        </span>
+                                                    ))}
                                                 </div>
                                             </div>
+
+                                            {group.data.status === 'ACTIVE' ? (
+                                                <div className="grid grid-cols-3 gap-2">
+                                                    <div className="bg-zinc-800/50 p-2 rounded-lg border border-zinc-700/50">
+                                                        <div className="text-[8px] font-bold text-zinc-500 uppercase">진입</div>
+                                                        <div className="text-xs font-mono font-bold text-zinc-300">₩{group.data.entry?.toLocaleString()}</div>
+                                                    </div>
+                                                    <div className="bg-rose-900/20 p-2 rounded-lg border border-rose-900/30">
+                                                        <div className="text-[8px] font-bold text-rose-500 uppercase">손절</div>
+                                                        <div className="text-xs font-mono font-bold text-rose-400">₩{group.data.stop?.toLocaleString()}</div>
+                                                    </div>
+                                                    <div className="bg-emerald-900/20 p-2 rounded-lg border border-emerald-900/30">
+                                                        <div className="text-[8px] font-bold text-emerald-500 uppercase">목표</div>
+                                                        <div className="text-xs font-mono font-bold text-emerald-400">₩{group.data.target?.toLocaleString()}</div>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div className="p-3 bg-zinc-800/30 rounded-lg border border-dashed border-zinc-700/50">
+                                                    <div className="text-[9px] font-bold text-zinc-500 italic flex items-center gap-1.5">
+                                                        <div className="w-1 h-1 bg-zinc-600 rounded-full" />
+                                                        {group.data.reason || "관망(WAIT) 구간입니다."}
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
                                     ))}
                                 </div>

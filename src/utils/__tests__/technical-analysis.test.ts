@@ -1,7 +1,7 @@
 
 import { calculateObjectives } from '../technical-analysis';
 
-const mockCandles = Array.from({ length: 100 }, (_, i) => ({
+const mockCandles = Array.from({ length: 150 }, (_, i) => ({
     date: `2023-01-${i + 1}`,
     open: 100000 + i * 100,
     high: 105000 + i * 100,
