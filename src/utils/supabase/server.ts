@@ -26,5 +26,20 @@ export async function createClient() {
                 },
             },
         }
+
+    )
+}
+
+// Client for usage in unstable_cache (No cookies allowed)
+export function createAnonClient() {
+    return createServerClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+            cookies: {
+                getAll() { return [] },
+                setAll() { }
+            },
+        }
     )
 }

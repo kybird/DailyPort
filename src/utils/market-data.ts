@@ -1,6 +1,6 @@
 
 import YahooFinance from 'yahoo-finance2'
-import { createClient } from '@/utils/supabase/server'
+
 
 const yahooFinance = new YahooFinance({ suppressNotices: ['ripHistorical', 'yahooSurvey'] })
 
@@ -168,9 +168,13 @@ export async function getKOSDAQIndexData(): Promise<IndexData[]> {
 
 
 
+
+
+import { createClient, createAnonClient } from '@/utils/supabase/server'
+
 // Internal function to perform the actual fetch
 async function fetchMarketDataInternal(ticker: string): Promise<MarketData | null> {
-    const supabase = await createClient()
+    const supabase = createAnonClient()
 
     // 1. Check Cache (Supabase)
     const { data: cache } = await supabase
