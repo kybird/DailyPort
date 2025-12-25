@@ -5,7 +5,14 @@ import sys
 import time
 import pandas as pd
 from datetime import datetime, timedelta
+import logging
 from pykrx import stock
+
+# Logging Setup
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+# Suppress pykrx internal logging clutter
+logging.getLogger("pykrx").setLevel(logging.ERROR)
 
 # Configuration
 DB_PATH = os.path.join(os.path.dirname(__file__), '../../dailyport.db')
@@ -23,11 +30,20 @@ def update_tickers(conn):
     markets = ["KOSPI", "KOSDAQ", "KONEX"]
     count = 0
     
+    consecutive_failures = 0
     for market in markets:
         try:
             tickers = stock.get_market_ticker_list(market=market)
             print(f"   found {len(tickers)} in {market}")
             
+            if not tickers:
+                consecutive_failures += 1
+                if consecutive_failures >= 3:
+                    logger.warning("🛑 No tickers found in any market. Likely a holiday or server issue. Skipping ticker update.")
+                    break
+                continue
+            
+            consecutive_failures = 0
             for code in tickers:
                 name = stock.get_market_ticker_name(code)
                 cursor.execute("""
@@ -39,7 +55,10 @@ def update_tickers(conn):
                 """, (code, name, market, datetime.now().isoformat()))
                 count += 1
         except Exception as e:
-            print(f"❌ Error fetching {market} tickers: {e}")
+            logger.error(f"❌ Error fetching {market} tickers: {e}")
+            consecutive_failures += 1
+            if consecutive_failures >= 3:
+                break
 
     conn.commit()
     print(f"✅ Master Updated: {count} tickers processed.")
@@ -71,18 +90,25 @@ def repair_supply_bulk(conn, start_date, end_date=None):
     
     print(f"📊 Processing {total} tickers individually...")
     
+    consecutive_failures = 0
+    success_count = 0
+    
     for i, (code, name) in enumerate(tickers):
         try:
             # Fetch for the entire range for THIS ticker
-            # PyKRX returns a DF indexed by Date with columns: [기관합계, 기타법인, 개인, 외국인합계, 전체]
             df = stock.get_market_trading_value_by_date(start_date, end_date, code)
             
             if df.empty:
+                consecutive_failures += 1
+                if consecutive_failures > 50:
+                    logger.warning(f"🛑 Too many empty results. Probably a holiday or no data for {start_date}. Stopping.")
+                    break
                 continue
-                
+            
+            consecutive_failures = 0 # Reset on success or at least non-error
+            
             supply_data = []
             for date_val, row in df.iterrows():
-                # date_val is a Timestamp
                 date_str = date_val.strftime("%Y%m%d")
                 supply_data.append((
                     code, date_str,
@@ -97,18 +123,26 @@ def repair_supply_bulk(conn, start_date, end_date=None):
                     VALUES (?, ?, ?, ?, ?)
                 """, supply_data)
                 conn.commit()
+                success_count += 1
             
-            if (i + 1) % 50 == 0 or (i + 1) == total:
-                print(f"   [{i+1}/{total}] {code} {name} synced ({len(supply_data)} days).")
+            if (i+1) % 50 == 0:
+                print(f"   [{i+1}/{total}] {code} ({name}) synced.")
             
             # Subtle delay to respect KRX
             time.sleep(0.05)
             
         except Exception as e:
-            print(f"\n❌ Error processing {code}: {e}")
-            time.sleep(2) # Wait longer on error
+            consecutive_failures += 1
+            # logger.warning(f"Error {code}: {e}")
+            
+            if consecutive_failures > 10:
+                logger.error(f"❌ Consecutive failures ({consecutive_failures}) detected at {code}. "
+                             f"This usually means the KRX server is down or it's a holiday ({start_date}). "
+                             "Check your internet or the date. Stopping Supply Sync.")
+                break
+            continue
 
-    print("\n✨ Supply Repair Task Completed.")
+    print(f"✅ Fast Supply Repair Finished. (Synced {success_count} tickers)")
 
 def sync_market_data_bulk(conn, start_date=None, end_date=None, test_mode=False, force_supply=False):
     print(f"🚀 Starting Bulk Market Sync ({start_date} to {end_date})...")

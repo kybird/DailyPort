@@ -37,8 +37,10 @@ def sync_daily_price(start_date=None, end_date=None):
     # 1. Get All Listed Stocks (KRX)
     try:
         df_krx = fdr.StockListing('KRX')
-        # Filter delisted if needed (Currently FDR 'KRX' returns listed only)
-        # We need Symbol (Code) and Name at least
+        if df_krx is None or df_krx.empty:
+            logger.warning("⚠️ No data from KRX Listing. Likely a holiday or server/network issue.")
+            return
+
         tickers = df_krx[['Code', 'Name', 'Market']].to_dict('records')
         
         logger.info(f"📋 Found {len(tickers)} tickers in KRX")

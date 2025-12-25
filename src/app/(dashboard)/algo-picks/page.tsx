@@ -15,10 +15,10 @@ const strategyIcons: Record<string, React.ComponentType<{ size?: number; classNa
 }
 
 const strategyDescriptions: Record<string, string> = {
-    'Value_Picks': '저평가 우량주: PER/PBR 저평가 + ROE/영업이익률 우수 (High Quality)',
-    'Twin_Engines': '쌍끌이 매수: 외인/기관 동반 매수 + 수급강도(시총대비) 우수',
-    'Foreigner_Accumulation': '외인 매집: 박스권(변동성 축소) 내 외인 비중 증가 + 흑자 기업',
-    'Trend_Following': '추세추종: 거래량 폭발(거래급증) + 정배열 신고가 돌파 시도'
+    'Value_Picks': '저평가 우량주: ROE 10%↑, 영업이익률 5%↑ 고배당/저PBR 기업',
+    'Twin_Engines': '쌍끌이 매수: 외인/기관 합산 수급강도(0.05%↑) 및 2/3일 연속 매수',
+    'Foreigner_Accumulation': '외인 매집: 박스권(변동폭 10%↓) 내 외인 비중 증가 및 이평선 지지',
+    'Trend_Following': '추세추종: 거래폭발(1.5x↑) 돌파 종목 (RSI 과열 및 윗꼬리 저항 필터링)'
 }
 
 export default async function AlgoPage() {
@@ -43,6 +43,13 @@ export default async function AlgoPage() {
                         )}
                     </div>
                 </div>
+                <Link
+                    href="/algo-picks/about"
+                    className="flex items-center gap-1.5 text-sm font-bold text-blue-600 hover:text-blue-700 transition-colors"
+                >
+                    알고리즘 기법 소개
+                    <ArrowRight size={16} />
+                </Link>
             </header>
 
             {

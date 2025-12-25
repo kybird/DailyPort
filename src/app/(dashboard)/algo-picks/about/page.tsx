@@ -10,13 +10,13 @@ export default function AlgoAboutPage() {
             icon: DollarSign,
             color: 'text-emerald-500',
             bgColor: 'bg-emerald-50 dark:bg-emerald-950/30',
-            description: 'PER과 PBR 지표를 활용하여 시장 가치 대비 저평가된 우량 종목을 선별합니다.',
+            description: 'PER/PBR을 통한 밸류에이션 점검과 동시에 수익성(ROE/영업이익률)을 검증하여 가치 함정을 피합니다.',
             logic: [
-                'PER(주가수익비율) 0~12 사이',
-                'PBR(주가순자산비율) 0.3~1.1 사이',
-                '지나치게 낮은 PBR은 제외하여 "가치 함정(Value Trap)" 방지'
+                'ROE(자기자본이익률) 10% 이상 (효율적 자본 운용)',
+                '영업이익률 5% 이상 (본업의 높은 수익성)',
+                'PER 12배 미만 & PBR 0.3~1.1 사이 (저평가 매력)'
             ],
-            target: '안정적인 가치 투자를 선호하는 장기 투자자'
+            target: '안정적인 펀더멘털과 저평가 매력을 겸비한 우량주 투자'
         },
         {
             id: 'twin',
@@ -24,13 +24,13 @@ export default function AlgoAboutPage() {
             icon: Zap,
             color: 'text-amber-500',
             bgColor: 'bg-amber-50 dark:bg-amber-950/30',
-            description: '소위 "스마트 머니"로 불리는 기관과 외국인이 동시에 순매수하는 종목을 찾습니다.',
+            description: '단순 매수가 아닌 시가총액 대비 유의미한 수급 강도와 매수 연속성을 가진 종목을 선별합니다.',
             logic: [
-                '금일 외국인 순매수 > 0',
-                '금일 기관 순매수 > 0',
-                '합산 순매수 대금이 높은 순으로 정렬'
+                '수급강도: (외인+기관 합산 매수액 / 시총) 0.05% 이상',
+                '연속성: 최근 3거래일 중 2일 이상 동반 또는 강세 매수',
+                '가격위치: 현재가 < 20일 이동평균선 + 10% (추격매수 방지)'
             ],
-            target: '시장 주도주와 강한 수급 모멘텀을 추종하는 스윙 투자자'
+            target: '메이저 수급이 유입되는 시장 주도주 모멘텀 투자'
         },
         {
             id: 'acc',
@@ -38,13 +38,13 @@ export default function AlgoAboutPage() {
             icon: Box,
             color: 'text-blue-500',
             bgColor: 'bg-blue-50 dark:bg-blue-950/30',
-            description: '주가는 횡보하고 있지만 외국인은 꾸준히 지분을 늘려가는 매집 단계의 종목을 포착합니다.',
+            description: '변동성이 축소된 Box권 구간에서 외국인이 지분을 늘려가는 "에너지 응축" 종목을 포착합니다.',
             logic: [
-                '최근 20거래일 동안 외국인 순매수 합계 > 0',
-                '최근 21거래일간 주가 변동폭이 12% 이내 (횡보)',
-                '에너지를 응축하고 있는 상승 전야의 종목'
+                '박스권 응축: 최근 20일 주가 변동폭 10% 이내 (변동성 축소)',
+                '추세지표: 60일 또는 120일 이동평균선 상단 위치 (중장기 정배열)',
+                '거래량 말림: 5일 평균 거래량 < 20일 평균 (거래 절벽 속 매집)'
             ],
-            target: '선취매를 통해 안정적인 수익 구간을 노리는 전략적 투자자'
+            target: '안정적인 박스권 돌파 전야의 선취매 전략'
         },
         {
             id: 'trend',
@@ -52,14 +52,20 @@ export default function AlgoAboutPage() {
             icon: LineChart,
             color: 'text-rose-500',
             bgColor: 'bg-rose-50 dark:bg-rose-950/30',
-            description: '강한 상승 추세를 형성하고 있으며 전 고점 돌파 가능성이 높은 종목을 발굴합니다.',
+            description: '강한 거래량과 함께 전고점을 돌파하는 종목을 찾되, 과매수 여부와 윗꼬리 저항을 필터링합니다.',
             logic: [
-                '단기/중기 이동평균선 정배열 (MA20 > MA60)',
-                '현재 주가가 6개월(120일) 최고가 대비 10% 이내 위치',
-                '추세 강도(Momentum)가 높은 순으로 추출'
+                '거래 폭발: 금일 거래량 > 20일 평균 거래량의 1.5배 이상',
+                '과열 방지: RSI(14) 지표 70 미만 (단기 과열 구간 제외)',
+                '캔들 완성도: 윗꼬리 길이 < 몸통 길이 (장중 차익실현 압력 체크)'
             ],
-            target: '추세의 힘을 믿고 돌파 매매를 선호하는 공격적 투자자'
+            target: '강한 추세와 거래량을 동반한 고확률 돌파 매매'
         }
+    ]
+
+    const globalFilters = [
+        { title: '시가총액 1,000억 이상', desc: '초소형 잡주 및 작전 세력 개입 가능성 배제' },
+        { title: '5일 평균 거래대금 10억 이상', desc: '원활한 진출입이 가능한 최소한의 유동성 확보' },
+        { title: '수익성 검증 (영업이익 > 0)', desc: '지속적인 영업적자 및 관리종목 위험 배제' }
     ]
 
     return (
@@ -125,6 +131,26 @@ export default function AlgoAboutPage() {
                     )
                 })}
             </div>
+
+            <section className="bg-zinc-50 dark:bg-zinc-900/50 rounded-3xl p-8 border border-zinc-100 dark:border-zinc-800">
+                <div className="flex items-center gap-3 mb-8">
+                    <div className="p-2 bg-blue-500 rounded-lg text-white">
+                        <CheckCircle2 size={24} />
+                    </div>
+                    <div>
+                        <h2 className="text-xl font-bold text-zinc-900 dark:text-white">공통 위생 필터 (Global Hygiene Filters)</h2>
+                        <p className="text-sm text-zinc-500">모든 알고리즘에는 아래의 기본적인 필터가 공통 적용되어 리스크를 최소화합니다.</p>
+                    </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {globalFilters.map((f, idx) => (
+                        <div key={idx} className="space-y-1">
+                            <h4 className="font-bold text-zinc-900 dark:text-zinc-200 text-sm">{f.title}</h4>
+                            <p className="text-xs text-zinc-500 leading-relaxed">{f.desc}</p>
+                        </div>
+                    ))}
+                </div>
+            </section>
 
             <footer className="pt-20 border-t border-zinc-100 dark:border-zinc-800">
                 <div className="bg-blue-600 dark:bg-blue-700 rounded-3xl p-10 text-white text-center space-y-4">
