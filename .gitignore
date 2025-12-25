@@ -61,4 +61,4 @@ __pycache__/
 htmlcov/
 *.log
 dailyport.db
-admin-tools/python/verify_algo_picks.py
+
