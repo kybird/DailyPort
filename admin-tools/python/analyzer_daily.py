@@ -213,7 +213,7 @@ def calculate_objectives_v3(current_price, history_rows):
             prox_val = (current_price - best['entry']) / best['entry']
             if prox_val <= c['prox']:
                 status = 'ACTIVE' if base_score >= 70 else 'WAIT'
-                reason = f"주요 지지선 근처 (RR: {best['rr']:.1f})." if status == 'ACTIVE' else "지지선 근처이나 추세 확인 필요."
+                reason = f"주요 지지선 근처 진입 가능 (손익비: {best.get('rr', 0):.1f})." if status == 'ACTIVE' else "지지선 근처이나 추세 확인 필요."
             else:
                 reason = f"보수적 진입 대기 (목표가: {round(best['entry'], -1):,})."
         else:
@@ -260,7 +260,7 @@ def process_watchlist(tickers):
     placeholders = ','.join(['?'] * len(normalized_tickers))
     
     price_sql = f"""
-        SELECT code, date, close, high, low, market_cap, per, pbr
+        SELECT code, date, close, high, low, market_cap, per, pbr, revenue, net_income
         FROM daily_price 
         WHERE code IN ({placeholders})
         ORDER BY code, date DESC

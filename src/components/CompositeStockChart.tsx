@@ -27,6 +27,11 @@ interface CompositeStockChartProps {
         foreigner: number
         institution: number
     }[] | null
+    objectives?: {
+        short?: any
+        mid?: any
+        long?: any
+    }
 }
 
 // --- Calculation Helpers ---
@@ -75,7 +80,7 @@ function calculateBollingerBands(data: { time: Time, value: number }[], period: 
     return result
 }
 
-export default function CompositeStockChart({ priceData, supplyData }: CompositeStockChartProps) {
+export default function CompositeStockChart({ priceData, supplyData, objectives }: CompositeStockChartProps) {
     const priceContainerRef = useRef<HTMLDivElement>(null)
     const foreignContainerRef = useRef<HTMLDivElement>(null)
     const institutionContainerRef = useRef<HTMLDivElement>(null)
@@ -87,6 +92,7 @@ export default function CompositeStockChart({ priceData, supplyData }: Composite
         ema: { show: false, p1: 12, p2: 26 },
         bb: { show: false, p: 20, sd: 2 }
     })
+    const [selectedObjective, setSelectedObjective] = useState<'short' | 'mid' | 'long' | null>(null)
 
     useEffect(() => {
         if (!priceContainerRef.current || !foreignContainerRef.current || !institutionContainerRef.current) return
@@ -180,6 +186,41 @@ export default function CompositeStockChart({ priceData, supplyData }: Composite
             wickDownColor: '#3b82f6',
         })
         candleSeries.setData(formattedPrice)
+
+        // 🎯 Trading Objectives Price Lines
+        if (selectedObjective && objectives?.[selectedObjective]) {
+            const obj = objectives[selectedObjective]
+            if (obj.entry) {
+                candleSeries.createPriceLine({
+                    price: obj.entry,
+                    color: '#a1a1aa',
+                    lineWidth: 2,
+                    lineStyle: 2, // Dashed
+                    axisLabelVisible: true,
+                    title: `📍 진입가 (손익비: ${obj.rr?.toFixed(1)})`,
+                })
+            }
+            if (obj.target) {
+                candleSeries.createPriceLine({
+                    price: obj.target,
+                    color: '#10b981',
+                    lineWidth: 2,
+                    lineStyle: 0, // Solid
+                    axisLabelVisible: true,
+                    title: '🎯 목표가',
+                })
+            }
+            if (obj.stop) {
+                candleSeries.createPriceLine({
+                    price: obj.stop,
+                    color: '#ef4444',
+                    lineWidth: 2,
+                    lineStyle: 0, // Solid
+                    axisLabelVisible: true,
+                    title: '🛑 손절가',
+                })
+            }
+        }
 
         const closeValues = formattedPrice.map(p => ({ time: p.time, value: p.close }))
 
@@ -275,7 +316,7 @@ export default function CompositeStockChart({ priceData, supplyData }: Composite
             window.removeEventListener('resize', handleResize)
             charts.forEach(c => c.remove())
         }
-    }, [priceData, supplyData, config])
+    }, [priceData, supplyData, config, objectives, selectedObjective])
 
     return (
         <div className="relative flex flex-col gap-0 w-full bg-white dark:bg-zinc-900 rounded-3xl p-4 border border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden">
@@ -422,12 +463,33 @@ export default function CompositeStockChart({ priceData, supplyData }: Composite
                             {config.bb.show ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />} BB
                         </button>
                     </div>
-                    <button
-                        onClick={() => setShowSettings(true)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 transition-all"
-                    >
-                        <Settings2 className="w-3.5 h-3.5" /> 설정
-                    </button>
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => setSelectedObjective(selectedObjective === 'short' ? null : 'short')}
+                            className={`px-3 py-1 text-[10px] font-black rounded-lg border transition-all ${selectedObjective === 'short' ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 border-zinc-900' : 'bg-transparent text-zinc-500 border-zinc-200 dark:border-zinc-800'}`}
+                        >
+                            단기
+                        </button>
+                        <button
+                            onClick={() => setSelectedObjective(selectedObjective === 'mid' ? null : 'mid')}
+                            className={`px-3 py-1 text-[10px] font-black rounded-lg border transition-all ${selectedObjective === 'mid' ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 border-zinc-900' : 'bg-transparent text-zinc-500 border-zinc-200 dark:border-zinc-800'}`}
+                        >
+                            중기
+                        </button>
+                        <button
+                            onClick={() => setSelectedObjective(selectedObjective === 'long' ? null : 'long')}
+                            className={`px-3 py-1 text-[10px] font-black rounded-lg border transition-all ${selectedObjective === 'long' ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 border-zinc-900' : 'bg-transparent text-zinc-500 border-zinc-200 dark:border-zinc-800'}`}
+                        >
+                            장기
+                        </button>
+                        <div className="w-[1px] h-4 bg-zinc-200 dark:bg-zinc-800 mx-1" />
+                        <button
+                            onClick={() => setShowSettings(!showSettings)}
+                            className={`p-2 rounded-xl transition-all ${showSettings ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400'}`}
+                        >
+                            <Settings2 size={18} />
+                        </button>
+                    </div>
                 </div>
             </div>
 

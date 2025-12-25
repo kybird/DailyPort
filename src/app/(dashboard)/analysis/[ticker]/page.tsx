@@ -154,6 +154,7 @@ export default async function AnalysisPage({
                 <CompositeStockChart
                     priceData={historical || []}
                     supplyData={supplyDemand?.chartData}
+                    objectives={technical.objectives || undefined}
                 />
             </div>
 
@@ -295,22 +296,28 @@ export default async function AnalysisPage({
                                             </div>
                                         </div>
 
-                                        {data.status === 'ACTIVE' ? (
-                                            <div className="grid grid-cols-3 gap-3">
-                                                <div className="bg-zinc-50 dark:bg-zinc-800/50 p-3 rounded-2xl border border-zinc-100 dark:border-zinc-800 text-center">
-                                                    <div className="text-[8px] font-black text-zinc-400 uppercase mb-1">진입</div>
-                                                    <div className="text-[12px] font-mono font-black text-zinc-900 dark:text-white">₩{data.entry?.toLocaleString()}</div>
-                                                </div>
-                                                <div className="bg-rose-50 dark:bg-rose-950/20 p-3 rounded-2xl border border-rose-100 dark:border-rose-900/30 text-center">
-                                                    <div className="text-[8px] font-black text-rose-400 uppercase mb-1">손절</div>
-                                                    <div className="text-[12px] font-mono font-black text-rose-500">₩{data.stop?.toLocaleString()}</div>
-                                                </div>
-                                                <div className="bg-emerald-50 dark:bg-emerald-950/20 p-3 rounded-2xl border border-emerald-100 dark:border-emerald-900/30 text-center">
-                                                    <div className="text-[8px] font-black text-emerald-400 uppercase mb-1">목표</div>
-                                                    <div className="text-[12px] font-mono font-black text-emerald-500">₩{data.target?.toLocaleString()}</div>
-                                                </div>
+                                        <div className="grid grid-cols-3 gap-3">
+                                            <div className={`p-3 rounded-2xl border text-center transition-all ${data.status === 'ACTIVE'
+                                                ? 'bg-zinc-50 dark:bg-zinc-800/50 border-zinc-100 dark:border-zinc-800'
+                                                : 'bg-zinc-50/50 dark:bg-zinc-900/50 border-dashed border-zinc-200 dark:border-zinc-800 opacity-60'}`}>
+                                                <div className="text-[8px] font-black text-zinc-400 uppercase mb-1">진입가</div>
+                                                <div className="text-[12px] font-mono font-black text-zinc-900 dark:text-white">₩{data.entry?.toLocaleString()}</div>
                                             </div>
-                                        ) : (
+                                            <div className={`p-3 rounded-2xl border text-center transition-all ${data.status === 'ACTIVE'
+                                                ? 'bg-rose-50 dark:bg-rose-950/20 border-rose-100 dark:border-rose-900/30'
+                                                : 'bg-rose-50/30 dark:bg-rose-950/5 border-dashed border-rose-200/50 dark:border-rose-900/20 opacity-60'}`}>
+                                                <div className="text-[8px] font-black text-rose-400 uppercase mb-1">손절가</div>
+                                                <div className={`text-[12px] font-mono font-black ${data.status === 'ACTIVE' ? 'text-rose-500' : 'text-rose-400'}`}>₩{data.stop?.toLocaleString()}</div>
+                                            </div>
+                                            <div className={`p-3 rounded-2xl border text-center transition-all ${data.status === 'ACTIVE'
+                                                ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-100 dark:border-emerald-900/30'
+                                                : 'bg-emerald-50/30 dark:bg-emerald-950/5 border-dashed border-emerald-200/50 dark:border-emerald-900/20 opacity-60'}`}>
+                                                <div className="text-[8px] font-black text-emerald-400 uppercase mb-1">목표가</div>
+                                                <div className={`text-[12px] font-mono font-black ${data.status === 'ACTIVE' ? 'text-emerald-500' : 'text-emerald-400'}`}>₩{data.target?.toLocaleString()}</div>
+                                            </div>
+                                        </div>
+
+                                        {data.status !== 'ACTIVE' && (
                                             <div className={`p-4 rounded-2xl border border-dashed ${data.status === 'WAIT' ? 'bg-amber-50 dark:bg-amber-950/10 border-amber-200 dark:border-amber-900/30' :
                                                 'bg-zinc-50 dark:bg-zinc-800/50 border-zinc-200 dark:border-zinc-800'
                                                 }`}>
@@ -392,21 +399,7 @@ export default async function AnalysisPage({
 
                         {/* MA Trends */}
                         <div className="p-5 bg-gradient-to-r from-zinc-50 to-white dark:from-zinc-800/50 dark:to-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 space-y-3">
-                            <div className="text-[10px] font-black text-zinc-400 uppercase">Moving Average Comparison</div>
-                            {fundamentals?.revenue && (
-                                <div className="flex justify-between items-center py-2">
-                                    <span className="text-zinc-500 font-bold">연간 매출액</span>
-                                    <span className="text-zinc-900 dark:text-white font-black">{formatKoreanUnit(fundamentals.revenue)}</span>
-                                </div>
-                            )}
-                            {fundamentals?.netIncome && (
-                                <div className="flex justify-between items-center py-2">
-                                    <span className="text-zinc-500 font-bold">당기순이익</span>
-                                    <span className={`font-black ${fundamentals.netIncome >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-                                        {formatKoreanUnit(fundamentals.netIncome)}
-                                    </span>
-                                </div>
-                            )}
+                            <div className="text-[10px] font-black text-zinc-400 uppercase">Market & Financial Diagnostics</div>
                             <div className="flex justify-between items-center py-2">
                                 <span className="text-zinc-500 font-bold">PER</span>
                                 <span className="text-zinc-900 dark:text-white font-black">{fundamentals?.per?.toFixed(2) || '-'}배</span>
@@ -446,6 +439,22 @@ export default async function AnalysisPage({
                                 <div className="text-3xl font-black text-zinc-900 dark:text-white">
                                     {fundamentals?.pbr?.toFixed(2) || 'N/A'}
                                     <span className="text-xs font-medium text-zinc-400 ml-1">배</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Revenue & Net Income (Moved here) */}
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-2xl border border-zinc-100 dark:border-zinc-800">
+                                <div className="text-[10px] text-zinc-400 font-bold uppercase mb-2">연간 매출액</div>
+                                <div className="text-xl font-black text-zinc-900 dark:text-white">
+                                    {fundamentals?.revenue ? formatKoreanUnit(fundamentals.revenue) : 'N/A'}
+                                </div>
+                            </div>
+                            <div className="p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-2xl border border-zinc-100 dark:border-zinc-800">
+                                <div className="text-[10px] text-zinc-400 font-bold uppercase mb-2">당기순이익</div>
+                                <div className={`text-xl font-black ${fundamentals?.netIncome && fundamentals.netIncome >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                                    {fundamentals?.netIncome ? formatKoreanUnit(fundamentals.netIncome) : 'N/A'}
                                 </div>
                             </div>
                         </div>

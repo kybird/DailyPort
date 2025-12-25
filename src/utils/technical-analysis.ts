@@ -205,7 +205,7 @@ export function calculateObjectives(currentPrice: number, candles: HistoricalBar
             if (proximity <= cfg.proximityPct) {
                 status = baseScore >= 70 ? 'ACTIVE' : 'WAIT'
                 reason = status === 'ACTIVE'
-                    ? `주요 지지선 근처 진입 가능 (RR: ${bestCandidate.rr.toFixed(1)}).`
+                    ? `주요 지지선 근처 진입 가능 (손익비: ${bestCandidate.rr.toFixed(1)}).`
                     : `지지선 근처이나 추세 확인 필요.`
             } else {
                 status = 'WAIT'
