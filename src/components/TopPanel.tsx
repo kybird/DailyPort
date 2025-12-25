@@ -8,7 +8,7 @@ import ThemeToggle from './ThemeToggle'
 export default function TopPanel() {
     return (
         <nav className="relative z-50 w-full border-b border-zinc-200 dark:border-zinc-800 bg-white/80 dark:bg-zinc-950/80 backdrop-blur-md">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="px-4 sm:px-6 lg:px-8">
                 <div className="flex justify-between items-center h-16">
                     <div className="flex items-center gap-6">
                         {/* Logo moved to Sidebar */}
