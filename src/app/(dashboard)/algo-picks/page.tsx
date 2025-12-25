@@ -15,10 +15,10 @@ const strategyIcons: Record<string, React.ComponentType<{ size?: number; classNa
 }
 
 const strategyDescriptions: Record<string, string> = {
-    'Value_Picks': '저평가 우량주: 낮은 PER/PBR 지표를 가진 가치주',
-    'Twin_Engines': '쌍끌이 매수: 외인과 기관이 동시 매수하는 강세 종목',
-    'Foreigner_Accumulation': '외인 매집: 주가 횡보 중 외국인 비중이 늘어나는 종목',
-    'Trend_Following': '추세추종: 상승 추세(정배열)를 그리며 신고가에 근접한 종목'
+    'Value_Picks': '저평가 우량주: PER/PBR 저평가 + ROE/영업이익률 우수 (High Quality)',
+    'Twin_Engines': '쌍끌이 매수: 외인/기관 동반 매수 + 수급강도(시총대비) 우수',
+    'Foreigner_Accumulation': '외인 매집: 박스권(변동성 축소) 내 외인 비중 증가 + 흑자 기업',
+    'Trend_Following': '추세추종: 거래량 폭발(거래급증) + 정배열 신고가 돌파 시도'
 }
 
 export default async function AlgoPage() {

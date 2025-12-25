@@ -4,3 +4,5 @@ requests
 wcwidth
 supabase
 python-dotenv
+finance-datareader
+opendartreader

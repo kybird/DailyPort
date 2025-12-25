@@ -32,6 +32,8 @@ CREATE TABLE IF NOT EXISTS daily_price (
     pbr REAL,
     bps REAL,
     div_yield REAL,
+    roe REAL,
+    operating_margin REAL,
 
     PRIMARY KEY (code, date),
     FOREIGN KEY (code) REFERENCES tickers(code)

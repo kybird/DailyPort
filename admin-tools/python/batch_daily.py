@@ -299,6 +299,39 @@ if __name__ == "__main__":
         start_date = args.start if args.start else START_DATE_LIMIT
         repair_supply_bulk(conn, start_date, args.end)
     else:
-        sync_market_data_bulk(conn, start_date=args.start, end_date=args.end, test_mode=args.test, force_supply=args.force_supply)
-    
+        # NEW V2 Pipeline
+        print("🚀 Running V2 Data Pipeline...")
+        
+        # 1. Price Sync (FDR)
+        try:
+            from batch_price_daily import sync_daily_price
+            sync_daily_price(args.start, args.end)
+        except ImportError:
+            print("❌ batch_price_daily module not found.")
+        except Exception as e:
+            print(f"❌ Price Sync Failed: {e}")
+            
+        # 2. Financial Sync (OpenDart) - Optional/On-Demand
+        # Usually run manually or once per quarter.
+        # But we can check if explicit flag is passed?
+        # For now, let's leave it as a separate manual step unless args say so.
+        # Or blindly try to run for current quarter?
+        # Let's keep it manual for now to avoid consuming API limits on every daily run.
+        
+        # 3. Supply Repair (Legacy/PyKRX for supply?)
+        # Wait, FDR doesn't give Supply (Foreigner/Institution) history easily.
+        # The User Plan says: "(3) batch_merge_daily.py ... daily_price <- quarterly"
+        # AND "Strategy 2: Twin Engines" NEEDS Supply Data.
+        # FDR 'KRX' listing doesn't give supply history.
+        # We STILL need pykrx for `daily_supply` table!
+        
+        # So we must KEEP the Supply Sync logic (which uses pykrx) but use FDR for Price.
+        # `repair_supply_bulk` function in THIS file does exactly that.
+        # We should run it for the dates.
+        
+        if not args.test:
+             _start = args.start if args.start else datetime.now().strftime("%Y%m%d")
+             repair_supply_bulk(conn, _start, args.end)
+             
     conn.close()
+
