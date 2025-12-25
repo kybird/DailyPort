@@ -12,6 +12,10 @@ This document tracks planned improvements and architectural goals for the DailyP
 - **Implementation**: Develop a way for the Next.js frontend to trigger specific Python analysis sub-tasks (e.g., via a simple API or queue system).
 - **Goal**: Allow users to request an "Immediate Refresh" for a specific stock's supply analysis.
 
+### 3. Trading Objectives V2 (Intelligent Planning) [DONE]
+- **Implementation**: Moved from fixed percentages to **ATR-based stop-loss** and **Risk/Reward based target prices**.
+- **Result**: Provides stock-specific, volatility-adjusted trading plans with safety checks and resistance constraints.
+
 ## 📈 Long-term Improvements
 
 ### 3. Enhanced Caching Layer

@@ -187,7 +187,7 @@ export async function getAnalysis(ticker: string): Promise<AnalysisReport | { er
     }
 
     // 6. Calculate Objectives
-    const objectives = calculateObjectives(marketData.currentPrice)
+    const objectives = calculateObjectives(marketData.currentPrice, marketData.historical)
     technical.objectives = objectives
 
     return {

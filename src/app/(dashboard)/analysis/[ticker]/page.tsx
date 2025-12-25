@@ -1,6 +1,6 @@
 import { getAnalysis } from '@/app/actions_analysis'
 import Link from 'next/link'
-import { ArrowLeft, Activity, RefreshCw, TrendingUp, TrendingDown, Target, Wallet, ShieldAlert, ArrowRightCircle } from 'lucide-react'
+import { ArrowLeft, Activity, RefreshCw, TrendingUp, TrendingDown, Target, Wallet, ShieldAlert, ArrowRightCircle, AlertTriangle } from 'lucide-react'
 import CompositeStockChart from '@/components/CompositeStockChart'
 import { formatKoreanUnit } from '@/utils/formatUtils'
 import { getStockName } from '@/utils/stockUtils'
@@ -203,6 +203,14 @@ export default async function AnalysisPage({
                     </h3>
                     {technical.objectives ? (
                         <div className="space-y-8">
+                            {technical.objectives.isAbnormal && (
+                                <div className="p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/30 rounded-2xl flex items-start gap-3">
+                                    <AlertTriangle size={18} className="text-amber-500 shrink-0 mt-0.5" />
+                                    <div className="text-[11px] font-bold text-amber-700 dark:text-amber-400 leading-relaxed">
+                                        변동성 과다로 인해 표준 ATR 전략 대신 보수적 예외 전략(-5% 손절)이 적용되었습니다. 투자 시 유의 바랍니다.
+                                    </div>
+                                </div>
+                            )}
                             {[
                                 { label: 'Short-term (단기)', data: technical.objectives.short, color: 'text-zinc-500' },
                                 { label: 'Mid-term (중기)', data: technical.objectives.mid, color: 'text-zinc-900 dark:text-zinc-100' },
