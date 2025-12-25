@@ -62,6 +62,7 @@ export interface AlgoPick {
     strategy_name: string
     tickers: string[] // Array of ticker codes
     date: string
+    details?: any // Rich metadata (JSONB)
 }
 
 export async function getAnalysis(ticker: string): Promise<AnalysisReport | { error: string }> {
@@ -233,6 +234,7 @@ export async function getAlgoPicks(): Promise<AlgoPick[]> {
     return (data || []).map(row => ({
         strategy_name: row.strategy_name,
         tickers: row.tickers, // Supabase JSONB comes as array
-        date: row.date
+        date: row.date,
+        details: row.details
     }))
 }

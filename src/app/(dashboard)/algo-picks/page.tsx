@@ -11,14 +11,16 @@ const strategyIcons: Record<string, React.ComponentType<{ size?: number; classNa
     'Twin_Engines': Zap,
     'Foreigner_Accumulation': Box,
     'Trend_Following': LineChart,
+    'Confluence_Top': Trophy,
     'default': Trophy
 }
 
 const strategyDescriptions: Record<string, string> = {
-    'Value_Picks': '저평가 우량주: ROE 10%↑, 영업이익률 5%↑ 고배당/저PBR 기업',
-    'Twin_Engines': '쌍끌이 매수: 외인/기관 합산 수급강도(0.05%↑) 및 2/3일 연속 매수',
-    'Foreigner_Accumulation': '외인 매집: 박스권(변동폭 10%↓) 내 외인 비중 증가 및 이평선 지지',
-    'Trend_Following': '추세추종: 거래폭발(1.5x↑) 돌파 종목 (RSI 과열 및 윗꼬리 저항 필터링)'
+    'Value_Picks': '저평가 우량주: ROE 8%↑, 영업이익률 5%↑ (Profit Quality → PER → PBR 정렬)',
+    'Twin_Engines': '쌍끌이 매수: 수급강도 0.05%↑ 외인/기관 동반 순매수 (Demand Power 정렬)',
+    'Foreigner_Accumulation': '외인 매집: 박스권 12%↓ 내 21일 누적 매집 (Density 정렬)',
+    'Trend_Following': '추세추종: 거래폭발 1.5x↑ 양봉 마감 (Vol Power 정렬, 윗꼬리 필터)',
+    'Confluence_Top': '통합 순위: Flow/Price/Fundamental 그룹 가중 점수 기반 Top 5'
 }
 
 export default async function AlgoPage() {

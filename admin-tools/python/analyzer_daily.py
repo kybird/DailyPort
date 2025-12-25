@@ -36,6 +36,67 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 conn = sqlite3.connect(DB_PATH)
 conn.row_factory = sqlite3.Row
 
+# --- Algo Picks Refinement (v5) Infrastructure ---
+# Strategy Metadata & Groups
+STRATEGY_META = {
+    "Value_Picks": {
+        "id": "Value_Picks",
+        "group": "Fundamental",
+        "tags": ["저평가", "우량주"],
+        "description": "저평가 우량주: ROE 10%↑, 영업이익률 5%↑ 고배당/저PBR 기업",
+        "mcap_override": None,
+        "version": "v5.0"
+    },
+    "Twin_Engines": {
+        "id": "Twin_Engines",
+        "group": "Flow",
+        "tags": ["수급강도", "동반매수"],
+        "description": "쌍끌이 매수: 외인/기관 합산 수급강도(0.05%↑) 및 2/3일 연속 매수",
+        "mcap_override": 300000000000, # 3,000억
+        "version": "v5.0"
+    },
+    "Foreigner_Accumulation": {
+        "id": "Foreigner_Accumulation",
+        "group": "Flow",
+        "tags": ["외인매집", "박스권"],
+        "description": "외인 매집: 박스권(변동폭 10%↓) 내 외인 비중 증가 및 이평선 지지",
+        "mcap_override": None,
+        "version": "v5.0"
+    },
+    "Trend_Following": {
+        "id": "Trend_Following",
+        "group": "Price",
+        "tags": ["추세추종", "돌파"],
+        "description": "추세추종: 거래폭발(1.5x↑) 돌파 종목 (RSI 과열 및 윗꼬리 저항 필터링)",
+        "mcap_override": None,
+        "version": "v5.0"
+    }
+}
+
+GROUP_WEIGHT = {
+    "Flow": 1.0,
+    "Price": 1.0,
+    "Fundamental": 1.0
+}
+
+# Targeted Debugging
+DEBUG_TICKERS = [] # Add tickers like "005930" to debug filtration
+IS_PROD = os.getenv("NODE_ENV") == "production"
+
+def validate_meta():
+    """Verify all strategies in meta have a corresponding implementation logic later."""
+    required_strategies = ["Value_Picks", "Twin_Engines", "Foreigner_Accumulation", "Trend_Following"]
+    for s_id in required_strategies:
+        if s_id not in STRATEGY_META:
+            msg = f"CRITICAL: Strategy Meta missing for {s_id}"
+            if not IS_PROD:
+                assert False, msg
+            else:
+                logger.warning(msg)
+
+validate_meta()
+# ------------------------------------------------
+
 def get_db_cursor():
     return conn.cursor()
 
@@ -309,281 +370,330 @@ def process_watchlist(tickers):
 def run_algo_screening():
     """
     Filter all stocks for specific strategies (Algo Picks).
-    Optimized queries and execution flow.
+    v5 Spec: Dynamic thresholds, multi-level sorting, and group-based confluence.
     """
-    logger.info("🕵️ Running Algorithm Screening (Algo Picks)...")
+    logger.info("🕵️ Running Algorithm Screening (Algo Picks v5)...")
     cur = get_db_cursor()
     
-    # Get latest data dates efficiently
+    # 0. Initial Setup & Universe Check
     cur.execute("SELECT MAX(date) FROM daily_price")
     max_price_date = cur.fetchone()[0]
-    
     cur.execute("SELECT MAX(date) FROM daily_supply")
     max_supply_date = cur.fetchone()[0]
 
     if not max_price_date:
         logger.warning("No data found in DB. Skipping Algo Screening.")
-        return
+        return []
 
-    # Strategy 1: Value Picks (High Quality)
-    # V2: Market Cap >= 100B, 5D Avg Vol >= 1B, ROE >= 10, Op Margin >= 5, PBR < 1.1, PER < 12
-    # Also exclude inactive/admin stocks via Join.
-    
+    # Calculate Dynamic Mcap Threshold (Top 70% of Active Universe)
     cur.execute("""
-        SELECT p.code FROM daily_price p
+        SELECT market_cap FROM daily_price p
         JOIN tickers t ON p.code = t.code
-        WHERE p.date = ?
-        AND t.is_active = 1
-        AND p.per > 0 AND p.per < 12
-        AND p.pbr > 0.3 AND p.pbr < 1.1
-        AND p.roe >= 10            
-        AND p.operating_margin >= 5 
-        AND p.market_cap >= 100000000000 
-        AND (
-            SELECT AVG(trading_value) FROM daily_price p2 
-            WHERE p2.code = p.code AND p2.date <= p.date 
-            ORDER BY date DESC LIMIT 5
-        ) >= 1000000000
-        ORDER BY p.per ASC, p.pbr ASC
-        LIMIT 15
+        WHERE p.date = ? AND t.is_active = 1 AND p.market_cap > 0
     """, (max_price_date,))
-    value_picks = [r[0] for r in cur.fetchall()]
+    mcap_universe = [r[0] for r in cur.fetchall()]
+    u_size = len(mcap_universe)
     
-    # Strategy 2: Twin Engines
-    # V2: Supply Intensity >= 0.05%, Continuity 2/3, Entry < 20MA + 10%, Mcap > 100B
+    if u_size > 0:
+        mcap_universe.sort()
+        # Top 70% means the 30th percentile from the bottom
+        idx = int(u_size * 0.3)
+        mcap_threshold_dynamic = mcap_universe[idx]
+    else:
+        mcap_threshold_dynamic = 300000000000 # Fallback 300B
     
+    GLOBAL_MCAP_MIN = max(300000000000, mcap_threshold_dynamic)
+    logger.info(f"📊 Mcap Universe: {u_size} stocks. Threshold: {GLOBAL_MCAP_MIN/1e8:.1f}B Won (Top 70% vs 300B)")
+
+    strategies_raw = {} # {strategy_id: [candidates]}
+    filter_counts = {s_id: {"Mcap": 0, "NetIncome": 0, "Other": 0} for s_id in STRATEGY_META}
+
+    def get_mcap_limit(s_id):
+        override = STRATEGY_META[s_id].get("mcap_override")
+        return override if override is not None else GLOBAL_MCAP_MIN
+
+    # Strategy 1: Value Picks
+    # Priority: Profit Quality DESC -> PER ASC -> PBR ASC
+    mcap_limit_val = get_mcap_limit("Value_Picks")
     cur.execute("""
-        SELECT s.code, s.foreigner, s.institution, p.market_cap, p.close, p.operating_margin
+        SELECT p.code, p.per, p.pbr, p.roe, p.operating_margin, p.market_cap, p.eps
+        FROM daily_price p
+        JOIN tickers t ON p.code = t.code
+        WHERE p.date = ? AND t.is_active = 1
+    """, (max_price_date,))
+    
+    val_candidates = []
+    for r in cur.fetchall():
+        d = dict(r)
+        code = d['code']
+        mcap = d['market_cap'] or 0
+        # Filters
+        if mcap < mcap_limit_val:
+            if code in DEBUG_TICKERS: logger.debug(f"[Value_Picks][{code}] Drop: Mcap {mcap} < {mcap_limit_val}")
+            filter_counts["Value_Picks"]["Mcap"] += 1
+            continue
+        if (d['eps'] or 0) <= 0: # NetIncome Check
+            if code in DEBUG_TICKERS: logger.debug(f"[Value_Picks][{code}] Drop: NetIncome <= 0")
+            filter_counts["Value_Picks"]["NetIncome"] += 1
+            continue
+        if not (0 < d['per'] < 30 and 0.3 <= d['pbr'] < 1.2 and (d['roe'] or 0) >= 8):
+            if code in DEBUG_TICKERS: logger.debug(f"[Value_Picks][{code}] Drop: PER/PBR/ROE range fail")
+            filter_counts["Value_Picks"]["Other"] += 1
+            continue
+        
+        # Scoring
+        profit_quality = (d['roe'] or 0) * 0.6 + (d['operating_margin'] or 0) * 0.4
+        val_candidates.append({
+            "ticker": code,
+            "sort_key": (-profit_quality, d['per'], d['pbr']),
+            "metrics": {"profit_quality": profit_quality, "per": d['per'], "pbr": d['pbr']}
+        })
+    val_candidates.sort(key=lambda x: x["sort_key"])
+    strategies_raw["Value_Picks"] = val_candidates[:15]
+
+    # Strategy 2: Twin Engines
+    # Priority: Demand Power DESC -> Co-momentum DESC -> Total Buy DESC
+    mcap_limit_twin = get_mcap_limit("Twin_Engines")
+    cur.execute("""
+        SELECT s.code, s.foreigner, s.institution, p.market_cap, p.close
         FROM daily_supply s
         JOIN daily_price p ON s.code = p.code AND s.date = p.date
         JOIN tickers t ON s.code = t.code
-        WHERE s.date = ?
-        AND t.is_active = 1
+        WHERE s.date = ? AND t.is_active = 1
         AND s.foreigner > 0 AND s.institution > 0
-        AND p.market_cap >= 100000000000
-        AND p.operating_margin >= 0 
-        AND (
-            SELECT AVG(trading_value) FROM daily_price p2 
-            WHERE p2.code = p.code AND p2.date <= p.date 
-            ORDER BY date DESC LIMIT 5
-        ) >= 1000000000
-        ORDER BY (s.foreigner + s.institution) DESC
-        LIMIT 100
     """, (max_supply_date,))
     
-    raw_twin_candidates = [dict(r) for r in cur.fetchall()]
-    twin_picks = []
-    
-    for cand in raw_twin_candidates:
-        code = cand['code']
-        mcap = cand['market_cap'] or 1
-        total_buy = cand['foreigner'] + cand['institution']
+    twin_candidates = []
+    for r in cur.fetchall():
+        d = dict(r)
+        code = d['code']
+        mcap = d['market_cap'] or 1
+        f_buy, i_buy = d['foreigner'], d['institution']
         
-        # 1. Intensity Check (0.05% of Mcap)
-        # Note: buy amount is in Won? Schema says 'individual', 'foreigner' are INTEGER. Code says "Net Buy Volume/Value".
-        # PyKRX `get_market_net_purchases` usually returns Amount in Won.
-        # Let's assume Won.
-        intensity = (total_buy / mcap) * 100
-        if intensity < 0.05:
+        if mcap < mcap_limit_twin:
+            if code in DEBUG_TICKERS: logger.debug(f"[Twin_Engines][{code}] Drop: Mcap {mcap} < {mcap_limit_twin}")
+            filter_counts["Twin_Engines"]["Mcap"] += 1
             continue
             
-        # 2. Continuity Check (2 of last 3 days)
-        # Fetch last 3 days supply
-        cur.execute("""
-            SELECT foreigner, institution FROM daily_supply 
-            WHERE code = ? AND date <= ? 
-            ORDER BY date DESC LIMIT 3
-        """, (code, max_supply_date))
-        hist = cur.fetchall()
-        buy_days = sum(1 for h in hist if (h['foreigner'] + h['institution']) > 0)
-        if buy_days < 2:
+        demand_power = ((f_buy + i_buy) / mcap) * 100
+        if demand_power < 0.05:
+            if code in DEBUG_TICKERS: logger.debug(f"[Twin_Engines][{code}] Drop: Demand Power {demand_power:.3f}% < 0.05%")
+            filter_counts["Twin_Engines"]["Other"] += 1
             continue
             
-        # 3. Entry Check (Price < 20MA * 1.1)
-        # Fetch recent prices for MA calculation
-        cur.execute("""
-            SELECT close FROM daily_price
-            WHERE code = ? AND date <= ?
-            ORDER BY date DESC LIMIT 20
-        """, (code, max_price_date))
-        closes = [r['close'] for r in cur.fetchall()]
-        if len(closes) < 20: continue
-        ma20 = sum(closes) / 20
-        if cand['close'] > ma20 * 1.1:
-            continue
-            
-        twin_picks.append(code)
-        if len(twin_picks) >= 15: break
+        co_momentum = min(f_buy, i_buy)
+        twin_candidates.append({
+            "ticker": code,
+            "sort_key": (-demand_power, -co_momentum, -(f_buy + i_buy)),
+            "metrics": {"demand_power": demand_power, "co_momentum": co_momentum}
+        })
+    twin_candidates.sort(key=lambda x: x["sort_key"])
+    strategies_raw["Twin_Engines"] = twin_candidates[:15]
 
-    # Strategy 3: Foreigner Accumulation (Smart Money)
-    # V2: Box Compression < 10%, Price Support > 60MA/120MA, Vol Drying, Mcap > 100B
+    # Strategy 3: Foreigner Accumulation
+    # Priority: Accumulation Density DESC -> 21d Acc DESC -> Box Range ASC
+    mcap_limit_acc = get_mcap_limit("Foreigner_Accumulation")
+    # Simplify query: Fetch 21d sum for all active tickers
+    cur.execute("""
+        SELECT code, SUM(foreigner) as f_sum 
+        FROM daily_supply 
+        WHERE date >= strftime('%Y%m%d', 'now', '-21 days')
+        GROUP BY code HAVING f_sum > 0
+    """)
+    acc_stats = {r[0]: r[1] for r in cur.fetchall()}
     
-    # We need EMA/MA for "Price Support". Let's fetch candidates filtering by Box & Vol first.
-    sql_accumulation = """
-        WITH RecentSupply AS (
-            SELECT code, SUM(foreigner) as f_sum
-            FROM daily_supply
-            WHERE date >= strftime('%Y%m%d', 'now', '-21 days')
-            GROUP BY code
-            HAVING f_sum > 0
-        ),
-        RecentStats AS (
-            SELECT code, 
-                   MAX(close) as h_price, 
-                   MIN(close) as l_price,
-                   AVG(volume) as avg_vol_20,
-                   MAX(operating_margin) as op_margin,
-                   MAX(market_cap) as mcap,
-                   MAX(trading_value) as t_val
-            FROM daily_price
-            WHERE date >= strftime('%Y%m%d', 'now', '-21 days')
-            GROUP BY code
-            HAVING COUNT(*) >= 15
-        ),
-        Recent5Day AS (
-            SELECT code, AVG(volume) as avg_vol_5
-            FROM daily_price
-            WHERE date >= strftime('%Y%m%d', 'now', '-5 days')
-            GROUP BY code
-        )
-        SELECT s.code, p.op_margin, p.mcap
-        FROM RecentSupply s
-        JOIN RecentStats p ON s.code = p.code
-        JOIN Recent5Day v5 ON s.code = v5.code
-        WHERE (p.h_price - p.l_price) / p.l_price < 0.10     -- Box Compression
-        AND v5.avg_vol_5 < p.avg_vol_20                       -- Volume Drying
-        AND p.op_margin > 0                                   -- Quality
-        AND p.mcap >= 100000000000                            -- Global Mcap
-        AND p.t_val >= 1000000000                             -- Global Liq
-        ORDER BY s.f_sum DESC
-        LIMIT 50
-    """
     acc_candidates = []
-    try:
-        cur.execute(sql_accumulation)
-        acc_candidates = [dict(r) for r in cur.fetchall()]
-    except Exception as e:
-        logger.error(f"Accumulation query failed: {e}")
-
-    acc_picks = []
-    for cand in acc_candidates:
-        code = cand['code']
-        # 4. Price Support (Current > 60MA or 120MA)
-        cur.execute("SELECT close FROM daily_price WHERE code = ? ORDER BY date DESC LIMIT 120", (code,))
-        hist_closes = [r[0] for r in cur.fetchall()]
-        if len(hist_closes) < 60: continue
+    for code, f_sum in acc_stats.items():
+        cur.execute("""
+            SELECT MAX(close) as h, MIN(close) as l, market_cap 
+            FROM daily_price WHERE code = ? AND date >= strftime('%Y%m%d', 'now', '-21 days')
+        """, (code,))
+        p = cur.fetchone()
+        if not p: continue
+        mcap = p['market_cap'] or 0
+        if not mcap: continue
         
-        curr_price = hist_closes[0]
-        ma60 = sum(hist_closes[:60]) / 60
-        ma120 = sum(hist_closes) / 120 if len(hist_closes) >= 120 else ma60
-        
-        if curr_price > ma60 or curr_price > ma120:
-            acc_picks.append(code)
-            if len(acc_picks) >= 15: break
+        if mcap < mcap_limit_acc:
+            if code in DEBUG_TICKERS: logger.debug(f"[Foreigner_Acc][{code}] Drop: Mcap {mcap} < {mcap_limit_acc}")
+            filter_counts["Foreigner_Accumulation"]["Mcap"] += 1
+            continue
+            
+        box_range = (p['h'] - p['l']) / p['l'] if p['l'] > 0 else 1.0
+        if box_range > 0.12:
+            if code in DEBUG_TICKERS: logger.debug(f"[Foreigner_Acc][{code}] Drop: Box Range {box_range:.2%} > 12%")
+            filter_counts["Foreigner_Accumulation"]["Other"] += 1
+            continue
+            
+        density = (f_sum / p['market_cap']) * 100
+        acc_candidates.append({
+            "ticker": code,
+            "sort_key": (-density, -f_sum, box_range),
+            "metrics": {"acc_density": density, "acc_21d": f_sum, "box_range": box_range}
+        })
+    acc_candidates.sort(key=lambda x: x["sort_key"])
+    strategies_raw["Foreigner_Accumulation"] = acc_candidates[:15]
 
     # Strategy 4: Trend Following
-    # V2: Vol Spike > 1.5x, RSI < 70, Upper Wick < Body, Op Margin > -5, Mcap > 100B
-    
+    # Priority: Vol Power DESC -> Trend Score DESC -> Breakout Age ASC
+    mcap_limit_trend = get_mcap_limit("Trend_Following")
     cur.execute("""
-        SELECT p.code, p.close, p.open, p.high, p.low, p.volume, p.operating_margin
-        FROM daily_price p
-        WHERE p.date = ?
-        AND p.market_cap >= 100000000000
-        AND p.trading_value >= 1000000000
-        AND p.operating_margin > -5
-        AND p.close > p.open 
+        SELECT p.code, p.close, p.open, p.high, p.volume, p.market_cap
+        FROM daily_price p JOIN tickers t ON p.code = t.code
+        WHERE p.date = ? AND t.is_active = 1 AND p.close > p.open
     """, (max_price_date,))
     
-    trend_candidates = [dict(r) for r in cur.fetchall()]
-    trend_picks = []
-    
-    for cand in trend_candidates:
-        code = cand['code']
-        high = cand['high']
-        low = cand['low']
-        open_p = cand['open']
-        close = cand['close']
-        vol = cand['volume']
-        
-        # 1. Wick Check (Upper Wick < Body)
-        # Body = Close - Open (Green)
-        # Upper Wick = High - Close
-        body = close - open_p
-        upper_wick = high - close
-        if body == 0: continue
-        if upper_wick >= body:
-            continue # Selling pressure too high
-            
-        # 2. Volume Spike (> 1.5x 20MA Vol)
-        cur.execute("""
-            SELECT volume FROM daily_price 
-            WHERE code = ? AND date < ? 
-            ORDER BY date DESC LIMIT 20
-        """, (code, max_price_date))
-        v_hist = [r[0] for r in cur.fetchall()]
-        if not v_hist: continue
-        avg_vol_20 = sum(v_hist) / len(v_hist)
-        
-        if vol <= avg_vol_20 * 1.5:
+    trend_candidates = []
+    for r in cur.fetchall():
+        d = dict(r)
+        code = d['code']
+        mcap = d['market_cap'] or 0
+        if mcap < mcap_limit_trend:
+            if code in DEBUG_TICKERS: logger.debug(f"[Trend_Following][{code}] Drop: Mcap {mcap} < {mcap_limit_trend}")
+            filter_counts["Trend_Following"]["Mcap"] += 1
             continue
             
-        # 3. RSI Check (< 70)
-        # Fetch 15 days of closes (14 changes)
-        cur.execute("""
-            SELECT close FROM daily_price 
-            WHERE code = ? AND date <= ? 
-            ORDER BY date DESC LIMIT 15
-        """, (code, max_price_date))
-        rsi_hist = [r[0] for r in cur.fetchall()]
-        rsi_hist.reverse() # Oldest first
-        
-        if len(rsi_hist) >= 15:
-            # Simple RSI calculation
-            gains = []
-            losses = []
-            for i in range(1, len(rsi_hist)):
-                delta = rsi_hist[i] - rsi_hist[i-1]
-                if delta > 0:
-                    gains.append(delta)
-                    losses.append(0)
-                else:
-                    gains.append(0)
-                    losses.append(abs(delta))
+        # Wick Check
+        body = d['close'] - d['open']
+        upper_wick = d['high'] - d['close']
+        if upper_wick >= body:
+            if code in DEBUG_TICKERS: logger.debug(f"[Trend_Following][{code}] Drop: Wick {upper_wick} >= Body {body}")
+            filter_counts["Trend_Following"]["Other"] += 1
+            continue
             
-            avg_gain = sum(gains) / 14
-            avg_loss = sum(losses) / 14
-            
-            if avg_loss == 0:
-                rsi = 100
-            else:
-                rs = avg_gain / avg_loss
-                rsi = 100 - (100 / (1 + rs))
-                
-            if rsi > 70:
-                continue # Overbought
+        # Vol Power
+        cur.execute("SELECT volume FROM daily_price WHERE code = ? AND date < ? ORDER BY date DESC LIMIT 20", (code, max_price_date))
+        v_hist = [h[0] for h in cur.fetchall()]
+        if len(v_hist) < 20: 
+            if code in DEBUG_TICKERS: logger.debug(f"[Trend_Following][{code}] Drop: Insufficient volume history")
+            continue
+        avg_v20 = sum(v_hist) / 20
+        vol_power = min(5.0, d['volume'] / avg_v20) if avg_v20 > 0 else 0
+        if vol_power < 1.5: 
+            if code in DEBUG_TICKERS: logger.debug(f"[Trend_Following][{code}] Drop: Vol Power {vol_power:.2f} < 1.5")
+            continue
         
-        trend_picks.append(code)
-        if len(trend_picks) >= 15: break
-    
-    picks_payload = [
-        {"date": TODAY, "strategy_name": "Value_Picks", "tickers": value_picks},
-        {"date": TODAY, "strategy_name": "Twin_Engines", "tickers": twin_picks},
-        {"date": TODAY, "strategy_name": "Foreigner_Accumulation", "tickers": acc_picks},
-        {"date": TODAY, "strategy_name": "Trend_Following", "tickers": trend_picks}
-    ]
-    
+        # Trend Score & Breakout Age
+        cur.execute("SELECT close, high FROM daily_price WHERE code = ? ORDER BY date DESC LIMIT 120", (code,))
+        h_data = cur.fetchall()
+        h_closes = [h[0] for h in h_data]
+        h_highs = [h[1] for h in h_data]
+        
+        ma20, ma60, ma120 = sum(h_closes[:20])/20, sum(h_closes[:60])/60, sum(h_closes[:120])/120
+        trend_score = 30 if ma20 > ma60 > ma120 else (20 if ma20 > ma60 else 0)
+        
+        # Breakout Age (Simplified: days since 20d high)
+        max_h20 = max(h_highs[1:21])
+        breakout_age = 0 if d['high'] > max_h20 else 99 # Simplified for now
+        
+        trend_candidates.append({
+            "ticker": code,
+            "sort_key": (-vol_power, -trend_score, breakout_age),
+            "metrics": {"vol_power": vol_power, "trend_score": trend_score}
+        })
+    trend_candidates.sort(key=lambda x: x["sort_key"])
+    strategies_raw["Trend_Following"] = trend_candidates[:15]
+
+    # --- 🕵️ Confluence & Final Ranking ---
+    # Log Filter Summaries
+    for s_id, counts in filter_counts.items():
+        logger.info(f"  [{s_id}] Filtered: Mcap={counts['Mcap']}, NetIncome={counts['NetIncome']}, Other={counts['Other']}")
+
+    all_found_tickers = {} # {ticker: {rank_sum, count, groups, best_rank}}
+    for s_id, candidates in strategies_raw.items():
+        if not candidates:
+            logger.info(f"  [{s_id}] NO_QUALIFIED_CANDIDATES")
+            continue
+            
+        for rank, cand in enumerate(candidates, 1):
+            ticker = cand["ticker"]
+            if ticker not in all_found_tickers:
+                all_found_tickers[ticker] = {"rank_sum": 0, "count": 0, "groups": set(), "best_rank": 999}
+            
+            stats = all_found_tickers[ticker]
+            stats["rank_sum"] += rank
+            stats["count"] += 1
+            stats["groups"].add(STRATEGY_META[s_id]["group"])
+            stats["best_rank"] = min(stats["best_rank"], rank)
+
+    # Calculate Weighted Confluence
+    confluence_list = []
+    for ticker, stats in all_found_tickers.items():
+        weighted_group_score = sum(GROUP_WEIGHT.get(g, 1.0) for g in stats["groups"])
+        avg_rank = stats["rank_sum"] / stats["count"]
+        confluence_list.append({
+            "ticker": ticker,
+            "weighted_group_score": weighted_group_score,
+            "best_rank": stats["best_rank"],
+            "avg_rank": avg_rank,
+            "groups": list(stats["groups"])
+        })
+
+    # Sort Confluence: Group Score DESC -> Best Rank ASC -> Avg Rank ASC
+    confluence_list.sort(key=lambda x: (-x["weighted_group_score"], x["best_rank"], x["avg_rank"]))
+    final_confluence = confluence_list[:5]
+
+    # --- 📦 Payload Construction & Sync ---
+    picks_payload = []
+    # 1. Strategy Picks (Top 5 each)
+    for s_id, candidates in strategies_raw.items():
+        status = "OK" if candidates else "NO_QUALIFIED_CANDIDATES"
+        tickers = [c["ticker"] for c in candidates[:5]]
+        
+        details = {
+            "status": status,
+            "meta_version": "v5.0",
+            "analyzer_ver": "1.0",
+            "snapshots": {
+                "mcap_threshold": GLOBAL_MCAP_MIN,
+                "universe_size": u_size,
+                "group_weights": GROUP_WEIGHT
+            },
+            "candidates": [
+                {
+                    "ticker": c["ticker"],
+                    "rank": i+1,
+                    "metrics": c["metrics"]
+                } for i, c in enumerate(candidates[:5])
+            ]
+        }
+        picks_payload.append({
+            "date": TODAY,
+            "strategy_name": s_id,
+            "tickers": tickers,
+            "details": details
+        })
+
+    # 2. Confluence Pick (Unified Strategy)
+    confluence_tickers = [c["ticker"] for c in final_confluence]
+    picks_payload.append({
+        "date": TODAY,
+        "strategy_name": "Confluence_Top",
+        "tickers": confluence_tickers,
+        "details": {
+            "status": "OK" if confluence_tickers else "NONE",
+            "meta_version": "v5.0",
+            "items": [
+                {
+                    "ticker": c["ticker"],
+                    "weighted_group_score": c["weighted_group_score"],
+                    "best_rank": c["best_rank"],
+                    "avg_rank": c["avg_rank"],
+                    "groups": c["groups"]
+                } for c in final_confluence
+            ]
+        }
+    })
+
     try:
-        # Change table name to "algo_picks" and use strategy_name for latest-only policy
         supabase.table("algo_picks").upsert(picks_payload, on_conflict="strategy_name").execute()
-        logger.info(f"✅ Uploaded Algo Picks to 'algo_picks' table (Latest Only)")
+        logger.info(f"✅ Uploaded {len(picks_payload)} Algo Picks to Supabase (v5)")
         
         # Send Notification
-        notify_telegram(len(value_picks), len(twin_picks), len(acc_picks), len(trend_picks), twin_picks)
-
+        notify_telegram(picks_payload)
     except Exception as e:
         logger.error(f"Algo Upload Error: {e}")
     
-    return list(set(value_picks + twin_picks + acc_picks + trend_picks))
+    return list(set([t for p in picks_payload for t in p["tickers"]]))
 
 def get_telegram_settings_from_db():
     """
@@ -598,9 +708,9 @@ def get_telegram_settings_from_db():
         logger.warning(f"Failed to fetch Telegram settings: {e}")
     return None, None
 
-def notify_telegram(value_count, twin_count, acc_count, trend_count, twin_tickers):
+def notify_telegram(picks_payload):
     """
-    Send a summary message to Telegram.
+    Send a summary message to Telegram based on v5 picks payload.
     """
     db_chat_id, db_token = get_telegram_settings_from_db()
     token = db_token or os.getenv("TELEGRAM_BOT_TOKEN")
@@ -610,23 +720,28 @@ def notify_telegram(value_count, twin_count, acc_count, trend_count, twin_ticker
         logger.warning("Telegram credentials missing. Skipping notification.")
         return
 
-    # Link to production URL if possible, otherwise localhost
-    site_url = os.getenv("NEXT_PUBLIC_SITE_URL", "http://localhost:3000")
+    # Extract counts and top picks
+    summary_map = {p["strategy_name"]: len(p["tickers"]) for p in picks_payload}
+    confluence_payload = next((p for p in picks_payload if p["strategy_name"] == "Confluence_Top"), None)
+    confluence_tickers = confluence_payload["tickers"] if confluence_payload else []
     
-    ticker_list_str = ', '.join(twin_tickers[:5]) if twin_tickers else 'None'
+    # Link to production URL if possible, otherwise localhost
+    site_url = os.getenv("NEXT_PUBLIC_SITE_URL", "https://daily-port.vercel.app")
+    
+    ticker_list_str = ', '.join(confluence_tickers[:5]) if confluence_tickers else 'None'
     message = f"""
 🚀 *DailyPort 알고리즘 분석 완료* ({TODAY})
 
-🔍 *알고리즘 픽 요약*:
-• 💎 저평가(Value): {value_count}개
-• 🐯 기관/외인 동반매수: {twin_count}개
-• 🥪 외국인 매집/횡보: {acc_count}개
-• 📈 추세추종(Trend): {trend_count}개
+🔍 *전략별 매칭 현황*:
+• 💎 저평가(Value): {summary_map.get('Value_Picks', 0)}개
+• 🐯 동반매수(Twin): {summary_map.get('Twin_Engines', 0)}개
+• 🥪 외인매집(Acc): {summary_map.get('Foreigner_Accumulation', 0)}개
+• 📈 추세추종(Trend): {summary_map.get('Trend_Following', 0)}개
 
-🔥 *동반매수 주요 종목*:
+🏆 *통합 추천 (Confluence)*:
 `{ticker_list_str}`
 
-[대시보드 바로가기]({site_url}/algo-picks)
+[알고리즘 픽 확인하기]({site_url}/algo-picks)
 """
     try:
         url = f"https://api.telegram.org/bot{token}/sendMessage"

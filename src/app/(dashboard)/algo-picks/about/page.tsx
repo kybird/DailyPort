@@ -12,9 +12,10 @@ export default function AlgoAboutPage() {
             bgColor: 'bg-emerald-50 dark:bg-emerald-950/30',
             description: 'PER/PBR을 통한 밸류에이션 점검과 동시에 수익성(ROE/영업이익률)을 검증하여 가치 함정을 피합니다.',
             logic: [
-                'ROE(자기자본이익률) 10% 이상 (효율적 자본 운용)',
+                'ROE(자기자본이익률) 8% 이상 (효율적 자본 운용)',
                 '영업이익률 5% 이상 (본업의 높은 수익성)',
-                'PER 12배 미만 & PBR 0.3~1.1 사이 (저평가 매력)'
+                'PER 0~30배 & PBR 0.3~1.2 사이 (저평가 매력)',
+                '정렬 순서: Profit Quality ↓ → PER ↑ → PBR ↑'
             ],
             target: '안정적인 펀더멘털과 저평가 매력을 겸비한 우량주 투자'
         },
@@ -26,9 +27,9 @@ export default function AlgoAboutPage() {
             bgColor: 'bg-amber-50 dark:bg-amber-950/30',
             description: '단순 매수가 아닌 시가총액 대비 유의미한 수급 강도와 매수 연속성을 가진 종목을 선별합니다.',
             logic: [
-                '수급강도: (외인+기관 합산 매수액 / 시총) 0.05% 이상',
-                '연속성: 최근 3거래일 중 2일 이상 동반 또는 강세 매수',
-                '가격위치: 현재가 < 20일 이동평균선 + 10% (추격매수 방지)'
+                '수급강도(Demand Power): (외인+기관 합산 / 시총) × 100 ≥ 0.05%',
+                '외인/기관 모두 순매수 (당일 기준)',
+                '정렬 순서: Demand Power ↓ → Co-Momentum ↓ → 합산매수 ↓'
             ],
             target: '메이저 수급이 유입되는 시장 주도주 모멘텀 투자'
         },
@@ -40,9 +41,10 @@ export default function AlgoAboutPage() {
             bgColor: 'bg-blue-50 dark:bg-blue-950/30',
             description: '변동성이 축소된 Box권 구간에서 외국인이 지분을 늘려가는 "에너지 응축" 종목을 포착합니다.',
             logic: [
-                '박스권 응축: 최근 20일 주가 변동폭 10% 이내 (변동성 축소)',
-                '추세지표: 60일 또는 120일 이동평균선 상단 위치 (중장기 정배열)',
-                '거래량 말림: 5일 평균 거래량 < 20일 평균 (거래 절벽 속 매집)'
+                '박스권 응축: 최근 21일 주가 변동폭 12% 이내',
+                '21일 누적 외인 순매수 > 0',
+                '매집 밀도(Density): (21일 외인 순매수 / 시총) × 100',
+                '정렬 순서: Density ↓ → 21일 누적 ↓ → Box Range ↑'
             ],
             target: '안정적인 박스권 돌파 전야의 선취매 전략'
         },
@@ -52,20 +54,21 @@ export default function AlgoAboutPage() {
             icon: LineChart,
             color: 'text-rose-500',
             bgColor: 'bg-rose-50 dark:bg-rose-950/30',
-            description: '강한 거래량과 함께 전고점을 돌파하는 종목을 찾되, 과매수 여부와 윗꼬리 저항을 필터링합니다.',
+            description: '강한 거래량과 함께 양봉으로 마감한 종목을 찾되, 윗꼬리 저항을 필터링합니다.',
             logic: [
-                '거래 폭발: 금일 거래량 > 20일 평균 거래량의 1.5배 이상',
-                '과열 방지: RSI(14) 지표 70 미만 (단기 과열 구간 제외)',
-                '캔들 완성도: 윗꼬리 길이 < 몸통 길이 (장중 차익실현 압력 체크)'
+                '양봉 마감: 종가 > 시가',
+                '거래 폭발(Vol Power): 금일 거래량 / 20일 평균 ≥ 1.5배 (최대 5배 캡)',
+                '윗꼬리 체크: 윗꼬리 < 몸통 (장중 차익실현 압력 필터)',
+                '정렬 순서: Vol Power ↓ → Trend Score ↓ → Breakout Age ↑'
             ],
             target: '강한 추세와 거래량을 동반한 고확률 돌파 매매'
         }
     ]
 
     const globalFilters = [
-        { title: '시가총액 1,000억 이상', desc: '초소형 잡주 및 작전 세력 개입 가능성 배제' },
-        { title: '5일 평균 거래대금 10억 이상', desc: '원활한 진출입이 가능한 최소한의 유동성 확보' },
-        { title: '수익성 검증 (영업이익 > 0)', desc: '지속적인 영업적자 및 관리종목 위험 배제' }
+        { title: '동적 시가총액 필터', desc: '상위 70% 시총 또는 최소 3,000억 중 높은 값을 기준으로 소형주 필터링' },
+        { title: '영업이익 양수 (EPS > 0)', desc: '지속적인 영업적자 및 관리종목 위험 배제' },
+        { title: 'Confluence 점수', desc: 'Flow/Price/Fundamental 그룹별 가중치 기반 통합 순위 (상위 5종목 선정)' }
     ]
 
     return (
