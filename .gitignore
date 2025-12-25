@@ -51,3 +51,14 @@ admin-tools/token-cache.json
 *.tsbuildinfo
 next-env.d.ts
 /admin-tools/legacy
+
+# python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+htmlcov/
+*.log
+dailyport.db
+admin-tools/python/verify_algo_picks.py
