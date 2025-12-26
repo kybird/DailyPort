@@ -2,6 +2,7 @@
 
 import { createClient } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { encrypt, decrypt } from '@/utils/encryption'
 
 export interface UserSettings {
     user_id: string
@@ -27,6 +28,15 @@ export async function getSettings() {
     }
 
     if (error) return { error: error.message }
+
+    // Decrypt sensitive fields
+    try {
+        if (data.telegram_chat_id) data.telegram_chat_id = decrypt(data.telegram_chat_id);
+        if (data.telegram_bot_token) data.telegram_bot_token = decrypt(data.telegram_bot_token);
+    } catch (e) {
+        console.error('Decryption failed for user settings:', e);
+    }
+
     return { data }
 }
 
@@ -39,12 +49,16 @@ export async function updateSettings(formData: FormData) {
     const telegram_chat_id = formData.get('telegram_chat_id') as string
     const telegram_bot_token = formData.get('telegram_bot_token') as string
 
+    // Encrypt sensitive fields before saving
+    const encryptedChatId = telegram_chat_id ? encrypt(telegram_chat_id) : null;
+    const encryptedBotToken = telegram_bot_token ? encrypt(telegram_bot_token) : null;
+
     const { error } = await supabase
         .from('user_settings')
         .upsert({
             user_id: user.id,
-            telegram_chat_id,
-            telegram_bot_token,
+            telegram_chat_id: encryptedChatId,
+            telegram_bot_token: encryptedBotToken,
             updated_at: new Date().toISOString()
         })
 

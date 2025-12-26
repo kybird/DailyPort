@@ -22,11 +22,17 @@ export default async function DashboardLayout({
         return redirect('/login')
     }
 
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single()
+
     return (
         <AnalysisProvider>
             <div className="flex min-h-screen bg-stone-200 dark:bg-black transition-colors duration-300">
                 {/* Sidebar - Mobile hidden for now, simple implementation */}
-                <Sidebar />
+                <Sidebar role={profile?.role || 'user'} />
 
 
                 {/* Main Content */}

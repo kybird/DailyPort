@@ -55,10 +55,11 @@ export default function Watchlist({ items }: { items: WatchlistItem[] }) {
     return (
         <section className="space-y-6">
             <div className="flex justify-between items-center">
-                <h2 className="text-2xl font-black text-zinc-900 dark:text-white flex items-center gap-2">
+                <h1 className="text-3xl font-black text-zinc-900 dark:text-white flex items-center gap-2">
                     관심 종목
                     <span className="text-sm font-bold text-zinc-400 dark:text-zinc-600 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded-full">{items.length}</span>
-                </h2>
+                </h1>
+
                 <button
                     onClick={() => setIsSearchOpen(!isSearchOpen)}
                     className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-bold transition-all shadow-lg shadow-blue-500/20 active:scale-95"

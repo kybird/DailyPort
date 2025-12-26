@@ -3,10 +3,10 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, Info, Loader2 } from 'lucide-react'
+import { LayoutDashboard, Info, Loader2, Shield } from 'lucide-react'
 import { useState } from 'react'
 
-export default function Sidebar() {
+export default function Sidebar({ role }: { role?: string }) {
     const pathname = usePathname()
     const [navigatingTo, setNavigatingTo] = useState<string | null>(null)
 
@@ -24,6 +24,25 @@ export default function Sidebar() {
             icon: (isActive: boolean) => <LayoutDashboard size={18} className={isActive ? 'text-blue-600' : 'text-zinc-500'} />
         },
         {
+            href: '/watchlist',
+            label: '관심종목',
+            icon: (isActive: boolean) => (
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={isActive ? 'text-blue-600' : 'text-zinc-500'}>
+                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                </svg>
+            )
+        },
+        {
+            href: '/portfolio',
+            label: '내 포트폴리오',
+            icon: (isActive: boolean) => (
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={isActive ? 'text-blue-600' : 'text-zinc-500'}>
+                    <rect width="20" height="14" x="2" y="7" rx="2" ry="2" />
+                    <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+                </svg>
+            )
+        },
+        {
             href: '/algo-picks',
             label: 'Algo Picks',
             icon: (isActive: boolean) => (
@@ -37,12 +56,19 @@ export default function Sidebar() {
                 </svg>
             )
         },
+
         {
             href: '/algo-picks/about',
             label: '스크리닝 기법 소개',
             icon: (isActive: boolean) => <Info size={18} className={isActive ? 'text-blue-600' : 'text-zinc-500'} />
-        }
+        },
+        ...(role === 'admin' ? [{
+            href: '/admin',
+            label: 'Admin 관리',
+            icon: (isActive: boolean) => <Shield size={18} className={isActive ? 'text-blue-600' : 'text-zinc-500'} />
+        }] : [])
     ]
+
 
     return (
         <aside className="w-64 bg-white dark:bg-neutral-950 border-r border-neutral-200 dark:border-neutral-900 hidden md:block transition-colors shrink-0">

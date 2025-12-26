@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import LoginButton from './LoginButton'
+import SocialLoginButtons from './SocialLoginButtons'
 
 export default async function Login({
     searchParams,
@@ -107,6 +108,8 @@ export default async function Login({
                                 <span className="bg-white dark:bg-zinc-950 px-2 text-zinc-400">또는</span>
                             </div>
                         </div>
+
+                        <SocialLoginButtons />
 
                         <p className="text-sm text-center text-zinc-600 dark:text-zinc-400">
                             처음이신가요?{' '}
