@@ -54,8 +54,10 @@ const formatMetric = (key: string, value: number) => {
 
 
 // Helper to generate detailed selection reasons based on strategy and metrics
-const getSelectionReasons = (strategy: string, metrics: Record<string, number>) => {
+const getSelectionReasons = (strategy: string, metrics: any) => {
     const reasons: string[] = []
+
+    if (!metrics) return []
 
     // Value Model
     if (strategy === 'Value_Picks') {
