@@ -44,9 +44,8 @@ def generate_stock_list():
             try:
                 name = stock.get_market_ticker_name(ticker)
                 
-                # Append market suffix for consistency with system ID
-                suffix = ".KS" if market['type'] == "KOSPI" else ".KQ"
-                full_ticker = ticker + suffix
+                # Use ticker directly as the identifier without market suffix
+                full_ticker = ticker
                 
                 initials = get_choseong(name)
 

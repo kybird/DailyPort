@@ -201,7 +201,7 @@ async function fetchMarketDataInternal(ticker: string): Promise<MarketData | nul
 
         let yahooTicker = ticker
         // Auto-append suffix for Korean 6-character tickers if not already present
-        if (/^[0-9A-Z]{6}$/.test(ticker) && !ticker.includes('.')) {
+        if (/^\d{6}$/.test(ticker) && !ticker.includes('.')) {
             yahooTicker = `${ticker}.KS`
         }
 
@@ -211,7 +211,7 @@ async function fetchMarketDataInternal(ticker: string): Promise<MarketData | nul
         try {
             quote = await yahooFinance.quote(yahooTicker)
         } catch (e) {
-            // Fallback for KOSDAQ if KOSPI fails
+            // Fallback for KOSDAQ if KOSPI fails (or vice versa if we didn't know)
             if (yahooTicker.endsWith('.KS')) {
                 const kqTicker = yahooTicker.replace('.KS', '.KQ')
                 try {
@@ -219,6 +219,14 @@ async function fetchMarketDataInternal(ticker: string): Promise<MarketData | nul
                     yahooTicker = kqTicker // Update ticker if fallback works
                 } catch {
                     throw e // Throw original error if both fail
+                }
+            } else if (yahooTicker.endsWith('.KQ')) {
+                const ksTicker = yahooTicker.replace('.KQ', '.KS')
+                try {
+                    quote = await yahooFinance.quote(ksTicker)
+                    yahooTicker = ksTicker
+                } catch {
+                    throw e
                 }
             } else {
                 throw e

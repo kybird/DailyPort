@@ -4,7 +4,8 @@ import { createClient } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
 
 
-export async function addTicker(ticker: string, quantity: number, entryPrice: number) {
+export async function addTicker(tickerInput: string, quantity: number, entryPrice: number) {
+    const ticker = tickerInput.split('.')[0]
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
 
@@ -65,7 +66,8 @@ export async function addTicker(ticker: string, quantity: number, entryPrice: nu
     return { success: true }
 }
 
-export async function sellTicker(ticker: string, quantity: number, sellPrice: number) {
+export async function sellTicker(tickerInput: string, quantity: number, sellPrice: number) {
+    const ticker = tickerInput.split('.')[0]
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
 
@@ -131,7 +133,8 @@ export async function sellTicker(ticker: string, quantity: number, sellPrice: nu
     return { success: true }
 }
 
-export async function removeTicker(ticker: string) {
+export async function removeTicker(tickerInput: string) {
+    const ticker = tickerInput.split('.')[0]
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
 
@@ -163,7 +166,8 @@ export async function getWatchlist() {
     return data
 }
 
-export async function addToWatchlist(ticker: string) {
+export async function addToWatchlist(tickerInput: string) {
+    const ticker = tickerInput.split('.')[0]
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: 'Unauthorized' }
@@ -182,7 +186,8 @@ export async function addToWatchlist(ticker: string) {
     return { success: true }
 }
 
-export async function removeFromWatchlist(ticker: string) {
+export async function removeFromWatchlist(tickerInput: string) {
+    const ticker = tickerInput.split('.')[0]
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: 'Unauthorized' }

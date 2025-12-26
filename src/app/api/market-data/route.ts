@@ -8,8 +8,9 @@ const CACHE_TTL_MINUTES = 5
 function addYahooSuffix(ticker: string): string {
     // Korean stocks are 6-digit numbers
     if (/^\d{6}$/.test(ticker)) {
-        // Default to .KS (KOSPI)
-        // TODO: Detect KOSDAQ stocks and use .KQ
+        // We default to .KS but the consumer should handle retries 
+        // if they want to be thorough. For this simple API, .KS is a reasonable guess
+        // or we could use the database to find the market.
         return `${ticker}.KS`
     }
     return ticker
