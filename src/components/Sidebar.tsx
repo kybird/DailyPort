@@ -20,7 +20,7 @@ export default function Sidebar({ role }: { role?: string }) {
     const navItems = [
         {
             href: '/dashboard',
-            label: '대시보드',
+            label: '시뮬레이션 현황',
             icon: (isActive: boolean) => <LayoutDashboard size={18} className={isActive ? 'text-blue-600' : 'text-zinc-500'} />
         },
         {
@@ -34,7 +34,7 @@ export default function Sidebar({ role }: { role?: string }) {
         },
         {
             href: '/portfolio',
-            label: '내 포트폴리오',
+            label: '전략 시뮬레이션',
             icon: (isActive: boolean) => (
                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={isActive ? 'text-blue-600' : 'text-zinc-500'}>
                     <rect width="20" height="14" x="2" y="7" rx="2" ry="2" />
@@ -44,7 +44,7 @@ export default function Sidebar({ role }: { role?: string }) {
         },
         {
             href: '/algo-picks',
-            label: 'Algo Picks',
+            label: '검증 알고리즘',
             icon: (isActive: boolean) => (
                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={isActive ? 'text-blue-600' : 'text-zinc-500'}>
                     <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6" />
@@ -59,7 +59,7 @@ export default function Sidebar({ role }: { role?: string }) {
 
         {
             href: '/algo-picks/about',
-            label: '스크리닝 기법 소개',
+            label: '검증 기법 가이드',
             icon: (isActive: boolean) => <Info size={18} className={isActive ? 'text-blue-600' : 'text-zinc-500'} />
         },
         ...(role === 'admin' ? [{
@@ -74,12 +74,12 @@ export default function Sidebar({ role }: { role?: string }) {
         <aside className="w-64 bg-white dark:bg-neutral-950 border-r border-neutral-200 dark:border-neutral-900 hidden md:block transition-colors shrink-0">
             <div className="p-4 mb-2">
                 <Link href="/" className="flex items-center gap-2 group relative" onClick={() => setNavigatingTo('/')}>
-                    <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white shadow-lg shadow-blue-500/20 group-hover:bg-blue-700 transition-colors">
-                        <LayoutDashboard size={18} />
+                    <div className="w-10 h-10 flex items-center justify-center group-hover:scale-105 transition-transform duration-300">
+                        <img src="/logo.png" alt="Logo" className="w-full h-full object-contain" />
                     </div>
                     <div className="flex flex-col">
-                        <span className="text-xl font-black tracking-tight text-zinc-900 dark:text-white leading-none">
-                            DailyPort
+                        <span className="text-xl font-black tracking-tighter text-zinc-900 dark:text-white leading-none">
+                            DailyPort <span className="text-[10px] text-blue-600 font-bold block mt-1 tracking-widest uppercase">Logic Lab</span>
                         </span>
                         {navigatingTo === '/' && (
                             <span className="text-[10px] text-blue-500 font-bold animate-pulse absolute -bottom-4 left-10">홈으로 이동 중...</span>

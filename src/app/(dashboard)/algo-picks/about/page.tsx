@@ -75,11 +75,11 @@ export default function AlgoAboutPage() {
             <header className="space-y-4">
                 <h1 className="text-4xl font-black text-zinc-900 dark:text-white">
                     DailyPort의 알고리즘<br />
-                    <span className="text-blue-600 dark:text-blue-400 text-3xl">스크리닝 기법 소개</span>
+                    <span className="text-blue-600 dark:text-blue-400 text-3xl">검증 기법 상세설명</span>
                 </h1>
                 <p className="text-lg text-zinc-500 leading-relaxed max-w-2xl">
-                    DailyPort는 기술적 지표와 수급 데이터를 결합한 퀀트 알고리즘을 통해 매일 아침(마지막 분석 완료 시점) 시장의 기회를 선별하여 제공합니다.
-                    <span className="block mt-2 text-sm text-zinc-400 font-medium">※ 본 스크리닝 결과에는 장중 실시간 시세 변동이 반영되지 않습니다.</span>
+                    DailyPort는 기술적 지표와 수급 데이터를 결합한 퀀트 알고리즘을 통해 매일 아침(마지막 분석 완료 시점) 수치화된 전략 출력을 산출합니다.
+                    <span className="block mt-2 text-sm text-zinc-400 font-medium">※ 본 시뮬레이션 결과에는 장중 실시간 시세 변동이 반영되지 않습니다.</span>
                 </p>
             </header>
 
@@ -120,7 +120,7 @@ export default function AlgoAboutPage() {
                                         <div className="bg-zinc-50 dark:bg-zinc-900/50 rounded-2xl p-6 border border-zinc-100 dark:border-zinc-800">
                                             <h4 className="flex items-center gap-2 font-bold text-zinc-900 dark:text-zinc-200 mb-4">
                                                 <Target size={18} className="text-emerald-500" />
-                                                추천 투자 대상
+                                                모델링 분석 대상
                                             </h4>
                                             <p className="text-sm text-zinc-500 leading-relaxed">
                                                 {s.target}
@@ -156,14 +156,14 @@ export default function AlgoAboutPage() {
 
             <footer className="pt-20 border-t border-zinc-100 dark:border-zinc-800">
                 <div className="bg-blue-600 dark:bg-blue-700 rounded-3xl p-10 text-white text-center space-y-4">
-                    <h3 className="text-2xl font-bold">지금 바로 종목을 확인해보세요</h3>
-                    <p className="opacity-80">데이터는 매 영업일 오전 8시~11시 사이에 최신화됩니다.</p>
+                    <h3 className="text-2xl font-bold">최신 검증 데이터를 확인하세요</h3>
+                    <p className="opacity-80">데이터는 매 영업일 오전 8시~11시 사이에 분석 완료됩니다.</p>
                     <div className="pt-4">
                         <Link
                             href="/algo-picks"
                             className="inline-flex items-center gap-2 bg-white text-blue-600 px-8 py-4 rounded-2xl font-black hover:scale-105 transition-transform"
                         >
-                            오늘의 픽 보기
+                            알고리즘 출력 데이터 확인
                             <ArrowRight size={20} />
                         </Link>
                     </div>

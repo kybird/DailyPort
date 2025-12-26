@@ -10,7 +10,7 @@ export async function sendAnalysisToTelegram(report: AnalysisReport) {
     const rsiStatus = report.technical.rsi.status === 'OVERBOUGHT' ? '🔥 <b>과매수</b>' :
         report.technical.rsi.status === 'OVERSOLD' ? '🧊 <b>과매도</b>' : report.technical.rsi.status
     const supplyStatus = report.supplyDemand
-        ? `외인: ${report.supplyDemand.foreignNetBuy > 0 ? '🔴 매수' : '🔵 매도'} | 기관: ${report.supplyDemand.instNetBuy > 0 ? '🔴 매수' : '🔵 매도'}`
+        ? `외인: ${report.supplyDemand.foreignNetBuy > 0 ? '🔴 유입' : '🔵 유출'} | 기관: ${report.supplyDemand.instNetBuy > 0 ? '🔴 유입' : '🔵 유출'}`
         : '<i>수급 데이터 없음</i>'
 
     const message = `

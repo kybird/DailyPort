@@ -22,14 +22,14 @@ export default async function Login({
 
                 <div className="relative z-20 max-w-lg text-center md:text-left">
                     <h1 className="text-4xl md:text-5xl font-black text-white mb-6 leading-tight tracking-tight">
-                        믿음의 투자,<br />
-                        <span className="text-blue-500">데일리포트</span>가<br />
-                        함께합니다.
+                        검증된 알고리즘의<br />
+                        <span className="text-blue-500">투명성</span>,<br />
+                        데일리포트 <span className="text-sm align-top text-zinc-400">Logic Lab</span>
                     </h1>
                     <p className="text-xl text-zinc-300 font-medium">
-                        &quot;기도매매는 이제 그만.&quot;<br />
-                        데이터로 증명하고 수익으로 보답받는<br />
-                        스마트한 투자자의 선택.
+                        &quot;막연한 예측이 아닌 데이터 기반의 검증&quot;<br />
+                        수치화된 모델로 필터링하고 시스템으로 완성하는<br />
+                        스마트한 전략가의 도구.
                     </p>
                 </div>
 
@@ -62,10 +62,16 @@ export default async function Login({
                     홈으로
                 </Link>
 
+                <div className="mb-6 flex justify-center md:hidden">
+                    <div className="w-12 h-12">
+                        <img src="/logo.png" alt="Logo" className="w-full h-full object-contain" />
+                    </div>
+                </div>
+
                 <div className="w-full max-w-sm">
                     <div className="mb-10 text-center md:text-left">
                         <h2 className="text-3xl font-bold text-zinc-900 dark:text-white mb-2">반갑습니다!</h2>
-                        <p className="text-zinc-600 dark:text-zinc-400">계정에 로그인하여 포트폴리오를 관리하세요.</p>
+                        <p className="text-zinc-600 dark:text-zinc-400">검증된 전략으로 시뮬레이션을 시작하세요.</p>
                     </div>
 
                     <form className="flex flex-col w-full gap-5">

@@ -250,7 +250,7 @@ export default function CompositeStockChart({ priceData, supplyData, objectives 
                     lineWidth: 2,
                     lineStyle: 2,
                     axisLabelVisible: true,
-                    title: `📍 진입가 (손익비: ${obj.rr?.toFixed(1)})`,
+                    title: `📍 모델 진입선 (손익비: ${obj.rr?.toFixed(1)})`,
                 })
             }
             if (obj.target) {
@@ -260,7 +260,7 @@ export default function CompositeStockChart({ priceData, supplyData, objectives 
                     lineWidth: 2,
                     lineStyle: 0,
                     axisLabelVisible: true,
-                    title: '🎯 목표가',
+                    title: '🎯 모델 상한선',
                 })
             }
             if (obj.stop) {
@@ -270,7 +270,7 @@ export default function CompositeStockChart({ priceData, supplyData, objectives 
                     lineWidth: 2,
                     lineStyle: 0,
                     axisLabelVisible: true,
-                    title: '🛑 손절가',
+                    title: '🛑 모델 하한선',
                 })
             }
         }
@@ -541,19 +541,19 @@ export default function CompositeStockChart({ priceData, supplyData, objectives 
                             onClick={() => setSelectedObjective(selectedObjective === 'short' ? null : 'short')}
                             className={`px-3 py-1 text-[10px] font-black rounded-lg border transition-all ${selectedObjective === 'short' ? 'bg-neutral-900 dark:bg-neutral-100 text-white dark:text-neutral-900 border-neutral-900' : 'bg-transparent text-neutral-500 border-neutral-200 dark:border-neutral-800'}`}
                         >
-                            단기
+                            S
                         </button>
                         <button
                             onClick={() => setSelectedObjective(selectedObjective === 'mid' ? null : 'mid')}
                             className={`px-3 py-1 text-[10px] font-black rounded-lg border transition-all ${selectedObjective === 'mid' ? 'bg-neutral-900 dark:bg-neutral-100 text-white dark:text-neutral-900 border-neutral-900' : 'bg-transparent text-neutral-500 border-neutral-200 dark:border-neutral-800'}`}
                         >
-                            중기
+                            M
                         </button>
                         <button
                             onClick={() => setSelectedObjective(selectedObjective === 'long' ? null : 'long')}
                             className={`px-3 py-1 text-[10px] font-black rounded-lg border transition-all ${selectedObjective === 'long' ? 'bg-neutral-900 dark:bg-neutral-100 text-white dark:text-neutral-900 border-neutral-900' : 'bg-transparent text-neutral-500 border-neutral-200 dark:border-neutral-800'}`}
                         >
-                            장기
+                            L
                         </button>
                         <div className="w-[1px] h-4 bg-neutral-200 dark:bg-neutral-800 mx-1" />
                         <button

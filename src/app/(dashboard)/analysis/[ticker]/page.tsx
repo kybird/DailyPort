@@ -32,9 +32,9 @@ export default async function AnalysisPage({
                             분석 리포트 없음
                         </h1>
                         <p className="text-zinc-500 dark:text-zinc-400 leading-relaxed">
-                            현재 <b>{tickerParam}</b>에 대한 관리자 분석 리포트가 업로드되지 않았습니다.<br />
+                            현재 <b>{tickerParam}</b>에 대한 알고리즘 시뮬레이션 데이터가 생성되지 않았습니다.<br />
                             <span className="text-sm mt-2 block">
-                                ※ 상세 리포트와 수급 데이터는 <b>관심종목(Watchlist)</b>에 등록된 종목에 대해 Admin Tool이 매일 아침 생성합니다.
+                                ※ 상세 리포트와 수급 데이터는 <b>관심종목(Watchlist)</b>에 등록된 종목에 대해 분석 엔진이 매일 아침 생성합니다.
                             </span>
                         </p>
                     </div>
@@ -70,7 +70,7 @@ export default async function AnalysisPage({
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <Link href={backPath} className="inline-flex items-center text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200 transition-colors group">
                     <ArrowLeft className="w-4 h-4 mr-2 group-hover:-translate-x-1 transition-transform" />
-                    <span className="font-bold">Back to {backLabel}</span>
+                    <span className="font-bold">목록으로 돌아가기</span>
                 </Link>
                 <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-zinc-400">
                     <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
@@ -123,7 +123,7 @@ export default async function AnalysisPage({
                         <ShieldAlert size={24} />
                     </div>
                     <div className="space-y-1 flex-1 text-center md:text-left">
-                        <h4 className="text-sm font-black text-amber-900 dark:text-amber-400 uppercase tracking-tighter">투자 주의: 기술적/수급 지표 부진</h4>
+                        <h4 className="text-sm font-black text-amber-900 dark:text-amber-400 uppercase tracking-tighter">데이터 유의: 시뮬레이션 지표 부진</h4>
                         <p className="text-sm text-amber-700 dark:text-amber-500 font-medium break-keep">
                             현재 수급 또는 가격 추세가 불안정한 상태입니다. 펀더멘털 지표가 우수하더라도 **지배구조, 공시, 뉴스 등 회사 외적 요인**이 작용하고 있을 가능성이 높으므로, 반드시 아래 외부 정보를 연계하여 다각도로 검토하시기 바랍니다.
                         </p>
@@ -238,7 +238,7 @@ export default async function AnalysisPage({
                 <div className="bg-white dark:bg-neutral-900/50 rounded-3xl p-8 border border-neutral-200/60 dark:border-white/5 shadow-md backdrop-blur-sm space-y-8 transition-colors">
                     <h3 className="text-xs font-black text-neutral-900 dark:text-white uppercase tracking-widest flex items-center gap-2 pb-4 border-b border-neutral-100 dark:border-neutral-800">
                         <ArrowRightCircle size={18} className="text-blue-500" />
-                        매매 전략 및 목표
+                        알고리즘 시뮬레이션 데이터
                     </h3>
                     {/* Handle Missing Objectives Gracefully */}
                     {!technical.objectives ? (
@@ -252,7 +252,7 @@ export default async function AnalysisPage({
                             {(['short', 'mid', 'long'] as const).map((tf) => {
                                 const data = technical.objectives![tf];
                                 if (!data) return null;
-                                const labelMap = { short: '단기 매매', mid: '중기 스윙', long: '장기 투자' };
+                                const labelMap = { short: '시뮬레이션 S (단기)', mid: '시뮬레이션 M (중기)', long: '시뮬레이션 L (장기)' };
                                 const colorMap = { short: 'text-neutral-500', mid: 'text-neutral-900 dark:text-neutral-100', long: 'text-blue-600 font-black' };
                                 const statusColor = data.status === 'ACTIVE' ? 'bg-emerald-500' :
                                     data.status === 'WAIT' ? 'bg-amber-500' : 'bg-neutral-400';
@@ -264,7 +264,7 @@ export default async function AnalysisPage({
                                                 <div className={`text-[11px] font-black uppercase tracking-wider ${colorMap[tf]}`}>{labelMap[tf]}</div>
                                                 <div className="flex items-center gap-2">
                                                     <span className={`px-2 py-0.5 rounded text-[10px] font-black text-white ${statusColor}`}>
-                                                        {data.status === 'ACTIVE' ? '진입 가능' : data.status === 'WAIT' ? '대기' : '관망'}
+                                                        {data.status === 'ACTIVE' ? '조건 충족' : data.status === 'WAIT' ? '대기' : '관망'}
                                                     </span>
                                                     <span className="text-[10px] font-bold text-neutral-500">
                                                         {data.strategy === 'PULLBACK_TREND' ? '추세 눌림목' :
@@ -329,7 +329,7 @@ export default async function AnalysisPage({
                                             <div className={`p-3 rounded-2xl border text-center transition-all ${data.status === 'ACTIVE'
                                                 ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-100 dark:border-emerald-900/30'
                                                 : 'bg-emerald-50/30 dark:bg-emerald-950/5 border-dashed border-emerald-200/50 dark:border-emerald-900/20 opacity-60'}`}>
-                                                <div className="text-[8px] font-black text-emerald-400 uppercase mb-1">목표가</div>
+                                                <div className="text-[8px] font-black text-emerald-400 uppercase mb-1">모델 상한선</div>
                                                 <div className={`text-[12px] font-mono font-black ${data.status === 'ACTIVE' ? 'text-emerald-500' : 'text-emerald-400'}`}>₩{data.target?.toLocaleString()}</div>
                                             </div>
                                         </div>
@@ -481,7 +481,7 @@ export default async function AnalysisPage({
                         </div>
 
                         <div className="p-6 bg-blue-50/50 dark:bg-blue-900/10 rounded-2xl border border-blue-100/50 dark:border-blue-800/30 space-y-3">
-                            <div className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase">투자 분석 의견</div>
+                            <div className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase">데이터 모델링 가이드</div>
                             <p className="text-sm font-medium leading-relaxed text-neutral-600 dark:text-neutral-300 italic">
                                 &ldquo;{(() => {
                                     const per = fundamentals?.per || 0;

@@ -16,7 +16,15 @@ export default function SocialLoginButtons() {
         const { error } = await supabase.auth.signInWithOAuth({
             provider: provider as any,
             options: {
-                redirectTo: `${window.location.origin}/auth/callback`,
+                redirectTo: `${window.location.origin}/auth/callback?next=/dashboard`,
+                // Fix KOE205: Use queryParams to strictly override scope parameters
+                ...(provider === 'kakao' ? {
+                    scopes: 'account_email',
+                    queryParams: {
+                        scope: 'account_email',
+                        prompt: 'login',
+                    }
+                } : {}),
             },
         });
 
