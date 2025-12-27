@@ -1,8 +1,19 @@
-
 import Link from 'next/link'
-import { LayoutDashboard, Zap, BarChart3 } from 'lucide-react'
+import { LayoutDashboard, Zap, BarChart3, ShieldCheck, Microscope, Database } from 'lucide-react'
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
+
+function VectorLogo({ className = "w-8 h-8" }: { className?: string }) {
+    return (
+        <div className={`relative ${className} flex items-center justify-center`}>
+            <div className="absolute inset-0 bg-blue-600 rounded-lg rotate-12 opacity-20 animate-pulse"></div>
+            <div className="absolute inset-0 bg-blue-600 rounded-lg -rotate-6 opacity-20"></div>
+            <div className="relative bg-gradient-to-br from-blue-500 to-blue-700 rounded-lg flex items-center justify-center p-1.5 shadow-lg shadow-blue-500/30">
+                <LayoutDashboard className="text-white w-full h-full" strokeWidth={2.5} />
+            </div>
+        </div>
+    )
+}
 
 export default async function LandingPage() {
     const supabase = await createClient()
@@ -21,11 +32,9 @@ export default async function LandingPage() {
             {/* Navigation */}
             <nav className="border-b border-zinc-200 dark:border-zinc-800 bg-white/80 dark:bg-zinc-950/80 backdrop-blur-md sticky top-0 z-50">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex justify-between items-center">
-                    <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 flex items-center justify-center">
-                            <img src="/logo.png" alt="Logo" className="w-full h-full object-contain" />
-                        </div>
-                        <span className="text-xl font-black text-zinc-900 dark:text-white tracking-tighter">DailyPort <span className="text-[10px] text-blue-600 block leading-none">Logic Lab</span></span>
+                    <div className="flex items-center gap-3">
+                        <VectorLogo />
+                        <span className="text-xl font-black text-zinc-900 dark:text-white tracking-tighter">DailyPort <span className="text-[10px] text-blue-600 block leading-none font-bold uppercase tracking-wider">Logic Lab</span></span>
                     </div>
                     <div className="flex items-center gap-4">
                         <Link href="/login" className="text-sm font-bold text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors">로그인</Link>
@@ -60,9 +69,9 @@ export default async function LandingPage() {
                 {/* Feature Grid */}
                 <section className="py-24 bg-white dark:bg-zinc-900/50 border-y border-zinc-200 dark:border-zinc-800 transition-colors">
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-3 gap-12 text-center">
-                        <div className="space-y-4">
-                            <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-xl flex items-center justify-center mx-auto">
-                                <BarChart3 size={24} />
+                        <div className="group space-y-4 p-8 rounded-3xl hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-all duration-300">
+                            <div className="w-14 h-14 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-2xl flex items-center justify-center mx-auto group-hover:scale-110 transition-transform shadow-inner">
+                                <Microscope size={28} />
                             </div>
                             <h3 className="text-xl font-bold text-zinc-900 dark:text-white">성능 시뮬레이션</h3>
                             <p className="text-zinc-600 dark:text-zinc-400 keep-all">
@@ -70,9 +79,9 @@ export default async function LandingPage() {
                                 설정한 전략의 유효성을 실시간 수치로 확인하세요.
                             </p>
                         </div>
-                        <div className="space-y-4">
-                            <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-xl flex items-center justify-center mx-auto">
-                                <Zap size={24} />
+                        <div className="group space-y-4 p-8 rounded-3xl hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-all duration-300">
+                            <div className="w-14 h-14 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-2xl flex items-center justify-center mx-auto group-hover:scale-110 transition-transform shadow-inner">
+                                <Database size={28} />
                             </div>
                             <h3 className="text-xl font-bold text-zinc-900 dark:text-white">전략 출력 브리핑</h3>
                             <p className="text-zinc-600 dark:text-zinc-400 keep-all">
@@ -80,9 +89,9 @@ export default async function LandingPage() {
                                 매일 아침 브리핑하여 분석 리소스를 절감합니다.
                             </p>
                         </div>
-                        <div className="space-y-4">
-                            <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-xl flex items-center justify-center mx-auto">
-                                <BarChart3 size={24} />
+                        <div className="group space-y-4 p-8 rounded-3xl hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-all duration-300">
+                            <div className="w-14 h-14 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-2xl flex items-center justify-center mx-auto group-hover:scale-110 transition-transform shadow-inner">
+                                <ShieldCheck size={28} />
                             </div>
                             <h3 className="text-xl font-bold text-zinc-900 dark:text-white">분석 투명성 중심</h3>
                             <p className="text-zinc-600 dark:text-zinc-400 keep-all">

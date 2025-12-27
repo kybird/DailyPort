@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { LayoutDashboard } from 'lucide-react'
 import LoginButton from './LoginButton'
 import SocialLoginButtons from './SocialLoginButtons'
 
