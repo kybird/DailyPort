@@ -22,11 +22,15 @@ export default async function DashboardLayout({
         return redirect('/login')
     }
 
-    const { data: profile } = await supabase
+    const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('role')
         .eq('id', user.id)
         .single()
+
+    if (profileError) {
+        console.error('Error fetching user profile:', profileError)
+    }
 
     return (
         <AnalysisProvider>
