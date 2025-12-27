@@ -66,10 +66,10 @@ STRATEGY_META = {
     "Trend_Following": {
         "id": "Trend_Following",
         "group": "Price",
-        "tags": ["추세추종", "돌파"],
-        "description": "추세추종: 거래폭발(1.5x↑) 돌파 종목 (RSI 과열 및 윗꼬리 저항 필터링)",
+        "tags": ["추세추종", "이평선정배열"],
+        "description": "추세추종: 거래폭발(1.5x↑) 및 이평선 정배열(MA5>20) 초기 돌파",
         "mcap_override": None,
-        "version": "v5.0"
+        "version": "v5.1"
     }
 }
 
@@ -163,117 +163,203 @@ def calculate_objectives_v3(current_price, history_rows):
                 sw.append(curr)
         return sw
 
+    def ema(period):
+        if len(closes) < period: return None
+        k = 2 / (period + 1)
+        # Initialize with SMA
+        val = sum(closes[:period]) / period
+        # Calculate EMA for the rest
+        # (This is a simplified EMA on limited window, for robustness on 200 days data, it's acceptable)
+        # Ideally we want recursion from start, but iterating 200 rows is fast enough.
+        # Let's do a proper iterative calc from the oldest available data point up to now?
+        # Given `closes` is newest first (index 0 is today), we should reverse to calculate.
+        
+        data_rev = closes[::-1] # Oldest first
+        if len(data_rev) < period: return None
+        
+        # Start SMA at the point where we have enough data
+        # Actually standard EMA usually starts with first value or SMA of first N.
+        # Simple approximation: Start with SMA of first 'period' items in history
+        initial_sma = sum(data_rev[:period]) / period
+        val = initial_sma
+        for price in data_rev[period:]:
+            val = price * k + val * (1 - k)
+        return val
+
+    # Step 0: Indicators
     ma5, ma10, ma20, ma60, ma120 = sma(5), sma(10), sma(20), sma(60), sma(120)
+    ema5, ema20 = ema(5), ema(20)
+    
     current_atr = atr(14)
     current_rsi = rsi(14)
     recent_high = max(highs[:min(len(highs), 60)])
+    
+    # Swing Lows & Prev Low
     swing_lows = find_swing_lows(5)
+    prev_low = lows[1] if len(lows) > 1 else None
+    recent_low_10 = min(lows[:10]) if len(lows) >= 10 else min(lows)
 
     def solve(timeframe):
-        # 1. Base Score
-        trend_score = 0
-        if ma20 and ma60:
-            if ma20 > ma60: trend_score = 20
-            else: trend_score = -20
-            # Bonus for long-term alignment
-            if ma120 and ma60 > ma120: trend_score += 10
+        # Only implementing the 'short' timeframe logic for Daily Insight relevance
+        # But keeping structure for others if needed.
         
-        momentum_score = 0
-        if 50 <= current_rsi <= 65: momentum_score = 15
-        elif current_rsi > 70: momentum_score = -10
-        elif current_rsi < 35: momentum_score = -5
-
-        vol_ratio = (current_atr / current_price) * 100 if current_atr and current_price else 0
-        vol_adj = 5 if vol_ratio < 3 else (-15 if vol_ratio > 8 else 0)
-        base_score = 50 + trend_score + momentum_score + vol_adj
-
-        # 2. RR Configurations
-        cfgs = {
-            'short': {'mul': 1.5, 'min_rr': 2.0, 'max_risk': 0.05, 'prox': 0.02},
-            'mid':   {'mul': 2.0, 'min_rr': 2.5, 'max_risk': 0.10, 'prox': 0.04},
-            'long':  {'mul': 3.0, 'min_rr': 3.0, 'max_risk': 0.15, 'prox': 0.06}
-        }
-        c = cfgs[timeframe]
-
-        # 3. Candidates
-        # Filter out None values for short history stocks
-        valid_mas = [m for m in [ma5, ma10, ma20, ma60, ma120] if m is not None]
-        raw = valid_mas + (swing_lows[-5:] if swing_lows else [])
-        candidates = sorted(list(set([p for p in raw if p and p <= current_price * 1.02])), reverse=True)
-
-        best = None
-        for entry in candidates:
-            # Safe checking for swing lows
-            nearby_sw = sorted([sl for sl in swing_lows if sl < entry], reverse=True)
-            n_sw = nearby_sw[0] if nearby_sw else None
-            
-            stop = entry - (current_atr * c['mul']) if current_atr else entry * 0.95
-            if n_sw and n_sw > stop * 0.95: stop = n_sw
-            
-            risk = entry - stop
-            if risk <= 0: continue
-            
-            pot_target = entry + (risk * c['min_rr'])
-            target = min(pot_target, recent_high if recent_high > entry else pot_target)
-            
-            if recent_high > entry and (recent_high - entry) < risk * 1.5:
-                target = recent_high
-                
-            rr = (target - entry) / risk
-            if rr >= c['min_rr'] and (risk/entry) <= c['max_risk']:
-                best = {"entry": entry, "stop": stop, "target": target, "rr": rr}
-                break
-
-        # 4. Status & Reason
-        status, strategy, reason = 'AVOID', 'NO_TRADE', "적정 진입가가 없습니다."
-        flags = []
+        # === Step 1: Edge Cases ===
+        if current_rsi > 75:
+            return {
+                "status": "WAIT",
+                "score": 40,
+                "strategy": "NO_TRADE",
+                "confidenceFlags": ["OVERBOUGHT"],
+                "reason": f"과열 구간 - 단기 조정 가능성 (RSI {int(current_rsi)})",
+                "entry": None, "stop": None, "target": None
+            }
         
-        # Safe flag checks
-        if ma20 and ma60 and ma20 > ma60:
-             if ma120 and ma60 > ma120: flags.append('UPTREND_CONFIRMED')
-             else: flags.append('UPTREND_WEAK') # Partial uptrend
-             
-        if ma20 and ma60 and ma20 < ma60: flags.append('BROKEN_TREND')
-        if vol_ratio > 10: flags.append('HIGH_VOLATILITY')
-        if current_rsi > 70: flags.append('OVERBOUGHT')
-        if current_rsi < 30: flags.append('OVERSOLD')
+        if current_rsi < 25:
+             return {
+                "status": "WAIT",
+                "score": 40,
+                "strategy": "MEAN_REVERSION",
+                "confidenceFlags": ["OVERSOLD"],
+                "reason": f"과매도 - 반등 가능성 (신중 접근)",
+                "entry": None, "stop": None, "target": None
+            }
 
-        if best:
-            prox_val = (current_price - best['entry']) / best['entry']
-            if prox_val <= c['prox']:
-                status = 'ACTIVE' if base_score >= 60 else 'WAIT' # Slightly lower threshold for partial data
-                reason = f"주요 지지선 근처 진입 가능 (손익비: {best.get('rr', 0):.1f})." if status == 'ACTIVE' else "지지선 근처이나 추세 확인 필요."
+        # === Step 2: Trend Determination ===
+        # Using refined criteria
+        is_uptrend = (ema20 and ma60 and ema20 > ma60) and (ema20 and current_price > ema20)
+        is_downtrend = (ema20 and ma60 and ema20 < ma60) and (ma60 and current_price < ma60)
+        is_sideways = not is_uptrend and not is_downtrend
+
+        # === Step 3: Best Support Selection ===
+        # Candidates: EMA5, EMA20, PrevLow, RecentLow10, SwingLows
+        # Note: EMA5/20 might be None if short history
+        candidates = []
+        if ema5: candidates.append(('EMA5', ema5))
+        if ema20: candidates.append(('EMA20', ema20))
+        if prev_low: candidates.append(('전일저가', prev_low))
+        if recent_low_10: candidates.append(('최근저점', recent_low_10))
+        # Add a couple significant swing lows
+        for sl in swing_lows[-2:]:
+             candidates.append(('직전저점', sl))
+
+        # Filter: Only supports BELOW current price
+        # Edge Case: Panic Drop check inside here
+        supports = [c for c in candidates if c[1] < current_price]
+        
+        if not supports:
+            # === Edge Case 3: Panic Drop (All supports broken) ===
+            # Find closest resistance instead
+            resistances = sorted([c for c in candidates if c[1] > current_price], key=lambda x: x[1])
+            rec_level = resistances[0][1] if resistances else current_price
+            return {
+                "status": "AVOID",
+                "score": 20,
+                "strategy": "NO_TRADE",
+                "confidenceFlags": ["PANIC_DROP"],
+                "reason": f"급락 중 - ₩{int(rec_level):,} ({resistances[0][0] if resistances else '저항'}) 회복 필요",
+                "entry": None, "stop": None, "target": None
+            }
+
+        # Selection Rule (3% Rule)
+        # If any support is within 3%, pick closest. Else pick closest (conceptually highest).
+        highest_support = max(supports, key=lambda x: x[1]) # Closest to price from below
+        
+        # Check if there is a 'close' support (within 3%)
+        # Actually logic says: "If 3% valid exists, pick closest. Else pick closest." 
+        # So in both cases we pick the 'closest to current price' (which is max value among supports < price).
+        # We just need it to calculate Gap.
+        
+        best_sup_name, best_sup_price = highest_support
+        gap_pct = (current_price - best_sup_price) / current_price * 100
+        
+        # === Step 4: Branching & Messaging ===
+        status = "WAIT"
+        reason = ""
+        action = ""
+        entry = best_sup_price
+        
+        if is_uptrend:
+            if gap_pct < 3:
+                status = "ACTIVE"
+                reason = f"{best_sup_name} 근접 - 현재가 매수 가능 (상승 추세)"
+            elif gap_pct < 5:
+                status = "WAIT"
+                reason = f"상승 추세 - ₩{int(best_sup_price):,} ({best_sup_name}) 터치 시 매수"
+            elif gap_pct < 10:
+                status = "WAIT"
+                reason = f"조정 대기 - ₩{int(best_sup_price):,} ({best_sup_name}) 근접 시 진입"
+            elif gap_pct < 15:
+                status = "WAIT"
+                reason = "강한 상승 - 분할 매수 고려 (이격 과다)"
             else:
-                reason = f"보수적 진입 대기 (목표가: {round(best['entry'], -1):,})."
+                status = "WAIT"
+                reason = "큰 조정 없으면 진입 어려움 - 알림 설정 권장"
+                
+        elif is_downtrend:
+            if gap_pct < 3:
+                status = "WAIT"
+                reason = f"반등 시도 - {best_sup_name} 지지 및 추세 전환 확인"
+            else:
+                status = "AVOID"
+                # For downtrend, maybe show resistance?
+                res_check = ma60 if ma60 else (ma20 if ma20 else current_price)
+                reason = f"하락 추세 - 매수 보류 (60일선 회복 대기)"
+                
+        else: # Sideways
+            if gap_pct < 5:
+                status = "WAIT" # Wait for confirmation even at bottom
+                reason = f"박스권 하단 - {best_sup_name} 지지 확인 후 매수"
+            else:
+                status = "WAIT"
+                reason = "방향성 불명 - 추세 전환 대기"
+
+        def find_swing_highs(window=5):
+            if len(highs) < window * 2 + 1: return []
+            sw = []
+            for i in range(window, len(highs) - window):
+                curr = highs[i]
+                if curr >= max(highs[i-window:i]) and curr >= max(highs[i+1:i+1+window]):
+                    sw.append(curr)
+            return sorted(list(set(sw)))
+
+    swing_highs = find_swing_highs(5)
+    
+    # Calculate Targets based on Resistance
+    resistances = [p for p in swing_highs if p > current_price * 1.02] # At least 2% above
+    resistances.sort()
+    
+    # Defaults
+    t1 = current_price * 1.10
+    t2 = current_price * 1.20
+    
+    if len(resistances) >= 1:
+        t1 = resistances[0]
+        # If next resistance is too close to T1 (within 3%), skip it
+        valid_r2 = [r for r in resistances if r > t1 * 1.03]
+        if valid_r2:
+            t2 = valid_r2[0]
         else:
-            reason = "손익비 부적합 (저항 인접 또는 리스크 과다)."
-
-        if status != 'AVOID':
-            if 'UPTREND_CONFIRMED' in flags: strategy = 'PULLBACK_TREND'
-            elif 'OVERSOLD' in flags: strategy = 'MEAN_REVERSION'
-
-        return {
-            "status": status,
-            "score": int(max(0, min(100, base_score))),
-            "strategy": strategy,
-            "confidenceFlags": flags,
-            "reason": reason,
-            "entry": round(best['entry'], -1) if best and status != 'AVOID' else None,
-            "stop": round(best['stop'], -1) if best and status != 'AVOID' else None,
-            "target": round(best['target'], -1) if best and status != 'AVOID' else None
-        }
+            t2 = t1 * 1.10 # Fallback +10% from T1
 
     return {
-        "short": solve('short'),
-        "mid": solve('mid'),
-        "long": solve('long'),
-        "is_abnormal": len(history_rows) < 120 # Flag as abnormal if history is short
+        "status": status,
+        "score": 70 if status == 'ACTIVE' else 50,
+        "strategy": "PULLBACK" if is_uptrend else "NO_TRADE",
+        "confidenceFlags": ["UPTREND"] if is_uptrend else (["DOWNTREND"] if is_downtrend else []),
+        "reason": reason,
+        "entry": round(entry, -1),
+        "stop": round(entry * 0.95, -1),
+        "target": round(t1, -1),
+        "targets": [round(t1, -1), round(t2, -1)]
     }
-
+    
+    # We mainly use 'short' now, but populate others to avoid errors if referenced
+    res = solve('short')
     return {
-        "short": solve('short'),
-        "mid": solve('mid'),
-        "long": solve('long')
+        "short": res,
+        "mid": res,
+        "long": res,
+        "is_abnormal": len(history_rows) < 120
     }
 
 def process_watchlist(tickers):
@@ -297,7 +383,7 @@ def process_watchlist(tickers):
     """
     
     supply_sql = f"""
-        SELECT code, date, foreigner, institution 
+        SELECT code, date, foreigner, institution, pension
         FROM daily_supply
         WHERE code IN ({placeholders})
         ORDER BY code, date DESC
@@ -320,6 +406,10 @@ def process_watchlist(tickers):
             if r["code"] not in supply_map: supply_map[r["code"]] = []
             supply_map[r["code"]].append(dict(r))
             
+        # Need to fetch Stock Name for "Daily Insight" format
+        cur.execute(f"SELECT code, name FROM tickers WHERE code IN ({placeholders})", normalized_tickers)
+        name_map = {r["code"]: r["name"] for r in cur.fetchall()}
+
         reports = []
         for code in normalized_tickers:
             p_history = price_map.get(code, [])
@@ -351,14 +441,22 @@ def process_watchlist(tickers):
                     "date": s["date"],
                     "foreigner": s["foreigner"],
                     "institution": s["institution"],
+                    "pension": s.get("pension", 0),
                     "close": c_map.get(s["date"])
                 })
             
             # 3. Merge & Summary
             latest_p = p_history[0]
-            # Use mid-term strategy for overall summary if ACTIVE, otherwise reason
-            main_obj = obj_v3["mid"] if obj_v3 else None
-            summary = main_obj["reason"] if main_obj else "데이터 분석 중..."
+            # Use short-term strategy for overall summary if ACTIVE, otherwise reason
+            main_obj = obj_v3["short"] if obj_v3 else None
+            
+            raw_reason = main_obj["reason"] if main_obj else "데이터 분석 중..."
+            stock_name = name_map.get(code, code)
+            
+            # Format Daily Insight as: "Name: Reason"
+            # Previous logic tried to extract parentheses content, but V3 reasons are descriptive sentences.
+            # It is better to show the full actionable insight.
+            summary = f"{stock_name}: {raw_reason}"
 
             report = {
                 "date": TODAY,
@@ -393,19 +491,32 @@ def process_watchlist(tickers):
     except Exception as e:
         logger.error(f"Watchlist processing failed: {e}")
 
-def run_algo_screening():
+def run_algo_screening(target_date=None):
     """
     Filter all stocks for specific strategies (Algo Picks).
     v5 Spec: Dynamic thresholds, multi-level sorting, and group-based confluence.
+    target_date: 'YYYY-MM-DD' string. If None, defaults to latest DB date.
     """
-    logger.info("🕵️ Running Algorithm Screening (Algo Picks v5)...")
+    logger.info(f"🕵️ Running Algorithm Screening (Algo Picks v5) for {target_date or 'Latest'}...")
     cur = get_db_cursor()
     
     # 0. Initial Setup & Universe Check
-    cur.execute("SELECT MAX(date) FROM daily_price")
-    max_price_date = cur.fetchone()[0]
-    cur.execute("SELECT MAX(date) FROM daily_supply")
-    max_supply_date = cur.fetchone()[0]
+    if target_date:
+        # DB uses YYYYMMDD format for daily_price
+        db_date = target_date.replace('-', '')
+        
+        # Verify date exists in DB
+        cur.execute("SELECT 1 FROM daily_price WHERE date = ? LIMIT 1", (db_date,))
+        if not cur.fetchone():
+            logger.warning(f"No price data found for {db_date} (target: {target_date}). Skipping.")
+            return []
+        max_price_date = db_date
+        max_supply_date = db_date
+    else:
+        cur.execute("SELECT MAX(date) FROM daily_price")
+        max_price_date = cur.fetchone()[0]
+        cur.execute("SELECT MAX(date) FROM daily_supply")
+        max_supply_date = cur.fetchone()[0]
 
     if not max_price_date:
         logger.warning("No data found in DB. Skipping Algo Screening.")
@@ -436,9 +547,9 @@ def run_algo_screening():
         cur.execute("""
             SELECT close, high, low, date 
             FROM daily_price 
-            WHERE code = ? 
+            WHERE code = ? AND date <= ?
             ORDER BY date DESC LIMIT 150
-        """, (ticker_code,))
+        """, (ticker_code, max_price_date))
         rows = cur.fetchall()
         if len(rows) < 120: return "UNKNOWN"
         
@@ -462,7 +573,7 @@ def run_algo_screening():
     # Priority: Profit Quality DESC -> PER ASC -> PBR ASC
     mcap_limit_val = get_mcap_limit("Value_Picks")
     cur.execute("""
-        SELECT p.code, p.per, p.pbr, p.roe, p.operating_margin, p.market_cap, p.eps
+        SELECT p.code, p.per, p.pbr, p.roe, p.operating_margin, p.market_cap, p.eps, p.close
         FROM daily_price p
         JOIN tickers t ON p.code = t.code
         WHERE p.date = ? AND t.is_active = 1
@@ -497,6 +608,7 @@ def run_algo_screening():
             "ticker": code,
             "sort_key": (-profit_quality, d['per'], d['pbr']),
             "metrics": {"profit_quality": profit_quality, "per": d['per'], "pbr": d['pbr']},
+            "price": d['close'],
             "technical_status": t_status
         })
     val_candidates.sort(key=lambda x: x["sort_key"])
@@ -545,6 +657,7 @@ def run_algo_screening():
             "ticker": code,
             "sort_key": (-demand_power, -co_momentum, -(f_buy + i_buy)),
             "metrics": {"demand_power": demand_power, "co_momentum": co_momentum},
+            "price": d['close'],
             "technical_status": t_status
         })
     twin_candidates.sort(key=lambda x: x["sort_key"])
@@ -565,7 +678,7 @@ def run_algo_screening():
     acc_candidates = []
     for code, f_sum in acc_stats.items():
         cur.execute("""
-            SELECT MAX(close) as h, MIN(close) as l, market_cap 
+            SELECT close, MAX(close) as h, MIN(close) as l, market_cap 
             FROM daily_price WHERE code = ? AND date >= strftime('%Y%m%d', 'now', '-21 days')
         """, (code,))
         p = cur.fetchone()
@@ -597,6 +710,7 @@ def run_algo_screening():
             "ticker": code,
             "sort_key": (-density, -f_sum, box_range),
             "metrics": {"acc_density": density, "acc_21d": f_sum, "box_range": box_range},
+            "price": p['close'],
             "technical_status": t_status
         })
     acc_candidates.sort(key=lambda x: x["sort_key"])
@@ -605,6 +719,8 @@ def run_algo_screening():
     # Strategy 4: Trend Following
     # Priority: Vol Power DESC -> Trend Score DESC -> Breakout Age ASC
     mcap_limit_trend = get_mcap_limit("Trend_Following")
+    # Fetch 120 days of history for each active ticker to check MAs properly
+    # Using a simplified approach: fetch candidates that meet volume/price first, then verify history
     cur.execute("""
         SELECT p.code, p.close, p.open, p.high, p.volume, p.market_cap
         FROM daily_price p JOIN tickers t ON p.code = t.code
@@ -612,59 +728,86 @@ def run_algo_screening():
     """, (max_price_date,))
     
     trend_candidates = []
-    for r in cur.fetchall():
+    
+    # Pre-fetch volume history is too slow for all, so we iterate
+    # But we can batch fetch for better perf if needed. For now, per-ticker query is OK for small subsets.
+    
+    potential_raw = cur.fetchall()
+    
+    for r in potential_raw:
         d = dict(r)
         code = d['code']
         mcap = d['market_cap'] or 0
         if mcap < mcap_limit_trend:
-            if code in DEBUG_TICKERS: logger.debug(f"[Trend_Following][{code}] Drop: Mcap {mcap} < {mcap_limit_trend}")
             filter_counts["Trend_Following"]["Mcap"] += 1
             continue
             
-        # Wick Check
+        # Wick Check: Rejection (Upper wick vs Body)
+        # We want strong close: upper_wick shouldn't be too large compared to total range
         body = d['close'] - d['open']
+        total_range = d['high'] - d['open'] # Approximation
         upper_wick = d['high'] - d['close']
-        if upper_wick >= body:
-            if code in DEBUG_TICKERS: logger.debug(f"[Trend_Following][{code}] Drop: Wick {upper_wick} >= Body {body}")
+        
+        # Condition 1: Strong Finish (Upper wick < 2 * Body) => Body holds majority
+        # Also prevent extremely small body doji if high volatility
+        if body == 0: 
             filter_counts["Trend_Following"]["Other"] += 1
             continue
             
-        # Vol Power
+        if upper_wick > 2.0 * body:
+            if code in DEBUG_TICKERS: logger.debug(f"[Trend_Following][{code}] Drop: Wick too long")
+            filter_counts["Trend_Following"]["Other"] += 1
+            continue
+            
+        # Vol Power & Volume MA
         cur.execute("SELECT volume FROM daily_price WHERE code = ? AND date < ? ORDER BY date DESC LIMIT 20", (code, max_price_date))
         v_hist = [h[0] for h in cur.fetchall()]
         if len(v_hist) < 20: 
-            if code in DEBUG_TICKERS: logger.debug(f"[Trend_Following][{code}] Drop: Insufficient volume history")
             continue
         avg_v20 = sum(v_hist) / 20
         vol_power = min(5.0, d['volume'] / avg_v20) if avg_v20 > 0 else 0
+        
+        # Condition 2: Volume Explosion
         if vol_power < 1.5: 
             if code in DEBUG_TICKERS: logger.debug(f"[Trend_Following][{code}] Drop: Vol Power {vol_power:.2f} < 1.5")
             continue
             
-        # 2. Technical Safety Filter (Strict Exclusion for Momentum)
+        # Condition 3: MA Arrangement (MA5 > MA20 > MA60) or at least MA5 > MA20 and Price > MA60
+        cur.execute("SELECT close FROM daily_price WHERE code = ? AND date <= ? ORDER BY date DESC LIMIT 60", (code, max_price_date))
+        h_closes = [h[0] for h in cur.fetchall()]
+        
+        if len(h_closes) < 60:
+            if code in DEBUG_TICKERS: logger.debug(f"[Trend_Following][{code}] Drop: Insufficient history for MA")
+            continue
+            
+        ma5 = sum(h_closes[:5]) / 5
+        ma20 = sum(h_closes[:20]) / 20
+        ma60 = sum(h_closes[:60]) / 60
+        
+        # Check: Price > MA20 (Trend) AND MA5 > MA20 (Short term momentum)
+        if not (d['close'] > ma20 and ma5 > ma20):
+            if code in DEBUG_TICKERS: logger.debug(f"[Trend_Following][{code}] Drop: Broken Trend (P<{d['close']} vs {ma20:.0f} or MA5<MA20)")
+            filter_counts["Trend_Following"]["Technical"] += 1
+            continue
+
+        # 4. Technical Safety Filter (Strict)
         t_status = get_tech_status(code)
         if t_status == "AVOID":
-            if code in DEBUG_TICKERS: logger.debug(f"[Trend_Following][{code}] Drop: Technical Status AVOID")
             filter_counts["Trend_Following"]["Technical"] += 1
             continue
         
-        # Trend Score & Breakout Age
-        cur.execute("SELECT close, high FROM daily_price WHERE code = ? ORDER BY date DESC LIMIT 120", (code,))
-        h_data = cur.fetchall()
-        h_closes = [h[0] for h in h_data]
-        h_highs = [h[1] for h in h_data]
-        
-        ma20, ma60, ma120 = sum(h_closes[:20])/20, sum(h_closes[:60])/60, sum(h_closes[:120])/120
-        trend_score = 30 if ma20 > ma60 > ma120 else (20 if ma20 > ma60 else 0)
-        
-        # Breakout Age (Simplified: days since 20d high)
-        max_h20 = max(h_highs[1:21])
-        breakout_age = 0 if d['high'] > max_h20 else 99 # Simplified for now
+        # Scoring: Bonus for perfect alignment (MA20 > MA60)
+        trend_score = 30 if ma20 > ma60 else 15
         
         trend_candidates.append({
             "ticker": code,
-            "sort_key": (-vol_power, -trend_score, breakout_age),
-            "metrics": {"vol_power": vol_power, "trend_score": trend_score},
+            "sort_key": (-vol_power, -trend_score),
+            "metrics": {
+                "vol_power": vol_power, 
+                "trend_score": trend_score,
+                "ma_align": "MA5>20>60" if ma20 > ma60 else "MA5>20"
+            },
+            "price": d['close'],
             "technical_status": t_status
         })
     trend_candidates.sort(key=lambda x: x["sort_key"])
@@ -703,6 +846,8 @@ def run_algo_screening():
             "best_rank": stats["best_rank"],
             "avg_rank": avg_rank,
             "groups": list(stats["groups"]),
+            "groups": list(stats["groups"]),
+            "price": get_tech_status(ticker) == "UNKNOWN" and 0 or 0, # Placeholder, Confluence pricing is complex, skip for now or fetch
             "technical_status": get_tech_status(ticker) # Fetch status for confluence items
         })
 
@@ -730,12 +875,13 @@ def run_algo_screening():
                 c["ticker"]: {
                     "rank": i+1,
                     "metrics": c["metrics"],
+                    "price": c.get("price", 0),
                     "technical_status": c.get("technical_status", "UNKNOWN")
                 } for i, c in enumerate(candidates[:5])
             }
         }
         picks_payload.append({
-            "date": TODAY,
+            "date": target_date or TODAY,
             "strategy_name": s_id,
             "tickers": tickers,
             "details": details
@@ -744,7 +890,7 @@ def run_algo_screening():
     # 2. Confluence Pick (Unified Strategy)
     confluence_tickers = [c["ticker"] for c in final_confluence]
     picks_payload.append({
-        "date": TODAY,
+        "date": target_date or TODAY,
         "strategy_name": "Confluence_Top",
         "tickers": confluence_tickers,
         "details": {
@@ -764,11 +910,15 @@ def run_algo_screening():
     })
 
     try:
-        supabase.table("algo_picks").upsert(picks_payload, on_conflict="strategy_name").execute()
-        logger.info(f"✅ Uploaded {len(picks_payload)} Algo Picks to Supabase (v5)")
+        # Upsert with composite key (strategy_name + date)
+        # Note: Supabase-py might need explicit constraint name if columns are ambiguous, 
+        # but usually passing columns compliant with a unique index works.
+        supabase.table("algo_picks").upsert(picks_payload, on_conflict="strategy_name, date").execute()
+        logger.info(f"✅ Uploaded {len(picks_payload)} Algo Picks to Supabase (v5) for {target_date or 'Latest'}")
         
-        # Send Notification
-        notify_telegram(picks_payload)
+        # Send Notification (Only if processing TODAY)
+        if not target_date or target_date == TODAY:
+            notify_telegram(picks_payload)
     except Exception as e:
         logger.error(f"Algo Upload Error: {e}")
     

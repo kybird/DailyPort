@@ -65,9 +65,8 @@ export default function AlgoAboutPage() {
     ]
 
     const globalFilters = [
-        { title: '동적 시가총액 필터', desc: '상위 70% 시총 또는 최소 3,000억 중 높은 값을 기준으로 소형주 필터링' },
-        { title: '영업이익 양수 (EPS > 0)', desc: '지속적인 영업적자 및 관리종목 위험 배제' },
-        { title: 'Confluence 점수', desc: 'Flow/Price/Fundamental 그룹별 가중치 기반 통합 순위 (상위 5종목 선정)' }
+        { title: '시장 건전성 필터', desc: '초소형주 필터링 (상위 70% 시총 또는 최소 3,000억 중 높은 값 적용) 및 영업이익 적자/관리종목 제외' },
+        { title: '통합 순위 알고리즘 (Confluence)', desc: 'Fundamental(1.0), Flow(1.0), Price(1.0) 그룹별 가중치를 부여하여 전략 중복 포착 횟수와 평균 순위를 종합 점수화합니다.' }
     ]
 
     return (
@@ -140,15 +139,15 @@ export default function AlgoAboutPage() {
                         <CheckCircle2 size={24} />
                     </div>
                     <div>
-                        <h2 className="text-xl font-bold text-zinc-900 dark:text-white">공통 위생 필터 (Global Hygiene Filters)</h2>
-                        <p className="text-sm text-zinc-500">모든 알고리즘에는 아래의 기본적인 필터가 공통 적용되어 리스크를 최소화합니다.</p>
+                        <h2 className="text-xl font-bold text-zinc-900 dark:text-white">통합 알고리즘 로직 (Confluence & Filters)</h2>
+                        <p className="text-sm text-zinc-500">개별 전략의 한계를 보완하기 위해 모든 신호를 교차 검증하여 최종 Top Picks를 선정합니다.</p>
                     </div>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     {globalFilters.map((f, idx) => (
-                        <div key={idx} className="space-y-1">
-                            <h4 className="font-bold text-zinc-900 dark:text-zinc-200 text-sm">{f.title}</h4>
-                            <p className="text-xs text-zinc-500 leading-relaxed">{f.desc}</p>
+                        <div key={idx} className="space-y-2 p-6 bg-white dark:bg-neutral-800 rounded-2xl border border-zinc-100 dark:border-zinc-700">
+                            <h4 className="font-bold text-zinc-900 dark:text-zinc-200 text-lg">{f.title}</h4>
+                            <p className="text-sm text-zinc-500 leading-relaxed font-medium">{f.desc}</p>
                         </div>
                     ))}
                 </div>

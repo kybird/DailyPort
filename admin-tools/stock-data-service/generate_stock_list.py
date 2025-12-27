@@ -31,14 +31,24 @@ def generate_stock_list():
     today = datetime.now().strftime("%Y%m%d")
     print(f"Fetching stock list for {today}...")
 
-    markets = [
-        {"type": "KOSPI", "tickers": stock.get_market_ticker_list(today, market="KOSPI")},
-        {"type": "KOSDAQ", "tickers": stock.get_market_ticker_list(today, market="KOSDAQ")}
+    # KOSPI/KOSDAQ 주식
+    stock_markets = [
+        {"type": "KOSPI", "tickers": stock.get_market_ticker_list(today, market="KOSPI"), "asset_type": "STOCK"},
+        {"type": "KOSDAQ", "tickers": stock.get_market_ticker_list(today, market="KOSDAQ"), "asset_type": "STOCK"}
     ]
+    
+    # ETF 목록
+    try:
+        etf_tickers = stock.get_etf_ticker_list(today)
+        print(f"Found {len(etf_tickers)} ETFs")
+    except Exception as e:
+        print(f"Error fetching ETF list: {e}")
+        etf_tickers = []
 
     all_stocks = []
 
-    for market in markets:
+    # 일반 주식 처리
+    for market in stock_markets:
         print(f"Processing {market['type']} ({len(market['tickers'])} items)...")
         for ticker in market['tickers']:
             try:
@@ -54,10 +64,29 @@ def generate_stock_list():
                     "code": ticker,
                     "name": name,
                     "market": market['type'],
+                    "asset_type": market['asset_type'],
                     "chosung": initials
                 })
             except Exception as e:
                 print(f"Error processing {ticker}: {e}")
+    
+    # ETF 처리
+    print(f"Processing ETF ({len(etf_tickers)} items)...")
+    for ticker in etf_tickers:
+        try:
+            name = stock.get_etf_ticker_name(ticker)
+            initials = get_choseong(name)
+            
+            all_stocks.append({
+                "ticker": ticker,
+                "code": ticker,
+                "name": name,
+                "market": "ETF",
+                "asset_type": "ETF",
+                "chosung": initials
+            })
+        except Exception as e:
+            print(f"Error processing ETF {ticker}: {e}")
 
     # Sort by name
     all_stocks.sort(key=lambda x: x['name'])

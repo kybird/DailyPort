@@ -9,6 +9,14 @@ export interface SupplyChartItem {
     date: string;
     foreigner: number;
     institution: number;
+    pension?: number;
+}
+
+export interface AlgoPick {
+    strategy_name: string;
+    tickers: string[];
+    date: string;
+    details?: any;
 }
 
 export interface AnalysisReport {
@@ -31,6 +39,8 @@ export interface AnalysisReport {
             institution_5d_net: number
             foreigner_20d_net: number
             institution_20d_net: number
+            pension_5d_net?: number
+            pension_20d_net?: number
         }
     }
     fundamentals?: {
@@ -210,6 +220,8 @@ export async function getAnalysis(ticker: string): Promise<AnalysisReport | { er
                 institution_5d_net: chartData.slice(-5).reduce((acc: number, curr: SupplyChartItem) => acc + (curr.institution || 0), 0),
                 foreigner_20d_net: chartData.slice(-20).reduce((acc: number, curr: SupplyChartItem) => acc + (curr.foreigner || 0), 0),
                 institution_20d_net: chartData.slice(-20).reduce((acc: number, curr: SupplyChartItem) => acc + (curr.institution || 0), 0),
+                pension_5d_net: chartData.slice(-5).reduce((acc: number, curr: SupplyChartItem) => acc + (curr.pension || 0), 0),
+                pension_20d_net: chartData.slice(-20).reduce((acc: number, curr: SupplyChartItem) => acc + (curr.pension || 0), 0),
             };
 
             supplyInfo = {
@@ -304,7 +316,9 @@ export async function getAnalysis(ticker: string): Promise<AnalysisReport | { er
         technical,
         supplyDemand: supplyInfo,
         fundamentals: {
-            ...fundamentalInfo,
+            market_cap: marketData.marketCap || (fundamentalInfo as any)?.market_cap || null,
+            per: marketData.per || (fundamentalInfo as any)?.per || null,
+            pbr: marketData.pbr || (fundamentalInfo as any)?.pbr || null,
             revenue: (fundamentalInfo as any)?.revenue,
             netIncome: (fundamentalInfo as any)?.net_income
         },

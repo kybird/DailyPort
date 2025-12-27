@@ -28,12 +28,19 @@ export default async function PortfolioPage() {
         })
     )
 
-    // Calculate totals
+    /**
+     * 총 평가금액 합계 계산
+     * Sum(보유 수량 * 현재가)
+     */
     const totalValuation = portfolioWithMarketData.reduce((sum: number, item: PortfolioItem) => {
         const price = item.marketData?.currentPrice || 0
         return sum + price * item.quantity
     }, 0)
 
+    /**
+     * 오늘의 변화량 합계 계산
+     * Sum(보유 수량 * 전일 대비 등락액)
+     */
     const totalChange = portfolioWithMarketData.reduce((sum: number, item: PortfolioItem) => {
         const change = item.marketData?.changePrice || 0
         return sum + change * item.quantity
@@ -43,6 +50,11 @@ export default async function PortfolioPage() {
         return sum + (item.realized_gain || 0)
     }, 0)
 
+    /**
+     * 오늘의 변화율 (%) 계산
+     * (현재 평가액 - 전일 평가액) / 전일 평가액 * 100
+     * 전일 평가액 = 현재 평가액 - 오늘의 변화량
+     */
     const changePercent = totalValuation > 0 ? (totalChange / (totalValuation - totalChange)) * 100 : 0
 
     return (

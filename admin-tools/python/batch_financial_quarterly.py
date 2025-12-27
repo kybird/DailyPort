@@ -2,6 +2,7 @@ import OpenDartReader
 import sqlite3
 import os
 import logging
+import time
 from datetime import datetime
 from dotenv import load_dotenv
 
@@ -122,17 +123,35 @@ def fetch_and_update_financials(year, quarter, corp_code=None):
     
     total = len(target_corps)
     success = 0
+    consecutive_api_failures = 0
     
     for idx, row in target_corps.iterrows():
         s_code = row['stock_code']
         c_code = row['corp_code']
         
         try:
-            # Fetch Financial State
-            # Note: finstate returns all (Consolidated & Separate) in one DF usually if no fs_div arg (or if library wrapper implies it).
-            # Some versions of OpenDartReader might strictly require no fs_div arg.
-            df_fs = dart.finstate(c_code, year, reprt_code)
+            # Ensure code is string
+            c_code = str(c_code).strip()
             
+            # Fetch Financial State with Retry Logic
+            df_fs = None
+            for attempt in range(3):
+                try:
+                    df_fs = dart.finstate(c_code, year, reprt_code)
+                    consecutive_api_failures = 0 # Reset on success
+                    break # Success
+                except Exception as api_err:
+                    if attempt == 2: 
+                        consecutive_api_failures += 1
+                        raise api_err # Propagate on last attempt
+                    # Exponential-ish backoff
+                    wait_time = (attempt + 1) * 2
+                    time.sleep(wait_time)
+
+            if consecutive_api_failures > 10:
+                logger.error("🛑 Too many consecutive DART API failures. Suspecting rate limit or server maintenance. Stopping.")
+                break
+
             if df_fs is None or df_fs.empty:
                 continue
             
@@ -223,9 +242,14 @@ def fetch_and_update_financials(year, quarter, corp_code=None):
             if success % 10 == 0:
                 conn.commit()
                 print(f"   Updated {s_code} (OM: {op_margin:.2f}%, ROE: {roe:.2f}%) [Forward Fill from {s_date}]")
+            
+            # Be polite to the API (Limit: 15 per second, we go slower: ~5 per second)
+            time.sleep(0.2)
                 
         except Exception as e:
             logger.warning(f"Error {s_code}: {e}")
+            if "RemoteDisconnected" in str(e):
+                time.sleep(10) # Long cooling if server is rejecting us
             continue
 
     conn.commit()

@@ -148,6 +148,32 @@ export async function removeTicker(tickerInput: string) {
     if (error) return { error: error.message }
 
     revalidatePath('/dashboard')
+    revalidatePath('/portfolio')
+    return { success: true }
+}
+
+export async function updatePortfolioItem(tickerInput: string, quantity: number, entryPrice: number, targetWeight: number) {
+    const ticker = tickerInput.split('.')[0]
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) return { error: 'Unauthorized' }
+
+    const { error } = await supabase
+        .from('portfolios')
+        .update({
+            quantity,
+            entry_price: entryPrice,
+            target_weight: targetWeight,
+            updated_at: new Date().toISOString()
+        })
+        .eq('user_id', user.id)
+        .eq('ticker', ticker)
+
+    if (error) return { error: error.message }
+
+    revalidatePath('/dashboard')
+    revalidatePath('/portfolio')
     return { success: true }
 }
 

@@ -19,12 +19,12 @@ export function getNavItems(role?: string) {
         },
         {
             href: '/portfolio',
-            label: '전략 시뮬레이션',
+            label: '내 포트폴리오',
             icon: (isActive: boolean) => <Briefcase size={18} className={isActive ? 'text-blue-600' : 'text-zinc-500'} />
         },
         {
             href: '/algo-picks',
-            label: '검증 알고리즘',
+            label: '백테스팅',
             icon: (isActive: boolean) => <Microscope size={18} className={isActive ? 'text-blue-600' : 'text-zinc-500'} />
         },
 

@@ -90,8 +90,8 @@ export default function CompositeStockChart({ priceData, supplyData, objectives 
     // --- State Management ---
     const [showSettings, setShowSettings] = useState(false)
     const [config, setConfig] = useState({
-        ma: { show: true, p1: 5, p2: 20, p3: 60 },
-        ema: { show: false, p1: 12, p2: 26 },
+        ma: { show: true, p1: 5, p2: 20, p3: 60, p4: 120 },
+        ema: { show: false, p1: 5, p2: 20, p3: 60, p4: 120 },
         bb: { show: false, p: 20, sd: 2 }
     })
     const [selectedObjective, setSelectedObjective] = useState<'short' | 'mid' | 'long' | null>(null)
@@ -279,20 +279,26 @@ export default function CompositeStockChart({ priceData, supplyData, objectives 
 
         // SMA Series
         if (config.ma.show) {
-            const ma1 = priceChart.addSeries(LineSeries, { color: '#ec4899', lineWidth: 2, title: `MA${config.ma.p1}` })
-            const ma2 = priceChart.addSeries(LineSeries, { color: '#f59e0b', lineWidth: 2, title: `MA${config.ma.p2}` })
-            const ma3 = priceChart.addSeries(LineSeries, { color: '#10b981', lineWidth: 2, title: `MA${config.ma.p3}` })
+            const ma1 = priceChart.addSeries(LineSeries, { color: '#ec4899', lineWidth: 2, title: `MA${config.ma.p1}` }) // Pink
+            const ma2 = priceChart.addSeries(LineSeries, { color: '#f59e0b', lineWidth: 2, title: `MA${config.ma.p2}` }) // Amber
+            const ma3 = priceChart.addSeries(LineSeries, { color: '#10b981', lineWidth: 2, title: `MA${config.ma.p3}` }) // Emerald
+            const ma4 = priceChart.addSeries(LineSeries, { color: '#6366f1', lineWidth: 2, title: `MA${config.ma.p4}` }) // Indigo
             ma1.setData(calculateSMA(closeValues, config.ma.p1))
             ma2.setData(calculateSMA(closeValues, config.ma.p2))
             ma3.setData(calculateSMA(closeValues, config.ma.p3))
+            ma4.setData(calculateSMA(closeValues, config.ma.p4))
         }
 
         // EMA Series
         if (config.ema.show) {
-            const e1 = priceChart.addSeries(LineSeries, { color: '#8b5cf6', lineWidth: 1, title: `EMA${config.ema.p1}`, lineStyle: 2 })
-            const e2 = priceChart.addSeries(LineSeries, { color: '#fb923c', lineWidth: 1, title: `EMA${config.ema.p2}`, lineStyle: 2 })
+            const e1 = priceChart.addSeries(LineSeries, { color: '#8b5cf6', lineWidth: 1, title: `EMA${config.ema.p1}`, lineStyle: 2 }) // Violet
+            const e2 = priceChart.addSeries(LineSeries, { color: '#fb923c', lineWidth: 1, title: `EMA${config.ema.p2}`, lineStyle: 2 }) // Orange
+            const e3 = priceChart.addSeries(LineSeries, { color: '#0ea5e9', lineWidth: 1, title: `EMA${config.ema.p3}`, lineStyle: 2 }) // Sky
+            const e4 = priceChart.addSeries(LineSeries, { color: '#f43f5e', lineWidth: 1, title: `EMA${config.ema.p4}`, lineStyle: 2 }) // Rose
             e1.setData(calculateEMA(closeValues, config.ema.p1))
             e2.setData(calculateEMA(closeValues, config.ema.p2))
+            e3.setData(calculateEMA(closeValues, config.ema.p3))
+            e4.setData(calculateEMA(closeValues, config.ema.p4))
         }
 
         // Bollinger Bands
@@ -408,21 +414,20 @@ export default function CompositeStockChart({ priceData, supplyData, objectives 
                         </div>
 
                         <div className="space-y-8">
-                            {/* SMA Settings */}
                             <div className="space-y-4">
                                 <div className="flex justify-between items-center">
-                                    <label className="text-sm font-bold text-zinc-900 dark:text-white uppercase tracking-wider">단순 이동평균</label>
+                                    <label className="text-sm font-bold text-zinc-900 dark:text-white uppercase tracking-wider">단순 이동평균 (SMA)</label>
                                     <input type="checkbox" checked={config.ma.show} onChange={e => setConfig({ ...config, ma: { ...config.ma, show: e.target.checked } })} className="w-10 h-5 accent-indigo-500 rounded-full" />
                                 </div>
-                                <div className="grid grid-cols-3 gap-3">
-                                    {['p1', 'p2', 'p3'].map((p, i) => (
+                                <div className="grid grid-cols-4 gap-2">
+                                    {['p1', 'p2', 'p3', 'p4'].map((p, i) => (
                                         <div key={p} className="space-y-1">
                                             <span className="text-[10px] font-bold text-zinc-400">기간 {i + 1}</span>
                                             <input
                                                 type="number"
                                                 value={(config.ma as unknown as Record<string, number>)[p]}
                                                 onChange={e => setConfig({ ...config, ma: { ...config.ma, [p]: parseInt(e.target.value) || 1 } })}
-                                                className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3 py-2 text-sm font-black focus:ring-2 focus:ring-indigo-500 outline-none"
+                                                className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl px-2 py-2 text-sm font-black focus:ring-2 focus:ring-indigo-500 outline-none"
                                             />
                                         </div>
                                     ))}
@@ -432,18 +437,18 @@ export default function CompositeStockChart({ priceData, supplyData, objectives 
                             {/* EMA Settings */}
                             <div className="space-y-4">
                                 <div className="flex justify-between items-center">
-                                    <label className="text-sm font-bold text-zinc-900 dark:text-white uppercase tracking-wider">지수 이동평균</label>
+                                    <label className="text-sm font-bold text-zinc-900 dark:text-white uppercase tracking-wider">지수 이동평균 (EMA)</label>
                                     <input type="checkbox" checked={config.ema.show} onChange={e => setConfig({ ...config, ema: { ...config.ema, show: e.target.checked } })} className="w-10 h-5 accent-indigo-500 rounded-full" />
                                 </div>
-                                <div className="grid grid-cols-2 gap-3">
-                                    {['p1', 'p2'].map((p, i) => (
+                                <div className="grid grid-cols-4 gap-2">
+                                    {['p1', 'p2', 'p3', 'p4'].map((p, i) => (
                                         <div key={p} className="space-y-1">
                                             <span className="text-[10px] font-bold text-zinc-400">EMA {i + 1}</span>
                                             <input
                                                 type="number"
                                                 value={(config.ema as unknown as Record<string, number>)[p]}
                                                 onChange={e => setConfig({ ...config, ema: { ...config.ema, [p]: parseInt(e.target.value) || 1 } })}
-                                                className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3 py-2 text-sm font-black focus:ring-2 focus:ring-indigo-500 outline-none"
+                                                className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl px-2 py-2 text-sm font-black focus:ring-2 focus:ring-indigo-500 outline-none"
                                             />
                                         </div>
                                     ))}
@@ -501,12 +506,15 @@ export default function CompositeStockChart({ priceData, supplyData, objectives 
                                 <span className="flex items-center gap-1.5 text-pink-500"><div className="w-1.5 h-1.5 bg-pink-500 rounded-full" /> MA{config.ma.p1}</span>
                                 <span className="flex items-center gap-1.5 text-amber-500"><div className="w-1.5 h-1.5 bg-amber-500 rounded-full" /> MA{config.ma.p2}</span>
                                 <span className="flex items-center gap-1.5 text-emerald-500"><div className="w-1.5 h-1.5 bg-emerald-500 rounded-full" /> MA{config.ma.p3}</span>
+                                <span className="flex items-center gap-1.5 text-indigo-500"><div className="w-1.5 h-1.5 bg-indigo-500 rounded-full" /> MA{config.ma.p4}</span>
                             </>
                         )}
                         {config.ema.show && (
                             <>
                                 <span className="flex items-center gap-1.5 text-violet-500"><div className="w-1.5 h-0.5 bg-violet-500 rounded-full" /> EMA{config.ema.p1}</span>
                                 <span className="flex items-center gap-1.5 text-orange-400"><div className="w-1.5 h-0.5 bg-orange-400 rounded-full" /> EMA{config.ema.p2}</span>
+                                <span className="flex items-center gap-1.5 text-sky-500"><div className="w-1.5 h-0.5 bg-sky-500 rounded-full" /> EMA{config.ema.p3}</span>
+                                <span className="flex items-center gap-1.5 text-rose-500"><div className="w-1.5 h-0.5 bg-rose-500 rounded-full" /> EMA{config.ema.p4}</span>
                             </>
                         )}
                         {config.bb.show && (

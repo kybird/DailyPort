@@ -27,12 +27,12 @@ export default function TopPanel({ role }: { role?: string }) {
                             <Menu size={26} />
                         </button>
 
-                        {/* Logo for Mobile/Desktop - Shifted slightly on mobile */}
-                        <Link href="/" className="flex items-center gap-2 group ml-1">
+                        {/* Logo for Mobile Only - Hidden on Desktop where Sidebar exists */}
+                        <Link href="/" className="flex items-center gap-2 group ml-1 md:hidden">
                             <div className="w-8 h-8 flex items-center justify-center">
                                 <img src="/logo.png" alt="Logo" className="w-full h-full object-contain" />
                             </div>
-                            <span className="text-lg font-black tracking-tighter text-zinc-900 dark:text-white leading-none hidden sm:block">
+                            <span className="text-lg font-black tracking-tighter text-zinc-900 dark:text-white leading-none">
                                 DailyPort
                             </span>
                         </Link>

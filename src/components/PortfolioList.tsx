@@ -2,9 +2,10 @@
 
 import { useState } from 'react'
 
-import { Trash2, Activity, ArrowLeftRight } from 'lucide-react'
+import { Trash2, Activity, Pencil, TrendingUp } from 'lucide-react'
 import { removeTicker } from '@/app/actions'
-import TransactionDialog from './TransactionDialog'
+import EditPortfolioDialog from './EditPortfolioDialog'
+import RebalancingAnalysis from './RebalancingAnalysis'
 import { getStockName } from '@/utils/stock-utils'
 import { useAnalysis } from '@/context/AnalysisContext'
 
@@ -13,19 +14,28 @@ interface PortfolioItem {
     ticker: string
     quantity: number
     entry_price: number
+    target_weight: number
     realized_gain?: number
     currency: string
     marketData?: {
         currentPrice: number
         changePrice?: number
         changePercent?: number
+        historical?: any[]
     } | null
 }
 
 export default function PortfolioList({ items }: { items: PortfolioItem[] }) {
     const { openAnalysis } = useAnalysis()
     const [deleting, setDeleting] = useState<string | null>(null)
-    const [tradingItem, setTradingItem] = useState<PortfolioItem | null>(null)
+    const [editingItem, setEditingItem] = useState<PortfolioItem | null>(null)
+    const [showRebalancing, setShowRebalancing] = useState(false)
+
+    // 총 평가금액 계산 (리밸런싱 분석용)
+    const totalValuation = items.reduce((sum, item) => {
+        const price = item.marketData?.currentPrice || item.entry_price
+        return sum + price * item.quantity
+    }, 0)
 
     const handleDelete = async (ticker: string) => {
         if (!confirm('포트폴리오에서 이 종목을 완전히 삭제할까요? (종목 자체가 사라집니다)')) return
@@ -44,6 +54,20 @@ export default function PortfolioList({ items }: { items: PortfolioItem[] }) {
 
     return (
         <>
+            <div className="flex justify-between items-center mb-4 px-2">
+                <h2 className="text-xl font-black text-zinc-900 dark:text-white flex items-center gap-2">
+                    보유 종목 리스트
+                    <span className="text-xs font-bold text-zinc-400">({items.length})</span>
+                </h2>
+                <button
+                    onClick={() => setShowRebalancing(true)}
+                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-black rounded-xl shadow-lg shadow-blue-500/20 transition-all hover:scale-105"
+                >
+                    <TrendingUp size={14} />
+                    리밸런싱 분석
+                </button>
+            </div>
+
             <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden overflow-x-auto transition-colors">
                 <table className="min-w-full divide-y divide-zinc-200 dark:divide-zinc-800">
                     <thead className="bg-zinc-50 dark:bg-zinc-900/50">
@@ -52,7 +76,8 @@ export default function PortfolioList({ items }: { items: PortfolioItem[] }) {
                             <th className="px-6 py-3 text-right text-xs font-bold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider">수량</th>
                             <th className="px-6 py-3 text-right text-xs font-bold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider">평균 단가</th>
                             <th className="px-6 py-3 text-right text-xs font-bold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider">현재가</th>
-                            <th className="px-6 py-3 text-right text-xs font-bold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider">수익률</th>
+                            <th className="px-6 py-3 text-right text-xs font-bold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider">목표 비중</th>
+                            <th className="px-6 py-3 text-right text-xs font-bold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider">총수익률</th>
                             <th className="px-6 py-3 text-right text-xs font-bold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider">평가금액</th>
                             <th className="px-6 py-3 text-right text-xs font-bold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider">실현손익</th>
                             <th className="px-6 py-3 text-right text-xs font-bold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider">관리</th>
@@ -85,6 +110,9 @@ export default function PortfolioList({ items }: { items: PortfolioItem[] }) {
                                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-semibold text-zinc-800 dark:text-zinc-200">
                                     {item.marketData?.currentPrice ? item.marketData.currentPrice.toLocaleString() : '-'}
                                 </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-bold text-zinc-600 dark:text-zinc-400">
+                                    {item.target_weight || 0}%
+                                </td>
                                 <td className={`px-6 py-4 whitespace-nowrap text-right text-sm font-black ${(() => {
                                     const currentPrice = item.marketData?.currentPrice || 0
                                     const returnPct = currentPrice > 0 ? ((currentPrice - item.entry_price) / item.entry_price) * 100 : 0
@@ -108,11 +136,11 @@ export default function PortfolioList({ items }: { items: PortfolioItem[] }) {
                                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                     <div className="flex justify-end items-center gap-3">
                                         <button
-                                            onClick={() => setTradingItem(item)}
+                                            onClick={() => setEditingItem(item)}
                                             className="p-1.5 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
-                                            title="거래 (매수/매도)"
+                                            title="편집"
                                         >
-                                            <ArrowLeftRight size={16} />
+                                            <Pencil size={16} />
                                         </button>
                                         <button
                                             onClick={() => handleDelete(item.ticker)}
@@ -131,11 +159,21 @@ export default function PortfolioList({ items }: { items: PortfolioItem[] }) {
             </div>
 
 
-            {tradingItem && (
-                <TransactionDialog
-                    ticker={tradingItem.ticker}
-                    currentQuantity={tradingItem.quantity}
-                    onClose={() => setTradingItem(null)}
+            {editingItem && (
+                <EditPortfolioDialog
+                    ticker={editingItem.ticker}
+                    currentQuantity={editingItem.quantity}
+                    currentEntryPrice={editingItem.entry_price}
+                    currentTargetWeight={editingItem.target_weight || 0}
+                    onClose={() => setEditingItem(null)}
+                />
+            )}
+
+            {showRebalancing && (
+                <RebalancingAnalysis
+                    items={items}
+                    totalValuation={totalValuation}
+                    onClose={() => setShowRebalancing(false)}
                 />
             )}
         </>

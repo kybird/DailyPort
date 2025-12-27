@@ -17,7 +17,12 @@ logging.getLogger("pykrx").setLevel(logging.ERROR)
 # Configuration
 DB_PATH = os.path.join(os.path.dirname(__file__), '../../dailyport.db')
 START_DATE_LIMIT = "20230101"
-TODAY = datetime.now().strftime("%Y%m%d")
+today_dt = datetime.now()
+if today_dt.weekday() >= 5: # 5=Sat, 6=Sun
+    # Adjust to recent Friday
+    today_dt -= timedelta(days=(today_dt.weekday() - 4))
+    
+TODAY = today_dt.strftime("%Y%m%d")
 
 def get_db_connection():
     return sqlite3.connect(DB_PATH)
@@ -96,31 +101,51 @@ def repair_supply_bulk(conn, start_date, end_date=None):
     for i, (code, name) in enumerate(tickers):
         try:
             # Fetch for the entire range for THIS ticker
-            df = stock.get_market_trading_value_by_date(start_date, end_date, code)
-            
-            if df.empty:
+            try:
+                df = stock.get_market_trading_value_by_date(start_date, end_date, code)
+            except Exception as fetch_err:
+                # KRX sometimes returns malformed data on holidays causing pykrx to crash on column assignment
+                # Warning is enough, don't crash the script
+                # logger.warning(f"Fetch failed for {code}: {fetch_err}")
                 consecutive_failures += 1
                 if consecutive_failures > 50:
-                    logger.warning(f"🛑 Too many empty results. Probably a holiday or no data for {start_date}. Stopping.")
-                    break
+                     logger.warning(f"🛑 Too many consecutive fetch failures. Aborting.")
+                     break
                 continue
             
+            # Check if dataframe is truly valid and has data
+            if df is None or df.empty:
+                consecutive_failures += 1
+                if consecutive_failures > 50:
+                    logger.warning(f"🛑 Too many empty results. Probably a holiday or no data for {start_date} to {end_date}. Stopping.")
+                    break
+                continue
+
+            # Pandas sometimes returns a DF with index but no columns if data is missing for specific fields
+            if len(df.columns) == 0:
+                 continue
+
             consecutive_failures = 0 # Reset on success or at least non-error
             
             supply_data = []
             for date_val, row in df.iterrows():
-                date_str = date_val.strftime("%Y%m%d")
-                supply_data.append((
-                    code, date_str,
-                    int(row.get('개인', 0)),
-                    int(row.get('외국인합계', 0)),
-                    int(row.get('기관합계', 0))
-                ))
+                try:
+                    date_str = date_val.strftime("%Y%m%d")
+                    supply_data.append((
+                        code, date_str,
+                        int(row.get('개인', 0)),
+                        int(row.get('외국인합계', 0)),
+                        int(row.get('기관합계', 0)),
+                        int(row.get('연기금', 0)) # Ensure we grab pension too
+                    ))
+                except Exception as row_e:
+                    logger.debug(f"Row error for {code} on {date_val}: {row_e}")
+                    continue
             
             if supply_data:
                 cursor.executemany("""
-                    INSERT OR REPLACE INTO daily_supply (code, date, individual, foreigner, institution)
-                    VALUES (?, ?, ?, ?, ?)
+                    INSERT OR REPLACE INTO daily_supply (code, date, individual, foreigner, institution, pension)
+                    VALUES (?, ?, ?, ?, ?, ?)
                 """, supply_data)
                 conn.commit()
                 success_count += 1
@@ -210,6 +235,7 @@ def sync_market_data_bulk(conn, start_date=None, end_date=None, test_mode=False,
                 df_ind = stock.get_market_net_purchases_of_equities_by_ticker(date_str, date_str, market, "개인")
                 df_for = stock.get_market_net_purchases_of_equities_by_ticker(date_str, date_str, market, "외국인")
                 df_ins = stock.get_market_net_purchases_of_equities_by_ticker(date_str, date_str, market, "기관합계")
+                df_pen = stock.get_market_net_purchases_of_equities_by_ticker(date_str, date_str, market, "연기금")
 
                 # Merge all on ticker code
                 df_m = df_ohlcv.copy()
@@ -247,6 +273,7 @@ def sync_market_data_bulk(conn, start_date=None, end_date=None, test_mode=False,
                 df_m = safe_join(df_m, df_ind, ['순매수거래대금'], {'순매수거래대금': 'individual'})
                 df_m = safe_join(df_m, df_for, ['순매수거래대금'], {'순매수거래대금': 'foreigner'})
                 df_m = safe_join(df_m, df_ins, ['순매수거래대금'], {'순매수거래대금': 'institution'})
+                df_m = safe_join(df_m, df_pen, ['순매수거래대금'], {'순매수거래대금': 'pension'})
                 
                 all_data.append(df_m)
 
@@ -285,7 +312,8 @@ def sync_market_data_bulk(conn, start_date=None, end_date=None, test_mode=False,
                     code, date_str,
                     int(row.get('individual', 0)) if pd.notnull(row.get('individual')) else 0, 
                     int(row.get('foreigner', 0)) if pd.notnull(row.get('foreigner')) else 0, 
-                    int(row.get('institution', 0)) if pd.notnull(row.get('institution')) else 0
+                    int(row.get('institution', 0)) if pd.notnull(row.get('institution')) else 0,
+                    int(row.get('pension', 0)) if pd.notnull(row.get('pension')) else 0
                 ))
 
             # 5. Bulk Insert
@@ -296,8 +324,8 @@ def sync_market_data_bulk(conn, start_date=None, end_date=None, test_mode=False,
             """, price_data)
             
             cursor.executemany("""
-                INSERT OR REPLACE INTO daily_supply (code, date, individual, foreigner, institution)
-                VALUES (?, ?, ?, ?, ?)
+                INSERT OR REPLACE INTO daily_supply (code, date, individual, foreigner, institution, pension)
+                VALUES (?, ?, ?, ?, ?, ?)
             """, supply_data)
             
             conn.commit()

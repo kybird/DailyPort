@@ -177,6 +177,8 @@ export default async function AnalysisPage({
                         </p>
                         <div className="flex flex-wrap gap-3 pt-4 border-t border-white/5">
                             <span className="px-4 py-2 bg-white/5 rounded-full text-[11px] font-black uppercase tracking-widest text-neutral-400 border border-white/10">추세 상태: {technical.trend.status === 'UP_TREND' || technical.trend.status === 'GOLDEN_CROSS' ? '상승 추세' : technical.trend.status === 'DOWN_TREND' || technical.trend.status === 'DEAD_CROSS' ? '하락 추세' : '중립'}</span>
+                            <span className="px-4 py-2 bg-white/5 rounded-full text-[11px] font-black uppercase tracking-widest text-neutral-400 border border-white/10">5MA: ₩{technical.movingAverages?.ma5?.toLocaleString() || '-'}</span>
+                            <span className="px-4 py-2 bg-white/5 rounded-full text-[11px] font-black uppercase tracking-widest text-neutral-400 border border-white/10">20MA: ₩{technical.movingAverages?.ma20?.toLocaleString() || '-'}</span>
                             {technical.rsi.status !== 'NEUTRAL' && (
                                 <span className={`px-4 py-2 rounded-full text-[11px] font-black uppercase tracking-widest border ${technical.rsi.status === 'OVERBOUGHT' ? 'bg-rose-500/10 border-rose-500/30 text-rose-400' : 'bg-blue-500/10 border-blue-500/30 text-blue-400'}`}>
                                     RSI Index {technical.rsi.status}
@@ -196,7 +198,7 @@ export default async function AnalysisPage({
                                 </div>
                                 <div className="grid grid-cols-1 gap-4 pt-4">
                                     <div>
-                                        <div className="text-[10px] text-blue-200 font-bold uppercase mb-1">Holdings</div>
+                                        <div className="text-[10px] text-blue-200 font-bold uppercase mb-1">보유</div>
                                         <div className="text-2xl font-black">{portfolio.quantity.toLocaleString()} <span className="text-sm opacity-60">주</span></div>
                                     </div>
                                     <div>
@@ -206,7 +208,7 @@ export default async function AnalysisPage({
                                 </div>
                             </div>
                             <div className="pt-8 border-t border-white/10 mt-6">
-                                <div className="text-[10px] text-blue-200 font-bold uppercase mb-1">예상 실현 손익 (P&L)</div>
+                                <div className="text-[10px] text-blue-200 font-bold uppercase mb-1">예상 실현 손익</div>
                                 {(() => {
                                     const profit = (price.current - portfolio.entryPrice) * portfolio.quantity
                                     const profitPercent = ((price.current / portfolio.entryPrice) - 1) * 100
@@ -362,80 +364,89 @@ export default async function AnalysisPage({
                     <div className="space-y-8">
                         {/* Numerical Supply Metrics (Explicit scale requested) */}
                         {/* Numerical Supply Metrics (Fixed Lint) */}
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="p-4 bg-neutral-50 dark:bg-neutral-800/50 rounded-2xl border border-neutral-100 dark:border-neutral-800 transition-colors">
-                                <div className="text-[10px] text-neutral-400 font-bold uppercase mb-2">외인 순매수(20일)</div>
-                                <div className={`text-xl font-mono font-black ${(supplyDemand?.metrics?.foreigner_20d_net ?? 0) > 0 ? 'text-rose-500' : 'text-blue-500'}`}>
-                                    {(supplyDemand?.metrics?.foreigner_20d_net ?? 0) > 0 ? '+' : ''}{formatKoreanUnit(supplyDemand?.metrics?.foreigner_20d_net ?? 0)}
-                                </div>
-                            </div>
-                            <div className="p-4 bg-neutral-50 dark:bg-neutral-800/50 rounded-2xl border border-neutral-100 dark:border-neutral-800 transition-colors">
-                                <div className="text-[10px] text-neutral-400 font-bold uppercase mb-2">기관 순매수(20일)</div>
-                                <div className={`text-xl font-mono font-black ${(supplyDemand?.metrics?.institution_20d_net ?? 0) > 0 ? 'text-amber-500' : 'text-indigo-500'}`}>
-                                    {(supplyDemand?.metrics?.institution_20d_net ?? 0) > 0 ? '+' : ''}{formatKoreanUnit(supplyDemand?.metrics?.institution_20d_net ?? 0)}
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="p-4 bg-neutral-50 dark:bg-neutral-800/50 rounded-2xl border border-neutral-100 dark:border-neutral-800 transition-colors">
-                                <div className="text-[10px] text-neutral-400 font-bold uppercase mb-2">외인 매집 (5일)</div>
-                                <div className={`text-xl font-mono font-black ${(supplyDemand?.metrics?.foreigner_5d_net ?? 0) > 0 ? 'text-rose-500' : 'text-blue-500'}`}>
-                                    {(supplyDemand?.metrics?.foreigner_5d_net ?? 0) > 0 ? '+' : ''}{formatKoreanUnit(supplyDemand?.metrics?.foreigner_5d_net ?? 0)}
-                                </div>
-                            </div>
-                            <div className="p-4 bg-neutral-50 dark:bg-neutral-800/50 rounded-2xl border border-neutral-100 dark:border-neutral-800 transition-colors">
-                                <div className="text-[10px] text-neutral-400 font-bold uppercase mb-2">기관 매집 (5일)</div>
-                                <div className={`text-xl font-mono font-black ${(supplyDemand?.metrics?.institution_5d_net ?? 0) > 0 ? 'text-amber-500' : 'text-indigo-500'}`}>
-                                    {(supplyDemand?.metrics?.institution_5d_net ?? 0) > 0 ? '+' : ''}{formatKoreanUnit(supplyDemand?.metrics?.institution_5d_net ?? 0)}
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* RSI Scale */}
+                        {/* 1. Supply Metrics (Prioritized) */}
                         <div className="space-y-4">
-                            <div className="flex justify-between items-center text-xs font-bold uppercase tracking-tighter text-neutral-500">
-                                <span>RSI (14)</span>
-                                <span className="text-neutral-900 dark:text-white font-black">{technical.rsi.value.toFixed(1)}</span>
-                            </div>
-                            <div className="relative pt-2">
-                                <div className="w-full h-2 bg-neutral-100 dark:bg-neutral-800 rounded-full overflow-hidden flex shadow-inner">
-                                    <div className="h-full bg-blue-500/20 border-r border-blue-500/20" style={{ width: '30%' }} />
-                                    <div className="h-full bg-transparent" style={{ width: '40%' }} />
-                                    <div className="h-full bg-rose-500/20 border-l border-rose-500/20" style={{ width: '30%' }} />
+                            <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+                                <div className="p-4 bg-neutral-50 dark:bg-neutral-800/50 rounded-2xl border border-neutral-100 dark:border-neutral-800 transition-colors">
+                                    <div className="text-[10px] text-neutral-400 font-bold uppercase mb-2">외인 순매수(20일)</div>
+                                    <div className={`text-xl font-mono font-black ${(supplyDemand?.metrics?.foreigner_20d_net ?? 0) > 0 ? 'text-rose-500' : 'text-blue-500'}`}>
+                                        {(supplyDemand?.metrics?.foreigner_20d_net ?? 0) > 0 ? '+' : ''}{formatKoreanUnit(supplyDemand?.metrics?.foreigner_20d_net ?? 0)}
+                                    </div>
                                 </div>
-                                <div className="absolute top-0 h-4 w-1 bg-neutral-900 dark:bg-white rounded-full shadow-lg transition-all duration-1000" style={{ left: `${technical.rsi.value}%` }} />
+                                <div className="p-4 bg-neutral-50 dark:bg-neutral-800/50 rounded-2xl border border-neutral-100 dark:border-neutral-800 transition-colors">
+                                    <div className="text-[10px] text-neutral-400 font-bold uppercase mb-2">기관 순매수(20일)</div>
+                                    <div className={`text-xl font-mono font-black ${(supplyDemand?.metrics?.institution_20d_net ?? 0) > 0 ? 'text-amber-500' : 'text-indigo-500'}`}>
+                                        {(supplyDemand?.metrics?.institution_20d_net ?? 0) > 0 ? '+' : ''}{formatKoreanUnit(supplyDemand?.metrics?.institution_20d_net ?? 0)}
+                                    </div>
+                                </div>
+                                <div className="col-span-2 md:col-span-1 p-4 bg-purple-50 dark:bg-purple-900/10 rounded-2xl border border-purple-100 dark:border-purple-900/30 transition-colors">
+                                    <div className="text-[10px] text-purple-400 font-bold uppercase mb-2">연기금 순매수(20일)</div>
+                                    <div className={`text-xl font-mono font-black ${(supplyDemand?.metrics?.pension_20d_net ?? 0) > 0 ? 'text-purple-600 dark:text-purple-400' : 'text-zinc-400'}`}>
+                                        {(supplyDemand?.metrics?.pension_20d_net ?? 0) > 0 ? '+' : ''}{formatKoreanUnit(supplyDemand?.metrics?.pension_20d_net ?? 0)}
+                                    </div>
+                                </div>
                             </div>
-                            <div className="flex justify-between text-[9px] font-black text-neutral-400 uppercase opacity-60">
-                                <span>과매도 (30)</span>
-                                <span>과매수 (70)</span>
+
+                            <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 opacity-75">
+                                <div className="p-4 bg-neutral-50 dark:bg-neutral-800/50 rounded-2xl border border-neutral-100 dark:border-neutral-800 transition-colors">
+                                    <div className="text-[10px] text-neutral-400 font-bold uppercase mb-1">외인 매집(5일)</div>
+                                    <div className={`text-lg font-mono font-black ${(supplyDemand?.metrics?.foreigner_5d_net ?? 0) > 0 ? 'text-rose-500' : 'text-blue-500'}`}>
+                                        {(supplyDemand?.metrics?.foreigner_5d_net ?? 0) > 0 ? '+' : ''}{formatKoreanUnit(supplyDemand?.metrics?.foreigner_5d_net ?? 0)}
+                                    </div>
+                                </div>
+                                <div className="p-4 bg-neutral-50 dark:bg-neutral-800/50 rounded-2xl border border-neutral-100 dark:border-neutral-800 transition-colors">
+                                    <div className="text-[10px] text-neutral-400 font-bold uppercase mb-1">기관 매집(5일)</div>
+                                    <div className={`text-lg font-mono font-black ${(supplyDemand?.metrics?.institution_5d_net ?? 0) > 0 ? 'text-amber-500' : 'text-indigo-500'}`}>
+                                        {(supplyDemand?.metrics?.institution_5d_net ?? 0) > 0 ? '+' : ''}{formatKoreanUnit(supplyDemand?.metrics?.institution_5d_net ?? 0)}
+                                    </div>
+                                </div>
+                                <div className="col-span-2 md:col-span-1 p-4 bg-purple-50 dark:bg-purple-900/10 rounded-2xl border border-purple-100 dark:border-purple-900/30 transition-colors">
+                                    <div className="text-[10px] text-purple-400 font-bold uppercase mb-1">연기금 매집(5일)</div>
+                                    <div className={`text-lg font-mono font-black ${(supplyDemand?.metrics?.pension_5d_net ?? 0) > 0 ? 'text-purple-600 dark:text-purple-400' : 'text-zinc-400'}`}>
+                                        {(supplyDemand?.metrics?.pension_5d_net ?? 0) > 0 ? '+' : ''}{formatKoreanUnit(supplyDemand?.metrics?.pension_5d_net ?? 0)}
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
-                        {/* MA Trends */}
-                        <div className="p-5 bg-gradient-to-r from-neutral-50 to-white dark:from-neutral-800/50 dark:to-neutral-900 rounded-2xl border border-neutral-300 dark:border-neutral-800 space-y-3">
-                            <div className="text-[10px] font-black text-neutral-400 uppercase">시장 및 재무 진단</div>
+                        {/* 2. Technical Metrics (MA & RSI) */}
+                        <div className="space-y-6 pt-4 border-t border-neutral-100 dark:border-neutral-800">
                             <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-1">
-                                    <div className="text-[10px] text-neutral-500 font-bold">PER</div>
-                                    <div className="text-lg font-black text-neutral-900 dark:text-white">{fundamentals?.per?.toFixed(2) || '-'}배</div>
+                                <div className="p-4 bg-neutral-50 dark:bg-neutral-800/50 rounded-2xl border border-neutral-100 dark:border-neutral-800 transition-colors">
+                                    <div className="text-[10px] text-neutral-400 font-bold uppercase mb-2">5일 이동평균</div>
+                                    <div className="text-xl font-mono font-black text-neutral-900 dark:text-white">
+                                        ₩{technical.movingAverages?.ma5?.toLocaleString() || '-'}
+                                    </div>
                                 </div>
-                                <div className="space-y-1">
-                                    <div className="text-[10px] text-neutral-500 font-bold">PBR</div>
-                                    <div className="text-lg font-black text-neutral-900 dark:text-white">{fundamentals?.pbr?.toFixed(2) || '-'}배</div>
+                                <div className="p-4 bg-neutral-50 dark:bg-neutral-800/50 rounded-2xl border border-neutral-100 dark:border-neutral-800 transition-colors">
+                                    <div className="text-[10px] text-neutral-400 font-bold uppercase mb-2">20일 이동평균</div>
+                                    <div className="text-xl font-mono font-black text-neutral-900 dark:text-white">
+                                        ₩{technical.movingAverages?.ma20?.toLocaleString() || '-'}
+                                    </div>
                                 </div>
                             </div>
-                            <div className="flex justify-between items-end pt-2 border-t border-neutral-100 dark:border-neutral-800">
-                                <div className="space-y-1">
-                                    <div className="text-[8px] font-bold text-neutral-400 uppercase">5일 이동평균</div>
-                                    <div className="text-base font-black text-neutral-900 dark:text-white">₩{technical.movingAverages?.ma5?.toLocaleString() || '-'}</div>
+
+                            <div className="space-y-4">
+                                <div className="flex justify-between items-center text-xs font-bold uppercase tracking-tighter text-neutral-500">
+                                    <span>RSI (14) 지수</span>
+                                    <span className="text-neutral-900 dark:text-white font-black">{technical.rsi.value.toFixed(1)}</span>
                                 </div>
-                                <div className="text-right space-y-1">
-                                    <div className="text-[8px] font-bold text-neutral-400 uppercase">20일 이동평균</div>
-                                    <div className="text-base font-black text-neutral-900 dark:text-white">₩{technical.movingAverages?.ma20?.toLocaleString() || '-'}</div>
+                                <div className="relative pt-2">
+                                    <div className="w-full h-2 bg-neutral-100 dark:bg-neutral-800 rounded-full overflow-hidden flex shadow-inner">
+                                        <div className="h-full bg-blue-500/20 border-r border-blue-500/20" style={{ width: '30%' }} />
+                                        <div className="h-full bg-transparent" style={{ width: '40%' }} />
+                                        <div className="h-full bg-rose-500/20 border-l border-rose-500/20" style={{ width: '30%' }} />
+                                    </div>
+                                    <div className="absolute top-0 h-4 w-1 bg-neutral-900 dark:bg-white rounded-full shadow-lg transition-all duration-1000" style={{ left: `${technical.rsi.value}%` }} />
+                                </div>
+                                <div className="flex justify-between text-[9px] font-black text-neutral-400 uppercase opacity-60">
+                                    <span>과매도 (30)</span>
+                                    <span>과매수 (70)</span>
                                 </div>
                             </div>
                         </div>
+
+
                     </div>
                 </div>
 
@@ -447,24 +458,24 @@ export default async function AnalysisPage({
                     </h3>
 
                     <div className="space-y-8">
-                        <div className="grid grid-cols-2 gap-6">
-                            <div className="space-y-2">
-                                <div className="text-[10px] font-bold text-neutral-500 uppercase tracking-tighter">PER</div>
-                                <div className="text-3xl font-black text-neutral-900 dark:text-white">
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="p-4 bg-neutral-50 dark:bg-neutral-800/50 rounded-2xl border border-neutral-100 dark:border-neutral-800 transition-colors">
+                                <div className="text-[10px] text-neutral-400 font-bold uppercase mb-2">PER (주가수익비율)</div>
+                                <div className="text-xl font-black text-neutral-900 dark:text-white">
                                     {fundamentals?.per?.toFixed(2) || 'N/A'}
                                     <span className="text-xs font-medium text-neutral-400 ml-1">배</span>
                                 </div>
                             </div>
-                            <div className="space-y-2">
-                                <div className="text-[10px] font-bold text-neutral-500 uppercase tracking-tighter">PBR</div>
-                                <div className="text-3xl font-black text-neutral-900 dark:text-white">
+                            <div className="p-4 bg-neutral-50 dark:bg-neutral-800/50 rounded-2xl border border-neutral-100 dark:border-neutral-800 transition-colors">
+                                <div className="text-[10px] text-neutral-400 font-bold uppercase mb-2">PBR (주가순자산비율)</div>
+                                <div className="text-xl font-black text-neutral-900 dark:text-white">
                                     {fundamentals?.pbr?.toFixed(2) || 'N/A'}
                                     <span className="text-xs font-medium text-neutral-400 ml-1">배</span>
                                 </div>
                             </div>
                         </div>
 
-                        {/* Revenue & Net Income (Moved here) */}
+                        {/* Revenue & Net Income */}
                         <div className="grid grid-cols-2 gap-4">
                             <div className="p-4 bg-neutral-50 dark:bg-neutral-800/50 rounded-2xl border border-neutral-100 dark:border-neutral-800 transition-colors">
                                 <div className="text-[10px] text-neutral-400 font-bold uppercase mb-2">연간 매출액</div>

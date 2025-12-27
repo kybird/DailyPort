@@ -54,7 +54,7 @@ export default async function LandingPage() {
 
 
                         <p className="max-w-2xl mx-auto text-lg md:text-xl text-zinc-600 dark:text-zinc-400 mb-10 leading-relaxed font-medium">
-                            전략 시뮬레이션부터 정교한 알고리즘 검증 로직까지.<br />
+                            내 포트폴리오부터 정교한 알고리즘 검증 로직까지.<br />
                             투명한 데이터와 수치로 완성하는 당신만의 <b>Logic Lab</b>, DailyPort와 함께하세요.
                         </p>
                         <div className="flex justify-center mt-10">
