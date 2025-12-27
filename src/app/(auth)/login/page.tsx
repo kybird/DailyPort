@@ -93,7 +93,7 @@ export default async function Login({
                                 <label className="text-sm font-bold text-zinc-700 dark:text-zinc-300" htmlFor="password">
                                     비밀번호
                                 </label>
-                                <Link href="#" className="text-xs text-blue-600 hover:underline">비밀번호 찾기</Link>
+                                <Link href="/forgot-password" className="text-xs text-blue-600 hover:underline font-medium">비밀번호 찾기</Link>
                             </div>
                             <input
                                 className="rounded-xl border border-zinc-200 dark:border-zinc-800 px-4 py-3 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none transition-all placeholder:text-zinc-400"
@@ -125,8 +125,8 @@ export default async function Login({
                         </p>
 
                         {message && (
-                            <div className="mt-4 p-4 rounded-xl bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-sm text-center border border-red-100 dark:border-red-900/30 font-medium">
-                                {message}
+                            <div className="mt-2 p-4 rounded-xl bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 text-sm text-center border border-red-100 dark:border-red-500/20 font-bold animate-pulse">
+                                {message === "Could not authenticate user" ? "아이디 또는 비밀번호가 올바르지 않습니다." : message}
                             </div>
                         )}
                     </form>

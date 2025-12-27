@@ -51,9 +51,52 @@ export async function signup(formData: FormData) {
         },
     })
 
+
     if (error) {
         return redirect('/signup?message=Could not authenticate user')
     }
 
     return redirect('/signup?message=Check email to continue sign in process')
+}
+
+export async function resetPassword(formData: FormData) {
+    const email = formData.get('email') as string
+    const supabase = await createClient()
+
+    // Assuming we want to redirect to a page where they can enter a new password
+    // We need to construct the full URL for the callback
+    const origin = (await headers()).get('origin')
+    const callbackUrl = `${origin}/auth/callback?redirect_to=/auth/update-password`
+
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: callbackUrl,
+    })
+
+    if (error) {
+        console.error('Reset password error:', error)
+        return redirect('/forgot-password?message=Could not send reset email')
+    }
+
+    return redirect('/forgot-password?message=Check your email for the password reset link')
+}
+
+export async function updatePassword(formData: FormData) {
+    const password = formData.get('password') as string
+    const passwordConfirm = formData.get('password-confirm') as string
+
+    if (password !== passwordConfirm) {
+        return redirect('/auth/update-password?message=Passwords do not match')
+    }
+
+    const supabase = await createClient()
+    const { error } = await supabase.auth.updateUser({
+        password: password,
+    })
+
+    if (error) {
+        console.error('Update password error:', error)
+        return redirect('/auth/update-password?message=Could not update password')
+    }
+
+    return redirect('/login?message=Password updated successfully')
 }
