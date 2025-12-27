@@ -41,7 +41,7 @@ export default async function DashboardLayout({
 
                 {/* Main Content */}
                 <main className="flex-1 overflow-auto">
-                    <TopPanel />
+                    <TopPanel role={profile?.role || 'user'} />
                     <div className="p-4 md:p-8">
                         {children}
                     </div>

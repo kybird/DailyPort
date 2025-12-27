@@ -1,4 +1,3 @@
-
 'use client'
 
 import Link from 'next/link'
@@ -6,18 +5,8 @@ import { usePathname } from 'next/navigation'
 import { LayoutDashboard, Info, Loader2, Shield, Star, Briefcase, Microscope } from 'lucide-react'
 import { useState } from 'react'
 
-export default function Sidebar({ role }: { role?: string }) {
-    const pathname = usePathname()
-    const [navigatingTo, setNavigatingTo] = useState<string | null>(null)
-
-    // Reset navigating state when pathname changes (modern React pattern)
-    const [lastPathname, setLastPathname] = useState(pathname)
-    if (pathname !== lastPathname) {
-        setLastPathname(pathname)
-        setNavigatingTo(null)
-    }
-
-    const navItems = [
+export function getNavItems(role?: string) {
+    return [
         {
             href: '/dashboard',
             label: '시뮬레이션 현황',
@@ -50,7 +39,20 @@ export default function Sidebar({ role }: { role?: string }) {
             icon: (isActive: boolean) => <Shield size={18} className={isActive ? 'text-blue-600' : 'text-zinc-500'} />
         }] : [])
     ]
+}
 
+export default function Sidebar({ role }: { role?: string }) {
+    const pathname = usePathname()
+    const [navigatingTo, setNavigatingTo] = useState<string | null>(null)
+
+    // Reset navigating state when pathname changes (modern React pattern)
+    const [lastPathname, setLastPathname] = useState(pathname)
+    if (pathname !== lastPathname) {
+        setLastPathname(pathname)
+        setNavigatingTo(null)
+    }
+
+    const navItems = getNavItems(role)
 
     return (
         <aside className="w-64 bg-white dark:bg-neutral-950 border-r border-neutral-200 dark:border-neutral-900 hidden md:block transition-colors shrink-0">
