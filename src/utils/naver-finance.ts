@@ -303,7 +303,8 @@ export async function getNaverHistoricalData(ticker: string, days = 300): Promis
 
         for (const line of lines) {
             // ['20241227', 55000, 56000, 54000, 55500, 1234567]
-            const match = line.match(/"(\d{8})"\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/)
+            // 일부 종목은 뒤에 외국인소진율 등 추가 컬럼이 있을 수 있으므로 정규식을 유연하게 수정
+            const match = line.match(/"(\d{8})"[^0-9]*(\d+)[^0-9]*(\d+)[^0-9]*(\d+)[^0-9]*(\d+)[^0-9]*(\d+)/)
             if (match) {
                 const [, dateStr, open, high, low, close, volume] = match
                 const year = dateStr.slice(0, 4)

@@ -350,7 +350,7 @@ async function fetchMarketDataInternal(ticker: string): Promise<MarketData | nul
         console.log(`[CACHE HIT - PARTIAL] ${ticker} (Price Refresh Only)`)
 
         // ETF 여부 판단 (기존 데이터나 티커로)
-        const isETF = cachedData.assetType === 'ETF' || ticker.startsWith('4') || ticker.startsWith('069500')
+        const isETF = cachedData.assetType === 'ETF' || !!(cachedData.name && cachedData.name.includes('ETF'))
 
         const freshQuote = await fetchNaverQuoteOnly(ticker, isETF)
         if (freshQuote) {
@@ -377,8 +377,26 @@ async function fetchMarketDataInternal(ticker: string): Promise<MarketData | nul
     console.log(`[FETCH - FULL] ${ticker} (Naver Quote + 300d Historical)`)
 
     // 1. 시세 + 2. 일봉 병합 호출
-    const isETF = ticker.startsWith('4') || ticker.startsWith('069500')
-    const quote = await fetchNaverQuoteOnly(ticker, isETF)
+    // 티커가 '4'로 시작하더라도 6자리 숫자인 경우 새로운 상장 종목일 가능성이 높으므로 
+    // 기본적으로 주식으로 시도하고, 결과에 'ETF'가 포함된 경우에만 ETF로 취급하는 것이 안전합니다.
+    let isETF = ticker.startsWith('069500') // KODEX 200 등 명백한 ETF
+
+    // 우선 주식으로 시도
+    let quote = await fetchNaverQuoteOnly(ticker, false)
+
+    // 만약 주식으로 실패하거나, 이름에 'ETF'가 명시적으로 포함되어 있다면 ETF로 다시 시도
+    if (quote && quote.name && (quote.name.includes('ETF') || quote.name.includes('KODEX') || quote.name.includes('TIGER'))) {
+        isETF = true
+        const etfQuote = await fetchNaverQuoteOnly(ticker, true)
+        if (etfQuote) quote = { ...quote, ...etfQuote }
+    } else if (!quote && (ticker.startsWith('4') || ticker.startsWith('3') || ticker.startsWith('K'))) {
+        // 주식으로 실패했는데 ETF일 가능성이 있는 번호대라면 ETF로 한번 더 시도
+        const etfQuote = await fetchNaverQuoteOnly(ticker, true)
+        if (etfQuote) {
+            quote = etfQuote
+            isETF = true
+        }
+    }
 
     if (quote) {
         const historical = await fetchNaverHistoricalOnly(ticker)
