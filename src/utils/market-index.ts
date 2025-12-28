@@ -24,9 +24,17 @@ async function fetchIntradayData(symbol: string, targetDate: Date): Promise<{ ti
     const period2 = Math.floor((marketCloseKst.getTime() - KST_OFFSET) / 1000)
 
     // Using 5m interval for better chart resolution as requested by user
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?period1=${period1}&period2=${period2}&interval=5m`
+    // Limit to 1 day of data to avoid API limits
+    const oneDay = 24 * 60 * 60
+    const limitedPeriod2 = Math.min(period2, period1 + oneDay)
 
-    const response = await fetch(url)
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?period1=${period1}&period2=${limitedPeriod2}&interval=5m`
+
+    const response = await fetch(url, {
+        headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        }
+    })
     if (!response.ok) {
         throw new Error(`Yahoo Finance API error: ${response.status}`)
     }
@@ -48,9 +56,14 @@ async function fetchIntradayData(symbol: string, targetDate: Date): Promise<{ ti
 async function getIntradayDataWithFallback(symbol: string): Promise<{ time: string, price: number }[]> {
     const now = new Date()
     const kstNow = new Date(now.getTime() + KST_OFFSET)
+    const currentHour = kstNow.getUTCHours()
 
-    // Try today first, then fallback up to 5 days (to handle weekends and holidays)
-    for (let daysBack = 0; daysBack <= 5; daysBack++) {
+    // If it's before market open (before 9 AM KST), start from yesterday
+    // If market is closed (after 20:00 KST), also start from yesterday
+    const startDaysBack = (currentHour < 9 || currentHour >= 20) ? 1 : 0
+
+    // Try recent trading days (skip today if market not open)
+    for (let daysBack = startDaysBack; daysBack <= 5; daysBack++) {
         const targetDate = new Date(kstNow)
         targetDate.setUTCDate(targetDate.getUTCDate() - daysBack)
         targetDate.setUTCHours(0, 0, 0, 0)

@@ -1,9 +1,8 @@
 
-import YahooFinance from 'yahoo-finance2'
-import { getNaverStockQuote, getNaverETFQuote, getNaverHistoricalData } from './naver-finance'
-
-
-const yahooFinance = new YahooFinance({ suppressNotices: ['ripHistorical', 'yahooSurvey'] })
+import { getNaverHistoricalData } from './naver-finance'
+import { KRXIndexDataSource, YahooStockDataSource, NaverStockDataSource } from '../market-data'
+import type { HistoricalDataParams, QuoteData, HistoricalData, MarketDataError } from '../market-data/interfaces/market-data.interface'
+// Legacy wrapper removed - using direct SDK integration
 
 
 export interface MarketData {
@@ -34,7 +33,7 @@ export interface MarketData {
         close: number
         volume: number
     }[]
-    source?: 'NAVER' | 'YAHOO' | 'CACHE'
+    source?: 'NAVER' | 'YAHOO' | 'CACHE' | 'SDK'
 }
 
 export interface IndexData {
@@ -69,51 +68,19 @@ interface KRXIndexItem {
     MKTCAP: string;
 }
 
-// KRX Index data functions
+// KRX Index data functions - using new SDK
 export async function getKOSPIIndexData(): Promise<IndexData[]> {
-    const today = new Date().toISOString().split('T')[0].replace(/-/g, '')
-    const endpoint = 'https://data-dbg.krx.co.kr/svc/apis/idx/kospi_dd_trd'
-
     try {
-        const response = await fetch(endpoint, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'AUTH_KEY': process.env.KRX_OPEN_API_KEY || ''
-            },
-            body: JSON.stringify({ basDd: today })
-        })
+        const krxSource = new KRXIndexDataSource()
+        await krxSource.connect()
+        const result = await krxSource.getIndexData('KOSPI')
 
-        if (!response.ok) {
-            console.error(`KRX KOSPI Index API error: ${response.status}`)
+        if (result && !Array.isArray(result)) {
+            console.error('KRX KOSPI Index: Expected array but got error:', result)
             return []
         }
 
-        const data = await response.json()
-        const indices = data.OutBlock_1 || []
-
-        return indices.map((item: KRXIndexItem) => {
-            const basDd = item.BAS_DD
-            const year = basDd.slice(0, 4)
-            const month = basDd.slice(4, 6)
-            const day = basDd.slice(6, 8)
-            const dateStr = `${year}-${month}-${day}`
-
-            return {
-                name: item.IDX_NM,
-                indexClass: item.IDX_CLSS,
-                currentPrice: parseFloat(item.CLSPRC_IDX) || 0,
-                change: parseFloat(item.CMPPREVDD_IDX) || 0,
-                changePercent: parseFloat(item.FLUC_RT) || 0,
-                open: parseFloat(item.OPNPRC_IDX) || 0,
-                high: parseFloat(item.HGPRC_IDX) || 0,
-                low: parseFloat(item.LWPRC_IDX) || 0,
-                volume: parseInt(item.ACC_TRDVOL) || 0,
-                tradingValue: parseFloat(item.ACC_TRDVAL) || 0,
-                marketCap: parseFloat(item.MKTCAP) || 0,
-                date: dateStr
-            }
-        })
+        return (result as IndexData[]) || []
     } catch (error) {
         console.error('KRX KOSPI Index fetch error:', error)
         return []
@@ -121,49 +88,17 @@ export async function getKOSPIIndexData(): Promise<IndexData[]> {
 }
 
 export async function getKOSDAQIndexData(): Promise<IndexData[]> {
-    const today = new Date().toISOString().split('T')[0].replace(/-/g, '')
-    const endpoint = 'https://data-dbg.krx.co.kr/svc/apis/idx/kosdaq_dd_trd'
-
     try {
-        const response = await fetch(endpoint, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'AUTH_KEY': process.env.KRX_OPEN_API_KEY || ''
-            },
-            body: JSON.stringify({ basDd: today })
-        })
+        const krxSource = new KRXIndexDataSource()
+        await krxSource.connect()
+        const result = await krxSource.getIndexData('KOSDAQ')
 
-        if (!response.ok) {
-            console.error(`KRX KOSDAQ Index API error: ${response.status}`)
+        if (result && !Array.isArray(result)) {
+            console.error('KRX KOSDAQ Index: Expected array but got error:', result)
             return []
         }
 
-        const data = await response.json()
-        const indices = data.OutBlock_1 || []
-
-        return indices.map((item: KRXIndexItem) => {
-            const basDd = item.BAS_DD
-            const year = basDd.slice(0, 4)
-            const month = basDd.slice(4, 6)
-            const day = basDd.slice(6, 8)
-            const dateStr = `${year}-${month}-${day}`
-
-            return {
-                name: item.IDX_NM,
-                indexClass: item.IDX_CLSS,
-                currentPrice: parseFloat(item.CLSPRC_IDX) || 0,
-                change: parseFloat(item.CMPPREVDD_IDX) || 0,
-                changePercent: parseFloat(item.FLUC_RT) || 0,
-                open: parseFloat(item.OPNPRC_IDX) || 0,
-                high: parseFloat(item.HGPRC_IDX) || 0,
-                low: parseFloat(item.LWPRC_IDX) || 0,
-                volume: parseInt(item.ACC_TRDVOL) || 0,
-                tradingValue: parseFloat(item.ACC_TRDVAL) || 0,
-                marketCap: parseFloat(item.MKTCAP) || 0,
-                date: dateStr
-            }
-        })
+        return (result as IndexData[]) || []
     } catch (error) {
         console.error('KRX KOSDAQ Index fetch error:', error)
         return []
@@ -176,30 +111,38 @@ export async function getKOSDAQIndexData(): Promise<IndexData[]> {
 import { createAnonClient } from '@/utils/supabase/server'
 
 /**
- * 네이버 금융에서 시세 데이터 가져오기 (주 소스)
+ * 네이버 금융에서 시세 데이터 가져오기 (주 소스) - using new SDK
  * - 현재가, PER, PBR, 시가총액
  */
 async function fetchNaverQuoteOnly(ticker: string, isETF = false): Promise<Partial<MarketData> | null> {
     try {
-        const quote = isETF
-            ? await getNaverETFQuote(ticker)
-            : await getNaverStockQuote(ticker)
+        const naverSource = new NaverStockDataSource()
+        await naverSource.connect()
 
-        if (!quote || quote.currentPrice === 0) return null
+        const quoteResult = await naverSource.getQuote(ticker)
+        if (!quoteResult || 'type' in quoteResult) {
+            console.error('Naver quote fetch failed:', quoteResult)
+            return null
+        }
+
+        const quote = quoteResult as QuoteData
 
         return {
-            ticker,
+            ticker: quote.symbol,
             name: quote.name,
-            currentPrice: quote.currentPrice,
-            changePrice: quote.changePrice,
+            currentPrice: quote.price,
+            changePrice: quote.change,
             changePercent: quote.changePercent,
             per: quote.per,
             pbr: quote.pbr,
             marketCap: quote.marketCap,
+            eps: quote.eps,
+            high52Week: quote.high52Week,
+            low52Week: quote.low52Week,
             nav: quote.nav,
             premiumDiscount: quote.premiumDiscount,
-            assetType: quote.assetType,
-            currency: 'KRW'
+            assetType: quote.assetClass === 'ETF' ? 'ETF' : 'STOCK',
+            currency: quote.currency
         }
     } catch (error) {
         console.error(`Naver quote fetch error for ${ticker}:`, error)
@@ -228,85 +171,58 @@ async function fetchNaverHistoricalOnly(ticker: string): Promise<MarketData['his
 }
 
 /**
- * 야후 파이낸스에서 시세 데이터 가져오기 (fallback)
+ * 야후 파이낸스에서 시세 데이터 가져오기 (fallback) - using new SDK
  */
 async function fetchFromYahoo(ticker: string): Promise<MarketData | null> {
     try {
-        let yahooTicker = ticker
-        // Auto-append suffix for Korean 6-character tickers if not already present
-        if (/^\d{6}$/.test(ticker) && !ticker.includes('.')) {
-            yahooTicker = `${ticker}.KS`
+        const yahooSource = new YahooStockDataSource()
+        await yahooSource.connect()
+
+        // Get quote data
+        const quoteResult = await yahooSource.getQuote(ticker)
+        if (!quoteResult || 'type' in quoteResult) {
+            console.error('Yahoo quote fetch failed:', quoteResult)
+            return null
         }
 
-        // Fetch Quote
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        let quote: any | undefined;
-        try {
-            quote = await yahooFinance.quote(yahooTicker)
-        } catch (e) {
-            // Fallback for KOSDAQ if KOSPI fails
-            if (yahooTicker.endsWith('.KS')) {
-                const kqTicker = yahooTicker.replace('.KS', '.KQ')
-                try {
-                    quote = await yahooFinance.quote(kqTicker)
-                    yahooTicker = kqTicker
-                } catch {
-                    throw e
-                }
-            } else if (yahooTicker.endsWith('.KQ')) {
-                const ksTicker = yahooTicker.replace('.KQ', '.KS')
-                try {
-                    quote = await yahooFinance.quote(ksTicker)
-                    yahooTicker = ksTicker
-                } catch {
-                    throw e
-                }
-            } else {
-                throw e
-            }
+        const quote = quoteResult as QuoteData
+
+        // Get historical data (last 300 days)
+        const historicalParams: HistoricalDataParams = {
+            symbol: ticker,
+            timeframe: '1d',
+            limit: 300
         }
 
-        if (!quote) return null
+        const historicalResult = await yahooSource.getHistoricalData(historicalParams)
+        if (!historicalResult || 'type' in historicalResult) {
+            console.error('Yahoo historical fetch failed:', historicalResult)
+            return null
+        }
 
-        // Fetch Historical (using chart() as recommended)
-        const startDate = new Date()
-        startDate.setDate(startDate.getDate() - 300)
-
-        const chartResult = await yahooFinance.chart(yahooTicker, {
-            period1: startDate.toISOString().split('T')[0],
-            period2: new Date().toISOString().split('T')[0],
-            interval: '1d'
-        })
-
-        const historical = chartResult.quotes.map((q) => ({
-            date: q.date,
-            open: q.open,
-            high: q.high,
-            low: q.low,
-            close: q.close,
-            volume: q.volume
-        })).filter((q) => q.close !== null)
+        const historicalData = historicalResult as HistoricalData
 
         return {
             ticker,
-            name: quote.shortName || quote.longName || ticker,
-            currentPrice: quote.regularMarketPrice || 0,
+            name: quote.name,
+            currentPrice: quote.price,
             marketCap: quote.marketCap,
-            per: quote.trailingPE,
-            eps: quote.epsTrailingTwelveMonths,
-            high52Week: quote.fiftyTwoWeekHigh,
-            low52Week: quote.fiftyTwoWeekLow,
-            changePrice: quote.regularMarketChange,
-            changePercent: quote.regularMarketChangePercent,
+            per: quote.per,
+            pbr: quote.pbr,
+            eps: quote.eps,
+            high52Week: quote.high52Week,
+            low52Week: quote.low52Week,
+            changePrice: quote.change,
+            changePercent: quote.changePercent,
             currency: quote.currency,
-            historical: historical.map((h) => ({
-                date: (h.date as Date).toISOString(),
-                open: h.open as number,
-                high: h.high as number,
-                low: h.low as number,
-                close: h.close as number,
-                volume: h.volume as number
-            })),
+            historical: historicalData.data?.map((h) => ({
+                date: h.date,
+                open: h.open,
+                high: h.high,
+                low: h.low,
+                close: h.close,
+                volume: h.volume
+            })) || [],
             source: 'YAHOO'
         }
     } catch (error) {
@@ -335,7 +251,7 @@ async function fetchMarketDataInternal(ticker: string): Promise<MarketData | nul
         .single()
 
     const now = new Date().getTime()
-    let cachedData = cachedRow?.data as MarketData | null
+    const cachedData = cachedRow?.data as MarketData | null
     const generatedAt = cachedRow ? new Date(cachedRow.generated_at).getTime() : 0
     const diffMinutes = (now - generatedAt) / (1000 * 60)
 
@@ -445,7 +361,10 @@ async function fetchMarketDataInternal(ticker: string): Promise<MarketData | nul
 import { unstable_cache } from 'next/cache'
 
 export const getMarketData = unstable_cache(
-    async (ticker: string) => fetchMarketDataInternal(ticker),
+    async (ticker: string) => {
+        // Direct SDK integration - no wrapper needed
+        return await fetchMarketDataInternal(ticker)
+    },
     ['market-data'],
     { revalidate: 60 } // Cache for 60 seconds
 )
