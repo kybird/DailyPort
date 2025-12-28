@@ -19,6 +19,7 @@ const eslintConfig = defineConfig([
         rules: {
             "no-restricted-syntax": [
                 "warn",
+                // Korean terms
                 {
                     selector: "Literal[value=/(?<!자문,\\s*)추천(?!.*제공하지)/]",
                     message: "⚠️ 법적 주의: '추천' 용어 사용 금지. '필터링' 또는 '조건 충족'으로 대체하세요."
@@ -30,6 +31,15 @@ const eslintConfig = defineConfig([
                 {
                     selector: "Literal[value=/기대수익/]",
                     message: "⚠️ 법적 주의: '기대수익' 용어 사용 금지."
+                },
+                // English terms
+                {
+                    selector: "Literal[value=/\\b(pick|picks|recommendation|recommend|suggested|suggestion|advice|advisory|tip|tips|forecast|prediction)\\b/i]",
+                    message: "⚠️ Legal Warning: Prohibited investment term. Use 'filter', 'result', or 'condition' instead."
+                },
+                {
+                    selector: "Literal[value=/\\b(best|top)\\s+(pick|stock|choice)\\b/i]",
+                    message: "⚠️ Legal Warning: 'best/top pick/stock' implies recommendation. Use 'top result' or 'filtered item'."
                 }
             ]
         }

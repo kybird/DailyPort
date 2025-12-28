@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { getAlgoPicks } from './actions-analysis';
+import { getAlgoFilterResults } from './actions-analysis';
 
 // Mock supabase server client
 vi.mock('@/utils/supabase/server', () => ({
@@ -31,12 +31,12 @@ vi.mock('@/utils/supabase/server', () => ({
 }));
 
 describe('getAlgoPicks v5', () => {
-    it('should fetch algo picks with v5 metadata structure', async () => {
-        const picks = await getAlgoPicks();
+    it('should fetch algo filter results with v5 metadata structure', async () => {
+        const results = await getAlgoFilterResults();
 
-        expect(picks).toHaveLength(1);
-        expect(picks[0].strategy_name).toBe('Value_Picks');
-        expect(picks[0].tickers).toContain('005930');
-        expect(picks[0].details.status).toBe('OK');
+        expect(results).toHaveLength(1);
+        expect(results[0].strategy_name).toBe('Value_Picks');
+        expect(results[0].tickers).toContain('005930');
+        expect(results[0].details.status).toBe('OK');
     });
 });

@@ -140,7 +140,7 @@ export default function AlgoAboutPage() {
                     </div>
                     <div>
                         <h2 className="text-xl font-bold text-zinc-900 dark:text-white">통합 알고리즘 로직 (Confluence & Filters)</h2>
-                        <p className="text-sm text-zinc-500">개별 전략의 한계를 보완하기 위해 모든 신호를 교차 검증하여 최종 Top Picks를 선정합니다.</p>
+                        <p className="text-sm text-zinc-500">개별 전략의 한계를 보완하기 위해 모든 신호를 교차 검증하여 최종 Top Results를 선정합니다.</p>
                     </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -159,7 +159,7 @@ export default function AlgoAboutPage() {
                     <p className="opacity-80">데이터는 매 영업일 오전 8시~11시 사이에 분석 완료됩니다.</p>
                     <div className="pt-4">
                         <Link
-                            href="/algo-picks"
+                            href="/algo-filter"
                             className="inline-flex items-center gap-2 bg-white text-blue-600 px-8 py-4 rounded-2xl font-black hover:scale-105 transition-transform"
                         >
                             알고리즘 출력 데이터 확인

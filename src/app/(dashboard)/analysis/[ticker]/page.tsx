@@ -16,8 +16,8 @@ export default async function AnalysisPage({
     const { ref } = await searchParams
     const report = await getAnalysis(tickerParam)
 
-    const backPath = ref === 'algo' ? '/algo-picks' : '/dashboard'
-    const backLabel = ref === 'algo' ? (ref === 'algo' ? 'Algo Picks' : 'Dashboard') : 'Dashboard'
+    const backPath = ref === 'algo' ? '/algo-filter' : '/dashboard'
+    const backLabel = ref === 'algo' ? (ref === 'algo' ? 'Algo Filter' : 'Dashboard') : 'Dashboard'
 
     if ('error' in report) {
         return (

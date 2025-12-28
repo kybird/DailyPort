@@ -65,7 +65,7 @@ export interface AnalysisReport {
     }[]
 }
 
-export interface AlgoPick {
+export interface AlgoFilterResult {
     strategy_name: string
     tickers: string[]
     date: string
@@ -333,10 +333,10 @@ export async function getAnalysis(ticker: string): Promise<AnalysisReport | { er
     }
 }
 
-export async function getAlgoPicks(): Promise<AlgoPick[]> {
+export async function getAlgoFilterResults(): Promise<AlgoFilterResult[]> {
     const supabase = await createClient()
 
-    // Fetch latest picks for each strategy
+    // Fetch latest filter results for each strategy
     const { data, error } = await supabase
         .from('algo_picks')
         .select('*')
@@ -344,7 +344,7 @@ export async function getAlgoPicks(): Promise<AlgoPick[]> {
         .limit(10)
 
     if (error) {
-        console.error("Error fetching algo picks:", error)
+        console.error("Error fetching algo filter results:", error)
         return []
     }
 

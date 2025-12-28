@@ -2,7 +2,7 @@
 'use server'
 
 import { createClient } from '@/utils/supabase/server'
-import { AlgoPick } from './actions-analysis'
+import { AlgoFilterResult } from './actions-analysis'
 
 export interface BacktestResult {
     strategy: string;
@@ -27,15 +27,15 @@ export async function getBacktestStats(strategy: string, initialCapital: number 
     console.log(`[Backtest] Starting calculation for ${strategy}`)
     const supabase = await createClient()
 
-    // 1. Fetch historical picks (up to 90 days)
-    const { data: picks, error } = await supabase
+    // 1. Fetch historical filter results (up to 90 days)
+    const { data: filterResults, error } = await supabase
         .from('algo_picks')
         .select('*')
         .eq('strategy_name', strategy)
         .order('date', { ascending: false })
         .limit(60) // Assess last 2 months of signals
 
-    if (error || !picks || picks.length === 0) {
+    if (error || !filterResults || filterResults.length === 0) {
         return {
             strategy,
             totalTrades: 0,
@@ -49,15 +49,15 @@ export async function getBacktestStats(strategy: string, initialCapital: number 
 
     // 2. Extract unique tickers and date range
     const tickers = new Set<string>()
-    picks.forEach(p => {
+    filterResults.forEach(p => {
         if (Array.isArray(p.tickers)) {
             p.tickers.forEach((t: string) => tickers.add(t))
         }
     })
 
-    // Sort picks oldest to newest for simulation
-    const sortedPicks = [...picks].reverse()
-    const startDate = sortedPicks[0].date
+    // Sort filter results oldest to newest for simulation
+    const sortedResults = [...filterResults].reverse()
+    const startDate = sortedResults[0].date
 
     if (tickers.size === 0) {
         return {
@@ -156,9 +156,9 @@ export async function getBacktestStats(strategy: string, initialCapital: number 
     let grossWinSum = 0
     let grossLossSum = 0
 
-    // Process each pick (sorted oldest to newest)
-    for (const p of sortedPicks) {
-        // Only take Top 3 picks per day
+    // Process each filter result (sorted oldest to newest)
+    for (const p of sortedResults) {
+        // Only take Top 3 results per day
         const dayTickers = (p.tickers as string[]).slice(0, 3)
 
         for (const t of dayTickers) {

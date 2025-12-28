@@ -23,13 +23,13 @@ export function getNavItems(role?: string) {
             icon: (isActive: boolean) => <Briefcase size={18} className={isActive ? 'text-blue-600' : 'text-zinc-500'} />
         },
         {
-            href: '/algo-picks',
+            href: '/algo-filter',
             label: '백테스팅',
             icon: (isActive: boolean) => <Microscope size={18} className={isActive ? 'text-blue-600' : 'text-zinc-500'} />
         },
 
         {
-            href: '/algo-picks/about',
+            href: '/algo-filter/about',
             label: '검증 기법 가이드',
             icon: (isActive: boolean) => <Info size={18} className={isActive ? 'text-blue-600' : 'text-zinc-500'} />
         },

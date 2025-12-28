@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
-import type { AlgoPick } from '@/app/actions-analysis'
+import type { AlgoFilterResult } from '@/app/actions-analysis'
 import { getBacktestStats } from '@/app/backtest-actions'
 import type { BacktestResult } from '@/app/backtest-actions'
 import { ArrowRight, Trophy, DollarSign, Zap, Box, LineChart, AlertTriangle, TrendingUp, Activity, Calendar, PlayCircle } from 'lucide-react'
@@ -11,7 +11,7 @@ import { getStockName } from '@/utils/stock-utils'
 
 // Types
 interface AlgoDashboardProps {
-    initialPicks: AlgoPick[]
+    initialResults: AlgoFilterResult[]
 }
 
 // Constants
@@ -81,18 +81,18 @@ const getSelectionReasons = (strategy: string, metrics: any) => {
     return reasons
 }
 
-export default function AlgoDashboard({ initialPicks }: AlgoDashboardProps) {
+export default function AlgoDashboard({ initialResults }: AlgoDashboardProps) {
     const [activeTab, setActiveTab] = useState('Value_Picks')
-    const [viewMode, setViewMode] = useState<'picks' | 'backtest'>('picks')
+    const [viewMode, setViewMode] = useState<'filter' | 'backtest'>('filter')
     const [backtestData, setBacktestData] = useState<BacktestResult | null>(null)
     const [isLoading, setIsLoading] = useState(false)
 
-    // Filter picks for active strategy (for Daily Picks View)
-    // Note: initialPicks contains ALL strategies from the server (limit 10 dates). 
-    // We only show the LATEST date for the "Daily Picks" view usually, or a list of recent.
+    // Filter results for active strategy (for Daily Filter View)
+    // Note: initialResults contains ALL strategies from the server (limit 10 dates). 
+    // We only show the LATEST date for the "Daily Filter" view usually, or a list of recent.
     // Let's show the Latest one.
-    const activePicks = initialPicks.filter(p => p.strategy_name === activeTab)
-    const latestPick = activePicks.length > 0 ? activePicks[0] : null
+    const activeResults = initialResults.filter(p => p.strategy_name === activeTab)
+    const latestResult = activeResults.length > 0 ? activeResults[0] : null
 
     // Load Backtest Data
     useEffect(() => {
@@ -129,8 +129,8 @@ export default function AlgoDashboard({ initialPicks }: AlgoDashboardProps) {
                 {/* View Mode Toggle */}
                 <div className="bg-neutral-100 dark:bg-neutral-900 p-1 rounded-lg flex items-center gap-1">
                     <button
-                        onClick={() => setViewMode('picks')}
-                        className={`px-4 py-2 rounded-md text-sm font-bold transition-all ${viewMode === 'picks'
+                        onClick={() => setViewMode('filter')}
+                        className={`px-4 py-2 rounded-md text-sm font-bold transition-all ${viewMode === 'filter'
                             ? 'bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white shadow-sm'
                             : 'text-neutral-500 hover:text-neutral-700'
                             }`}
@@ -169,25 +169,25 @@ export default function AlgoDashboard({ initialPicks }: AlgoDashboardProps) {
 
             {/* CONTENT AREA */}
             <div className="min-h-[400px]">
-                {viewMode === 'picks' ? (
-                    // DAILY PICKS VIEW
-                    latestPick ? (
+                {viewMode === 'filter' ? (
+                    // DAILY FILTER VIEW
+                    latestResult ? (
                         <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
                             <div className="flex items-center justify-between mb-6">
                                 <span className="text-sm font-bold px-3 py-1 bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 rounded-full">
-                                    📅 기준일: {latestPick.date}
+                                    📅 기준일: {latestResult.date}
                                 </span>
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                {(latestPick.details?.status === 'NO_QUALIFIED_CANDIDATES' || latestPick.tickers.length === 0) ? (
+                                {(latestResult.details?.status === 'NO_QUALIFIED_CANDIDATES' || latestResult.tickers.length === 0) ? (
                                     <div className="col-span-full py-20 text-center border-2 border-dashed border-neutral-200 dark:border-neutral-800 rounded-xl">
                                         <p className="text-neutral-400 font-bold">해당 날짜에 조건 만족 종목이 없습니다.</p>
                                     </div>
                                 ) : (
-                                    latestPick.tickers.map((ticker) => {
-                                        const candInfo = (latestPick.details?.candidates?.[ticker] ||
-                                            latestPick.details?.items?.find((i: { ticker: string }) => i.ticker === ticker)) as any
+                                    latestResult.tickers.map((ticker) => {
+                                        const candInfo = (latestResult.details?.candidates?.[ticker] ||
+                                            latestResult.details?.items?.find((i: { ticker: string }) => i.ticker === ticker)) as any
                                         const isAvoid = candInfo?.technical_status === 'AVOID'
                                         const reasons = candInfo?.metrics ? getSelectionReasons(activeTab, candInfo.metrics) : []
                                         const rank = candInfo?.rank || 0

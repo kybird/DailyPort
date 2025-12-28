@@ -224,7 +224,7 @@ export default function AnalysisPanel({ ticker, onClose, mode = 'portfolio', por
                             </div>
                         </div>
 
-                        {/* 3.5. Suggested Objectives V3 */}
+                        {/* 3.5. Calculated Objectives V3 */}
                         {report.technical.objectives && (
                             <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5 space-y-6 shadow-xl">
                                 {[
