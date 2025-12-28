@@ -12,12 +12,7 @@ export interface SupplyChartItem {
     pension?: number;
 }
 
-export interface AlgoPick {
-    strategy_name: string;
-    tickers: string[];
-    date: string;
-    details?: any;
-}
+
 
 export interface AnalysisReport {
     ticker: string
@@ -82,6 +77,7 @@ export interface AlgoPick {
             rank?: number
             technical_status?: 'ACTIVE' | 'WAIT' | 'AVOID'
             metrics?: Record<string, number>
+            targets?: number[]
         }>
         items?: {
             ticker: string

@@ -10,6 +10,7 @@ interface PortfolioItem {
     quantity: number;
     entry_price: number;
     realized_gain: number;
+    target_weight: number;
     currency: string;
     marketData?: MarketData | null;
 }

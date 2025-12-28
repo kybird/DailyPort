@@ -51,7 +51,7 @@ export default function RebalancingAnalysis({ items, totalValuation, onClose }: 
     }, [analysisData, strategy]);
 
     const totalTargetWeight = useMemo(() => {
-        return analysisData.reduce((sum, item) => sum + item.target_weight, 0);
+        return analysisData.reduce((sum, item) => sum + (item.targetWeight || 0), 0);
     }, [analysisData]);
 
     const isWeightZero = totalTargetWeight === 0;

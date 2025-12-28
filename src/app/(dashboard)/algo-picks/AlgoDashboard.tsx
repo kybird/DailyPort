@@ -186,8 +186,8 @@ export default function AlgoDashboard({ initialPicks }: AlgoDashboardProps) {
                                     </div>
                                 ) : (
                                     latestPick.tickers.map((ticker) => {
-                                        const candInfo = latestPick.details?.candidates?.[ticker] ||
-                                            latestPick.details?.items?.find((i: { ticker: string }) => i.ticker === ticker)
+                                        const candInfo = (latestPick.details?.candidates?.[ticker] ||
+                                            latestPick.details?.items?.find((i: { ticker: string }) => i.ticker === ticker)) as any
                                         const isAvoid = candInfo?.technical_status === 'AVOID'
                                         const reasons = candInfo?.metrics ? getSelectionReasons(activeTab, candInfo.metrics) : []
                                         const rank = candInfo?.rank || 0
