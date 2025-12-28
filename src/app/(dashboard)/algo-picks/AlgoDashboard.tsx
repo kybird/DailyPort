@@ -135,7 +135,7 @@ export default function AlgoDashboard({ initialPicks }: AlgoDashboardProps) {
                             : 'text-neutral-500 hover:text-neutral-700'
                             }`}
                     >
-                        일일 추천
+                        일일 필터링
                     </button>
                     <button
                         onClick={() => setViewMode('backtest')}
@@ -145,7 +145,7 @@ export default function AlgoDashboard({ initialPicks }: AlgoDashboardProps) {
                             }`}
                     >
                         <Activity size={16} />
-                        성과 검증
+                        결과 검증
                     </button>
                 </div>
             </div>
@@ -256,7 +256,7 @@ export default function AlgoDashboard({ initialPicks }: AlgoDashboardProps) {
                         <div className="bg-white dark:bg-neutral-900 border border-blue-100 dark:border-blue-900/30 rounded-xl p-6 shadow-sm">
                             <h3 className="font-bold text-lg text-neutral-900 dark:text-white mb-4 flex items-center gap-2">
                                 <PlayCircle size={20} className="text-blue-600 dark:text-blue-400" />
-                                성과 검증 규칙 (Simulation Rules)
+                                결과 검증 규칙 (Simulation Rules)
                             </h3>
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-sm">
                                 <div className="p-3 bg-neutral-50 dark:bg-neutral-800/50 rounded-lg">
