@@ -300,7 +300,14 @@ export default async function AnalysisPage({
                                         {/* Score Bar (Qualitative) */}
                                         <div className="space-y-1.5">
                                             <div className="flex justify-between items-center text-[9px] font-bold text-neutral-400 uppercase">
-                                                <span>신뢰도 수준</span>
+                                                <div className="flex items-center gap-2">
+                                                    <span>신뢰도 수준</span>
+                                                    {data.strength && (
+                                                        <span className="text-[8px] bg-neutral-100 dark:bg-neutral-800 px-1 rounded text-neutral-500">
+                                                            S-Strength: {data.strength}
+                                                        </span>
+                                                    )}
+                                                </div>
                                                 <span className="text-neutral-600 dark:text-neutral-300 font-black">
                                                     {data.score >= 80 ? '매우 높음' :
                                                         data.score >= 60 ? '높음' :
@@ -315,38 +322,55 @@ export default async function AnalysisPage({
                                             </div>
                                         </div>
 
-                                        <div className="grid grid-cols-3 gap-3">
-                                            <div className={`p-3 rounded-2xl border text-center transition-all ${data.status === 'ACTIVE'
+                                        <div className="grid grid-cols-4 gap-2">
+                                            <div className={`p-2 rounded-2xl border text-center transition-all ${data.status === 'ACTIVE'
                                                 ? 'bg-zinc-50 dark:bg-zinc-800/50 border-zinc-100 dark:border-zinc-800'
                                                 : 'bg-zinc-50/50 dark:bg-zinc-900/50 border-dashed border-zinc-200 dark:border-zinc-800 opacity-60'}`}>
-                                                <div className="text-[8px] font-black text-zinc-400 uppercase mb-1">진입가</div>
-                                                <div className="text-[12px] font-mono font-black text-zinc-900 dark:text-white">₩{data.entry?.toLocaleString()}</div>
+                                                <div className="text-[7px] font-black text-zinc-400 uppercase mb-1">진입가</div>
+                                                <div className="text-[10px] font-mono font-black text-zinc-900 dark:text-white">₩{data.entry?.toLocaleString()}</div>
                                             </div>
-                                            <div className={`p-3 rounded-2xl border text-center transition-all ${data.status === 'ACTIVE'
+                                            <div className={`p-2 rounded-2xl border text-center transition-all ${data.status === 'ACTIVE'
                                                 ? 'bg-rose-50 dark:bg-rose-950/20 border-rose-100 dark:border-rose-900/30'
                                                 : 'bg-rose-50/30 dark:bg-rose-950/5 border-dashed border-rose-200/50 dark:border-rose-900/20 opacity-60'}`}>
-                                                <div className="text-[8px] font-black text-rose-400 uppercase mb-1">손절가</div>
-                                                <div className={`text-[12px] font-mono font-black ${data.status === 'ACTIVE' ? 'text-rose-500' : 'text-rose-400'}`}>₩{data.stop?.toLocaleString()}</div>
+                                                <div className="text-[7px] font-black text-rose-400 uppercase mb-1">손절가</div>
+                                                <div className={`text-[10px] font-mono font-black ${data.status === 'ACTIVE' ? 'text-rose-500' : 'text-rose-400'}`}>₩{data.stop?.toLocaleString()}</div>
                                             </div>
-                                            <div className={`p-3 rounded-2xl border text-center transition-all ${data.status === 'ACTIVE'
+                                            <div className={`p-2 rounded-2xl border text-center transition-all ${data.status === 'ACTIVE'
                                                 ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-100 dark:border-emerald-900/30'
                                                 : 'bg-emerald-50/30 dark:bg-emerald-950/5 border-dashed border-emerald-200/50 dark:border-emerald-900/20 opacity-60'}`}>
-                                                <div className="text-[8px] font-black text-emerald-400 uppercase mb-1">모델 상한선</div>
-                                                <div className={`text-[12px] font-mono font-black ${data.status === 'ACTIVE' ? 'text-emerald-500' : 'text-emerald-400'}`}>₩{data.target?.toLocaleString()}</div>
+                                                <div className="text-[7px] font-black text-emerald-400 uppercase mb-1">목표 1</div>
+                                                <div className={`text-[10px] font-mono font-black ${data.status === 'ACTIVE' ? 'text-emerald-500' : 'text-emerald-400'}`}>₩{data.target?.toLocaleString()}</div>
+                                            </div>
+                                            <div className={`p-2 rounded-2xl border text-center transition-all ${data.status === 'ACTIVE'
+                                                ? 'bg-emerald-50/50 dark:bg-emerald-950/10 border-emerald-100/50 dark:border-emerald-900/20'
+                                                : 'bg-emerald-50/10 dark:bg-emerald-950/5 border-dashed border-emerald-200/20 dark:border-emerald-900/10 opacity-40'}`}>
+                                                <div className="text-[7px] font-black text-emerald-400/70 uppercase mb-1">목표 2</div>
+                                                <div className={`text-[10px] font-mono font-black ${data.status === 'ACTIVE' ? 'text-emerald-500/80' : 'text-emerald-400/60'}`}>₩{data.target2?.toLocaleString()}</div>
                                             </div>
                                         </div>
 
-                                        {data.status !== 'ACTIVE' && (
-                                            <div className={`p-4 rounded-2xl border border-dashed ${data.status === 'WAIT' ? 'bg-amber-50 dark:bg-amber-950/10 border-amber-200 dark:border-amber-900/30' :
+                                        <div className={`p-4 rounded-2xl border border-dashed ${data.status === 'ACTIVE' ? 'bg-emerald-50 dark:bg-emerald-950/10 border-emerald-200 dark:border-emerald-900/30' :
+                                            data.status === 'WAIT' ? 'bg-amber-50 dark:bg-amber-950/10 border-amber-200 dark:border-amber-900/30' :
                                                 'bg-zinc-50 dark:bg-zinc-800/50 border-zinc-200 dark:border-zinc-800'
+                                            }`}>
+                                            <div className={`text-[10px] font-bold italic flex flex-col gap-1 ${data.status === 'ACTIVE' ? 'text-emerald-700 dark:text-emerald-400' :
+                                                data.status === 'WAIT' ? 'text-amber-700 dark:text-amber-400' : 'text-zinc-500 dark:text-zinc-400'
                                                 }`}>
-                                                <div className={`text-[10px] font-bold italic flex items-center gap-2 ${data.status === 'WAIT' ? 'text-amber-700 dark:text-amber-400' : 'text-zinc-500 dark:text-zinc-400'
-                                                    }`}>
-                                                    <ShieldAlert size={14} className={data.status === 'WAIT' ? 'text-amber-500' : 'text-zinc-400'} />
-                                                    {data.reason}
+                                                <div className="flex items-center gap-2">
+                                                    <ShieldAlert size={14} className={data.status === 'ACTIVE' ? 'text-emerald-500' : data.status === 'WAIT' ? 'text-amber-500' : 'text-zinc-400'} />
+                                                    {data.avoidCode && (
+                                                        <span className="font-black text-[9px] px-1 bg-current/10 rounded mr-1">
+                                                            {data.avoidCode === 'TREND_BREAK' ? '추세붕괴' :
+                                                                data.avoidCode === 'LOW_RR' ? '손익비부족' :
+                                                                    data.avoidCode === 'HIGH_RISK' ? '리스크과다' :
+                                                                        data.avoidCode === 'NO_SUPPORT' ? '지지선부재' :
+                                                                            data.avoidCode === 'OVERBOUGHT' ? '과매수' : data.avoidCode}
+                                                        </span>
+                                                    )}
+                                                    <span>{data.reason}</span>
                                                 </div>
                                             </div>
-                                        )}
+                                        </div>
                                     </div>
                                 );
                             })}

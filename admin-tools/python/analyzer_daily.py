@@ -154,23 +154,62 @@ def calculate_objectives_v3(current_price, history_rows):
         if losses == 0: return 100
         return 100 - (100 / (1 + (gains / losses)))
 
-    def find_swing_lows(window=5):
-        if len(lows) < window * 2 + 1: return []
-        sw = []
+    # --- Protocol V3 Support Analysis ---
+    def get_enhanced_supports():
+        vols = [r.get("volume", 0) for r in history_rows]
+        avg_vol_20 = sum(vols[:20]) / 20 if len(vols) >= 20 else sum(vols) / len(vols)
+        
+        supports = []
+        window = 5
+        # Index i is current day in loop (newest first)
+        # Chronological order: history_rows[::-1]
         for i in range(window, len(lows) - window):
-            curr = lows[i]
-            if curr <= min(lows[i-window:i]) and curr <= min(lows[i+1:i+1+window]):
-                sw.append(curr)
-        return sw
+            curr_low = lows[i]
+            # Left side (chronological) = history_rows[i+1 : i+1+window]
+            # Right side (chronological) = history_rows[i-window : i]
+            if curr_low <= min(lows[i+1 : i+1+window]) and curr_low <= min(lows[i-window : i]):
+                strength = 20 # Base
+                
+                # Volume Validation (Swing candle i and next candle i-1)
+                swing_vol_avg = (vols[i] + vols[i-1]) / 2 if i > 0 else vols[i]
+                if swing_vol_avg > avg_vol_20 * 1.2:
+                    strength += 15
+                
+                # Bounce Magnitude (Next 5 bars: i-1 to i-5)
+                next_5_highs = highs[max(0, i-5) : i]
+                if next_5_highs and curr_low > 0:
+                    rebound = (max(next_5_highs) - curr_low) / curr_low * 100
+                    strength += min(rebound * 2, 20)
+                
+                # Touch Count
+                for j in range(i + 1, len(lows)):
+                    if curr_low > 0 and abs(lows[j] - curr_low) / curr_low <= 0.01:
+                        strength += 10
+                
+                supports.append({"price": curr_low, "strength": strength, "is_ma": False})
+        return supports
 
-    def find_swing_highs(window=5):
-        if len(highs) < window * 2 + 1: return []
-        sw = []
-        for i in range(window, len(highs) - window):
-            curr = highs[i]
-            if curr >= max(highs[i-window:i]) and curr >= max(highs[i+1:i+1+window]):
-                sw.append(curr)
-        return sorted(list(set(sw)))
+    enhanced_raw = get_enhanced_supports()
+    # Add MAs
+    ma20, ma60, ma120 = sma(20), sma(60), sma(120)
+    if ma20: enhanced_raw.append({"price": ma20, "strength": 10, "is_ma": True})
+    if ma60: enhanced_raw.append({"price": ma60, "strength": 10, "is_ma": True})
+    if ma120: enhanced_raw.append({"price": ma120, "strength": 10, "is_ma": True})
+
+    # Clustering (within 2%)
+    enhanced_raw.sort(key=lambda x: x["price"], reverse=True)
+    clustered = []
+    for sup in enhanced_raw:
+        found = False
+        for c in clustered:
+            if sup["price"] > 0 and abs(c["price"] - sup["price"]) / sup["price"] <= 0.02:
+                if sup["strength"] > c["strength"]:
+                    c["price"] = sup["price"]
+                    c["strength"] = sup["strength"]
+                found = True
+                break
+        if not found:
+            clustered.append(sup.copy())
 
     def ema(period):
         if len(closes) < period: return None
@@ -202,156 +241,123 @@ def calculate_objectives_v3(current_price, history_rows):
     current_atr = atr(14)
     current_rsi = rsi(14)
     recent_high = max(highs[:min(len(highs), 60)])
-    
-    # Swing Lows & Prev Low
-    swing_lows = find_swing_lows(5)
-    prev_low = lows[1] if len(lows) > 1 else None
-    recent_low_10 = min(lows[:10]) if len(lows) >= 10 else min(lows)
 
     def solve(timeframe):
-        # Only implementing the 'short' timeframe logic for Daily Insight relevance
-        # But keeping structure for others if needed.
-        
-        # === Step 1: Edge Cases ===
-        if current_rsi > 75:
-            return {
-                "status": "WAIT",
-                "score": 40,
-                "strategy": "NO_TRADE",
-                "confidenceFlags": ["OVERBOUGHT"],
-                "reason": f"과열 구간 - 단기 조정 가능성 (RSI {int(current_rsi)})",
-                "entry": None, "stop": None, "target": None
-            }
-        
-        if current_rsi < 25:
-             return {
-                "status": "WAIT",
-                "score": 40,
-                "strategy": "MEAN_REVERSION",
-                "confidenceFlags": ["OVERSOLD"],
-                "reason": f"과매도 - 반등 가능성 (신중 접근)",
-                "entry": None, "stop": None, "target": None
-            }
+        config = {
+            "short": {"mult": 1.5, "min_rr": 2.0, "max_risk": 0.05, "p2": 20, "p5": 30},
+            "mid": {"mult": 2.0, "min_rr": 2.5, "max_risk": 0.10, "p2": 15, "p5": 25},
+            "long": {"mult": 3.0, "min_rr": 3.0, "max_risk": 0.15, "p2": 10, "p5": 20}
+        }
+        cfg = config[timeframe]
 
-        # === Step 2: Trend Determination ===
-        # Using refined criteria
-        is_uptrend = (ema20 and ma60 and ema20 > ma60) and (ema20 and current_price > ema20)
-        is_downtrend = (ema20 and ma60 and ema20 < ma60) and (ma60 and current_price < ma60)
-        is_sideways = not is_uptrend and not is_downtrend
+        # Base Scoring (Trend & Momentum) - Re-synced with TS logic
+        ma20_val, ma60_val, ma120_val = sma(20), sma(60), sma(120)
+        trend_score = 0
+        if ma20_val and ma60_val and ma120_val and ma20_val > ma60_val > ma120_val: trend_score = 30
+        elif ma20_val and ma60_val and ma20_val > ma60_val: trend_score = 20
+        else: trend_score = -30
 
-        # === Step 3: Best Support Selection ===
-        # Candidates: EMA5, EMA20, PrevLow, RecentLow10, SwingLows
-        # Note: EMA5/20 might be None if short history
-        candidates = []
-        if ema5: candidates.append(('EMA5', ema5))
-        if ema20: candidates.append(('EMA20', ema20))
-        if prev_low: candidates.append(('전일저가', prev_low))
-        if recent_low_10: candidates.append(('최근저점', recent_low_10))
-        # Add a couple significant swing lows
-        for sl in swing_lows[-2:]:
-             candidates.append(('직전저점', sl))
+        momentum_score = 0
+        if 50 <= current_rsi <= 65: momentum_score = 15
+        elif current_rsi > 70: momentum_score = -10
+        elif current_rsi < 35: momentum_score = -5
 
-        # Filter: Only supports BELOW current price
-        # Edge Case: Panic Drop check inside here
-        supports = [c for c in candidates if c[1] < current_price]
-        
-        if not supports:
-            # === Edge Case 3: Panic Drop (All supports broken) ===
-            # Find closest resistance instead
-            resistances = sorted([c for c in candidates if c[1] > current_price], key=lambda x: x[1])
-            rec_level = resistances[0][1] if resistances else current_price
-            return {
-                "status": "AVOID",
-                "score": 20,
-                "strategy": "NO_TRADE",
-                "confidenceFlags": ["PANIC_DROP"],
-                "reason": f"급락 중 - ₩{int(rec_level):,} ({resistances[0][0] if resistances else '저항'}) 회복 필요",
-                "entry": None, "stop": None, "target": None
-            }
+        vol_ratio = (current_atr / current_price) * 100 if (current_price and current_price > 0) else 0
+        vol_adj = 5 if vol_ratio < 3 else (-15 if vol_ratio > 8 else 0)
+        base_score = 50 + trend_score + momentum_score + vol_adj
 
-        # Selection Rule (3% Rule)
-        # If any support is within 3%, pick closest. Else pick closest (conceptually highest).
-        highest_support = max(supports, key=lambda x: x[1]) # Closest to price from below
-        
-        # Check if there is a 'close' support (within 3%)
-        # Actually logic says: "If 3% valid exists, pick closest. Else pick closest." 
-        # So in both cases we pick the 'closest to current price' (which is max value among supports < price).
-        # We just need it to calculate Gap.
-        
-        best_sup_name, best_sup_price = highest_support
-        gap_pct = (current_price - best_sup_price) / current_price * 100
-        
-        # === Step 4: Branching & Messaging ===
-        status = "WAIT"
-        reason = ""
-        action = ""
-        entry = best_sup_price
-        
-        if is_uptrend:
-            if gap_pct < 3:
-                status = "ACTIVE"
-                reason = f"{best_sup_name} 근접 - 현재가 매수 가능 (상승 추세)"
-            elif gap_pct < 5:
-                status = "WAIT"
-                reason = f"상승 추세 - ₩{int(best_sup_price):,} ({best_sup_name}) 터치 시 매수"
-            elif gap_pct < 10:
-                status = "WAIT"
-                reason = f"조정 대기 - ₩{int(best_sup_price):,} ({best_sup_name}) 근접 시 진입"
-            elif gap_pct < 15:
-                status = "WAIT"
-                reason = "강한 상승 - 분할 매수 고려 (이격 과다)"
-            else:
-                status = "WAIT"
-                reason = "큰 조정 없으면 진입 어려움 - 알림 설정 권장"
+        # Candidate Evaluation
+        valid_candidates = [s for s in clustered if s["price"] <= current_price * 1.01]
+        valid_candidates.sort(key=lambda x: x["strength"], reverse=True)
+
+        best = None
+        for sup in valid_candidates:
+            entry = sup["price"]
+            
+            # SL Protection
+            eps = 0.2 * current_atr
+            struct_low = next((s["price"] for s in enhanced_raw if not s["is_ma"] and s["price"] < entry), None)
+            
+            stop = entry - (current_atr * cfg["mult"])
+            if struct_low and struct_low > stop - eps:
+                stop = struct_low - eps
+
+            risk = entry - stop
+            if risk <= 0: continue
+            
+            p_target = entry + (risk * cfg["min_rr"])
+            target = min(p_target, recent_high if recent_high > entry else p_target)
+            if recent_high > entry and (recent_high - entry) < risk * 1.5:
+                target = recent_high
                 
-        elif is_downtrend:
-            if gap_pct < 3:
-                status = "WAIT"
-                reason = f"반등 시도 - {best_sup_name} 지지 및 추세 전환 확인"
-            else:
-                status = "AVOID"
-                # For downtrend, maybe show resistance?
-                res_check = ma60 if ma60 else (ma20 if ma20 else current_price)
-                reason = f"하락 추세 - 매수 보류 (60일선 회복 대기)"
-                
-        else: # Sideways
-            if gap_pct < 5:
-                status = "WAIT" # Wait for confirmation even at bottom
-                reason = f"박스권 하단 - {best_sup_name} 지지 확인 후 매수"
-            else:
-                status = "WAIT"
-                reason = "방향성 불명 - 추세 전환 대기"
+            rr = (target - entry) / risk
+            risk_pct = risk / entry if entry > 0 else 1.0
+            if rr >= cfg["min_rr"] and risk_pct <= cfg["max_risk"]:
+                best = {"entry": entry, "stop": stop, "target": target, "rr": rr, "strength": sup["strength"]}
+                break
 
-            swing_highs = find_swing_highs(5)
+        if not best:
+            avoid_code = "NO_SUPPORT"
+            if current_rsi > 70: avoid_code = "OVERBOUGHT"
+            if ma20_val and ma60_val and ma20_val < ma60_val: avoid_code = "TREND_BREAK"
             
-            # Calculate Targets based on Resistance
-            resistances = [p for p in swing_highs if p > current_price * 1.02] # At least 2% above
-            resistances.sort()
-            
-            # Defaults
-            t1 = current_price * 1.10
-            t2 = current_price * 1.20
-            
-            if len(resistances) >= 1:
-                t1 = resistances[0]
-                # If next resistance is too close to T1 (within 3%), skip it
-                valid_r2 = [r for r in resistances if r > t1 * 1.03]
-                if valid_r2:
-                    t2 = valid_r2[0]
-                else:
-                    t2 = t1 * 1.10 # Fallback +10% from T1
-
             return {
-                "status": status,
-                "score": 70 if status == 'ACTIVE' else 50,
-                "strategy": "PULLBACK" if is_uptrend else "NO_TRADE",
-                "confidenceFlags": ["UPTREND"] if is_uptrend else (["DOWNTREND"] if is_downtrend else []),
-                "reason": reason,
-                "entry": round(entry, -1),
-                "stop": round(entry * 0.95, -1),
-                "target": round(t1, -1),
-                "targets": [round(t1, -1), round(t2, -1)]
+                "status": "AVOID", "score": 0, "strategy": "NO_TRADE",
+                "confidenceFlags": [], "reason": "손익비 불충분 또는 구조적 지지선 부재.",
+                "avoid_code": avoid_code,
+                "entry": None, "stop": None, "target": None, "rr": 0
             }
+
+        # Penalties & Status
+        entry_price = best["entry"]
+        gap_pct = (current_price - entry_price) / entry_price * 100 if entry_price > 0 else 100
+        penalty = 0
+        if gap_pct > 5: penalty = cfg["p5"]
+        elif gap_pct > 2: penalty = ((gap_pct - 2) / 3) * cfg["p2"]
+        
+        final_score = max(0, base_score - penalty)
+        
+        # Bounce Signature (Quantitative)
+        today_bar = history_rows[0]
+        c_range = today_bar["high"] - today_bar["low"]
+        upper_40 = today_bar["low"] + (c_range * 0.6)
+        l_wick = min(today_bar["open"], today_bar["close"]) - today_bar["low"]
+        body = abs(today_bar["close"] - today_bar["open"])
+        
+        is_bounce = (today_bar["close"] >= upper_40 and 
+                     l_wick >= 1.5 * body and 
+                     today_bar["low"] <= best["entry"] * 1.01)
+
+        if gap_pct <= 2 and final_score >= 70 and is_bounce:
+            status = "ACTIVE"
+            reason = f"강력한 지지 구간 반등 확인 (손익비: {best['rr']:.1f})."
+        elif gap_pct <= 5:
+            status = "WAIT"
+            reason = f"주요 지지선(₩{int(best['entry']):,}) 근처 진입 대기 중."
+        else:
+            status = "WAIT"
+            reason = f"보수적 관망: 지지선 이격 과다 (목표: ₩{int(best['entry']):,})."
+
+        flags = []
+        if ma20_val and ma60_val and ma120_val and ma20_val > ma60_val > ma120_val: flags.append("UPTREND_CONFIRMED")
+        if ma20_val and ma60_val and ma20_val < ma60_val: flags.append("BROKEN_TREND")
+        if current_rsi > 70: flags.append("OVERBOUGHT")
+        if current_rsi < 30: flags.append("OVERSOLD")
+
+        return {
+            "status": status,
+            "score": int(round(final_score)),
+            "strategy": "PULLBACK_TREND" if "UPTREND_CONFIRMED" in flags else ("MEAN_REVERSION" if "OVERSOLD" in flags else "NO_TRADE"),
+            "confidenceFlags": flags,
+            "reason": reason,
+            "avoid_code": None if status != "AVOID" else "NO_SUPPORT", # default
+            "entry": round(best["entry"], -1),
+            "stop": round(best["stop"], -1),
+            "target": round(best["target"], -1),
+            "target2": round(best["entry"] + (best["target"] - best["entry"]) * 1.5, -1),
+            "rr": best["rr"],
+            "strength": best["strength"]
+        }
 
     # We mainly use 'short' now, but populate others to avoid errors if referenced
     res = solve('short')
@@ -376,7 +382,7 @@ def process_watchlist(tickers):
     placeholders = ','.join(['?'] * len(normalized_tickers))
     
     price_sql = f"""
-        SELECT code, date, close, high, low, market_cap, per, pbr, revenue, net_income
+        SELECT code, date, close, open, high, low, volume, market_cap, per, pbr, revenue, net_income
         FROM daily_price 
         WHERE code IN ({placeholders})
         ORDER BY code, date DESC
@@ -545,7 +551,7 @@ def run_algo_screening(target_date=None):
     def get_tech_status(ticker_code):
         """Fetch history and calculate V3 status for screening safety."""
         cur.execute("""
-            SELECT close, high, low, date 
+            SELECT close, open, high, low, volume, date 
             FROM daily_price 
             WHERE code = ? AND date <= ?
             ORDER BY date DESC LIMIT 150
