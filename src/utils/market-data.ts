@@ -255,8 +255,8 @@ async function fetchMarketDataInternal(ticker: string): Promise<MarketData | nul
     const generatedAt = cachedRow ? new Date(cachedRow.generated_at).getTime() : 0
     const diffMinutes = (now - generatedAt) / (1000 * 60)
 
-    // [A] 아주 신선한 데이터 (5분 이내): 바로 반환
-    if (cachedRow && cachedData && diffMinutes < 5) {
+    // [A] 아주 신선한 데이터 (1분 이내): 바로 반환
+    if (cachedRow && cachedData && diffMinutes < 1) {
         console.log(`[CACHE HIT - FULL] ${ticker}`)
         return { ...cachedData, source: 'CACHE' }
     }
