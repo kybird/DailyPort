@@ -17,9 +17,11 @@ export interface BacktestResult {
         entryPrice: number;
         currentPrice: number;
         returnPercent: number;
-        status: 'WIN' | 'LOSS' | 'HOLD' | 'BREAKEVEN';
+        status: 'WIN' | 'LOSS' | 'HOLDING' | 'BREAKEVEN';
         daysHeld: number;
         note?: string;
+        targets: number[];
+        stopPrice: number;
     }[];
 }
 
@@ -79,6 +81,7 @@ export async function getBacktestStats(strategy: string, initialCapital: number 
         .in('code', Array.from(tickers))
         .gte('date', startDate)
         .order('date', { ascending: true })
+        .limit(10000) // Increase limit to avoid truncation (e.g. 50 tickers * 60 days = 3000 rows)
 
     if (priceError || !prices) {
         console.error("Backtest Price Fetch Error:", priceError)
@@ -274,16 +277,25 @@ export async function getBacktestStats(strategy: string, initialCapital: number 
             else if (totalWeightedReturn < 0) grossLossSum += Math.abs(returnPercentage)
 
             // Status clarification
-            let exitStatus: 'WIN' | 'LOSS' | 'HOLD' | 'BREAKEVEN' = 'HOLD'
-            if (returnPercentage > 0.01) exitStatus = 'WIN'
-            else if (returnPercentage < -0.01) exitStatus = 'LOSS'
-            else exitStatus = 'BREAKEVEN' // effectively 0 or very small drift
+            let exitStatus: 'WIN' | 'LOSS' | 'HOLDING' | 'BREAKEVEN' = 'HOLDING'
+
+            const isFinished = !exitTypes.includes('HOLD')
+
+            if (isFinished) {
+                if (returnPercentage > 0.5) exitStatus = 'WIN' // More than 0.5% after weighting is a clear win
+                else if (returnPercentage < -0.5) exitStatus = 'LOSS'
+                else exitStatus = 'BREAKEVEN'
+            } else {
+                exitStatus = 'HOLDING'
+            }
 
             if (exitStatus === 'WIN') winCount++
             else if (exitStatus === 'LOSS') lossCount++
 
             // Safe Date Calculation
-            const d1 = new Date(normalizeDate(lastExitDate)).getTime()
+            // For ongoing positions, use real-world "today" to calculate days held
+            const calculationExitDate = exitStatus === 'HOLDING' ? new Date().toISOString() : lastExitDate
+            const d1 = new Date(normalizeDate(calculationExitDate)).getTime()
             const d2 = new Date(normalizeDate(p.date)).getTime()
             const daysHeld = !isNaN(d1) && !isNaN(d2) ? Math.floor((d1 - d2) / (1000 * 3600 * 24)) : 0
 
@@ -291,12 +303,13 @@ export async function getBacktestStats(strategy: string, initialCapital: number 
                 ticker: t,
                 date: normalizeDate(p.date),
                 entryPrice,
-                currentPrice: realizedLog[realizedLog.length - 1].price, // Final exit price or current
+                currentPrice: realizedLog[realizedLog.length - 1].price,
                 returnPercent: returnPercentage,
-                status: exitStatus, // Updated Type
+                status: exitStatus,
                 daysHeld,
-                // Optional: add detail string like "TP1 Hit -> BE"
-                note: exitTypes.join(' -> ')
+                note: exitTypes.join(' -> '),
+                targets: targets,
+                stopPrice: currentSL // This will be the adjusted SL (e.g. at BE) if TP1 was hit
             })
             totalReturnPct += returnPercentage;
 

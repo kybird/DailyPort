@@ -163,6 +163,15 @@ def calculate_objectives_v3(current_price, history_rows):
                 sw.append(curr)
         return sw
 
+    def find_swing_highs(window=5):
+        if len(highs) < window * 2 + 1: return []
+        sw = []
+        for i in range(window, len(highs) - window):
+            curr = highs[i]
+            if curr >= max(highs[i-window:i]) and curr >= max(highs[i+1:i+1+window]):
+                sw.append(curr)
+        return sorted(list(set(sw)))
+
     def ema(period):
         if len(closes) < period: return None
         k = 2 / (period + 1)
@@ -313,46 +322,37 @@ def calculate_objectives_v3(current_price, history_rows):
                 status = "WAIT"
                 reason = "방향성 불명 - 추세 전환 대기"
 
-        def find_swing_highs(window=5):
-            if len(highs) < window * 2 + 1: return []
-            sw = []
-            for i in range(window, len(highs) - window):
-                curr = highs[i]
-                if curr >= max(highs[i-window:i]) and curr >= max(highs[i+1:i+1+window]):
-                    sw.append(curr)
-            return sorted(list(set(sw)))
+            swing_highs = find_swing_highs(5)
+            
+            # Calculate Targets based on Resistance
+            resistances = [p for p in swing_highs if p > current_price * 1.02] # At least 2% above
+            resistances.sort()
+            
+            # Defaults
+            t1 = current_price * 1.10
+            t2 = current_price * 1.20
+            
+            if len(resistances) >= 1:
+                t1 = resistances[0]
+                # If next resistance is too close to T1 (within 3%), skip it
+                valid_r2 = [r for r in resistances if r > t1 * 1.03]
+                if valid_r2:
+                    t2 = valid_r2[0]
+                else:
+                    t2 = t1 * 1.10 # Fallback +10% from T1
 
-    swing_highs = find_swing_highs(5)
-    
-    # Calculate Targets based on Resistance
-    resistances = [p for p in swing_highs if p > current_price * 1.02] # At least 2% above
-    resistances.sort()
-    
-    # Defaults
-    t1 = current_price * 1.10
-    t2 = current_price * 1.20
-    
-    if len(resistances) >= 1:
-        t1 = resistances[0]
-        # If next resistance is too close to T1 (within 3%), skip it
-        valid_r2 = [r for r in resistances if r > t1 * 1.03]
-        if valid_r2:
-            t2 = valid_r2[0]
-        else:
-            t2 = t1 * 1.10 # Fallback +10% from T1
+            return {
+                "status": status,
+                "score": 70 if status == 'ACTIVE' else 50,
+                "strategy": "PULLBACK" if is_uptrend else "NO_TRADE",
+                "confidenceFlags": ["UPTREND"] if is_uptrend else (["DOWNTREND"] if is_downtrend else []),
+                "reason": reason,
+                "entry": round(entry, -1),
+                "stop": round(entry * 0.95, -1),
+                "target": round(t1, -1),
+                "targets": [round(t1, -1), round(t2, -1)]
+            }
 
-    return {
-        "status": status,
-        "score": 70 if status == 'ACTIVE' else 50,
-        "strategy": "PULLBACK" if is_uptrend else "NO_TRADE",
-        "confidenceFlags": ["UPTREND"] if is_uptrend else (["DOWNTREND"] if is_downtrend else []),
-        "reason": reason,
-        "entry": round(entry, -1),
-        "stop": round(entry * 0.95, -1),
-        "target": round(t1, -1),
-        "targets": [round(t1, -1), round(t2, -1)]
-    }
-    
     # We mainly use 'short' now, but populate others to avoid errors if referenced
     res = solve('short')
     return {

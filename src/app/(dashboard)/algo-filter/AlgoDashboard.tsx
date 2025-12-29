@@ -317,6 +317,20 @@ export default function AlgoDashboard({ initialResults }: AlgoDashboardProps) {
                                     <div className="px-6 py-4 border-b border-neutral-200 dark:border-neutral-800 font-bold flex items-center gap-2">
                                         <LineChart size={18} className="text-neutral-400" />
                                         상세 검증 내역 (Verification History)
+                                        <div className="flex items-center gap-3 ml-auto">
+                                            <div className="flex items-center gap-1 text-[10px] text-neutral-400">
+                                                <div className="w-1.5 h-1.5 rounded-full bg-red-500"></div> 수익
+                                            </div>
+                                            <div className="flex items-center gap-1 text-[10px] text-neutral-400">
+                                                <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div> 손실
+                                            </div>
+                                            <div className="flex items-center gap-1 text-[10px] text-neutral-400">
+                                                <div className="w-1.5 h-1.5 rounded-full bg-amber-500"></div> 본절
+                                            </div>
+                                            <div className="flex items-center gap-1 text-[10px] text-neutral-400">
+                                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div> 보유중
+                                            </div>
+                                        </div>
                                     </div>
                                     <div className="max-h-[500px] overflow-y-auto">
                                         <table className="w-full text-sm">
@@ -324,6 +338,7 @@ export default function AlgoDashboard({ initialResults }: AlgoDashboardProps) {
                                                 <tr>
                                                     <th className="px-6 py-3 text-left">종목</th>
                                                     <th className="px-6 py-3 text-right">진입 (Entry)</th>
+                                                    <th className="px-6 py-3 text-right">목표/손절 (Bracket)</th>
                                                     <th className="px-6 py-3 text-right">청산/현재 (Exit)</th>
                                                     <th className="px-6 py-3 text-right">보유일</th>
                                                     <th className="px-6 py-3 text-right">수익률</th>
@@ -341,17 +356,30 @@ export default function AlgoDashboard({ initialResults }: AlgoDashboardProps) {
                                                             <div className="text-neutral-800 dark:text-neutral-200 font-bold font-mono">@{trade.entryPrice.toLocaleString()}</div>
                                                         </td>
                                                         <td className="px-6 py-3 text-right">
+                                                            <div className="flex flex-col items-end gap-1">
+                                                                <div className="flex items-center gap-2 text-[10px] text-red-500 font-mono">
+                                                                    <span className="text-neutral-400">T1:</span> @{trade.targets[0]?.toLocaleString() || '-'}
+                                                                </div>
+                                                                <div className="flex items-center gap-2 text-[10px] text-red-600 font-mono">
+                                                                    <span className="text-neutral-400">T2:</span> @{trade.targets[1]?.toLocaleString() || '-'}
+                                                                </div>
+                                                                <div className="flex items-center gap-2 text-[10px] text-blue-500 font-mono">
+                                                                    <span className="text-neutral-400">SL:</span> @{trade.stopPrice?.toLocaleString() || '-'}
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-6 py-3 text-right">
                                                             <div className="flex flex-col items-end">
-                                                                <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold mb-0.5 ${trade.status === 'WIN' ? 'bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400' :
-                                                                    trade.status === 'LOSS' ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' :
-                                                                        trade.status === 'BREAKEVEN' ? 'bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400' :
-                                                                            'bg-neutral-100 text-neutral-500'
+                                                                <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold mb-0.5 ${trade.status === 'WIN' ? 'bg-red-50 text-red-600 dark:bg-red-900/30' :
+                                                                    trade.status === 'LOSS' ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/30' :
+                                                                        trade.status === 'BREAKEVEN' ? 'bg-amber-50 text-amber-600 dark:bg-amber-900/30' :
+                                                                            'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30'
                                                                     }`}>
-                                                                    {trade.status === 'WIN' ? '익절 (Win)' :
-                                                                        trade.status === 'LOSS' ? '손절 (Loss)' :
-                                                                            trade.status === 'BREAKEVEN' ? '본절 (BE)' : '보유중'}
+                                                                    {trade.status === 'WIN' ? '수익 (Win)' :
+                                                                        trade.status === 'LOSS' ? '손실 (Loss)' :
+                                                                            trade.status === 'BREAKEVEN' ? '본절 (BE)' : '보유중 (Hold)'}
                                                                 </span>
-                                                                {trade.note && <span className="text-[10px] text-neutral-400 font-mono mb-0.5">{trade.note}</span>}
+                                                                {trade.note && <span className="text-[10px] text-neutral-400 font-mono mb-0.5 truncate max-w-[120px]" title={trade.note}>{trade.note}</span>}
                                                                 <span className="font-mono text-neutral-600 dark:text-neutral-400 font-bold text-sm">
                                                                     @{trade.currentPrice.toLocaleString()}
                                                                 </span>
