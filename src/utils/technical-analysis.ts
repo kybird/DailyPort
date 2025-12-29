@@ -181,20 +181,25 @@ export function calculateObjectives(currentPrice: number, candles: HistoricalBar
     const solve = (timeframe: 'short' | 'mid' | 'long'): ObjectiveV3 => {
         const flags: ConfidenceFlag[] = []
         const config = {
-            short: { multiplier: 1.5, minRR: 2.0, maxRisk: 0.05, p2: 20, p5: 30 },
-            mid: { multiplier: 2.0, minRR: 2.5, maxRisk: 0.10, p2: 15, p5: 25 },
-            long: { multiplier: 3.0, minRR: 3.0, maxRisk: 0.15, p2: 10, p5: 20 }
+            short: { multiplier: 1.5, minRR: 2.0, maxRisk: 0.05, allowedGap: 3.0, p2: 20, p5: 30 },
+            mid: { multiplier: 2.0, minRR: 2.5, maxRisk: 0.10, allowedGap: 5.0, p2: 15, p5: 25 },
+            long: { multiplier: 3.0, minRR: 3.0, maxRisk: 0.15, allowedGap: 8.0, p2: 10, p5: 20 }
         }
         const cfg = config[timeframe]
 
-        const validCandidates = clusteredSupports
-            .filter(s => s.price <= currentPrice * 1.01)
+        // 1. Support Filtering (0 <= gapPct <= allowedGap)
+        const candidates = clusteredSupports
+            .filter(s => {
+                const gapPct = (currentPrice - s.price) / currentPrice * 100;
+                return gapPct >= 0 && gapPct <= cfg.allowedGap;
+            })
             .sort((a, b) => b.strength - a.strength);
 
         let best: { entry: number, stop: number, target: number, rr: number, strength: number } | null = null;
-        for (const sup of validCandidates) {
+        for (const sup of candidates) {
             const entry = sup.price;
             const epsilon = 0.2 * atr;
+            // Structural information can use all raw supports (even distant ones)
             const structLow = rawSupports.filter(s => !s.isMA && s.price < entry).sort((a, b) => b.strength - a.strength)[0]?.price;
 
             let stop = entry - (atr * cfg.multiplier);
@@ -217,9 +222,11 @@ export function calculateObjectives(currentPrice: number, candles: HistoricalBar
         let status: 'ACTIVE' | 'WAIT' | 'AVOID' = 'AVOID';
         let avoidCode: ObjectiveV3['avoidCode'] = null;
         let finalScore = baseScore;
+        let reason = "유효 지지선 부재 (눌림목 대기)";
 
         if (best) {
-            const gapPct = (currentPrice - best.entry) / best.entry * 100;
+            // Distance Penalty (Gap calculation uses Best Entry for penalty granularity)
+            const gapPct = (currentPrice - best.entry) / currentPrice * 100;
             let penalty = 0;
             if (gapPct > 5) penalty = cfg.p5;
             else if (gapPct > 2) penalty = ((gapPct - 2) / 3) * cfg.p2;
@@ -231,9 +238,17 @@ export function calculateObjectives(currentPrice: number, candles: HistoricalBar
                 (Math.min(last.open, last.close) - last.low >= 1.5 * Math.abs(last.close - last.open)) &&
                 (last.low <= best.entry * 1.01);
 
-            if (gapPct <= 2 && finalScore >= 70 && isBounce) status = 'ACTIVE';
-            else status = 'WAIT';
+            if (gapPct <= 2 && finalScore >= 70 && isBounce) {
+                status = 'ACTIVE';
+                reason = `강력한 지지 구간 반등 확인 (손익비: ${best.rr.toFixed(1)}).`;
+            } else {
+                status = 'WAIT';
+                if (gapPct <= 2) reason = "지지선 근처";
+                else reason = "보수적 관망: 지지선 이격 과다";
+            }
         } else {
+            // No valid support within allowedGap
+            status = 'WAIT';
             avoidCode = 'NO_SUPPORT';
             if (rsi > 70) avoidCode = 'OVERBOUGHT';
             if (ma20 < ma60) avoidCode = 'TREND_BREAK';
@@ -247,9 +262,9 @@ export function calculateObjectives(currentPrice: number, candles: HistoricalBar
         return {
             status,
             score: clamp(Math.round(finalScore), 0, 100),
-            strategy: status !== 'AVOID' ? (flags.includes('UPTREND_CONFIRMED') ? 'PULLBACK_TREND' : 'MEAN_REVERSION') : 'NO_TRADE',
+            strategy: best ? (flags.includes('UPTREND_CONFIRMED') ? 'PULLBACK_TREND' : 'MEAN_REVERSION') : 'NO_TRADE',
             confidenceFlags: flags,
-            reason: status === 'ACTIVE' ? `강력한 지지 구간 반등 확인 (손익비: ${best?.rr.toFixed(1)}).` : (status === 'WAIT' ? `매수 대기: 주요 지지선 근처.` : "손익비 불충분 또는 구조적 지지선 부재."),
+            reason,
             avoidCode,
             entry: best ? roundToMarketUnit(best.entry) : null,
             stop: best ? roundToMarketUnit(best.stop) : null,

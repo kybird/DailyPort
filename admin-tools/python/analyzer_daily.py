@@ -97,6 +97,9 @@ def validate_meta():
 validate_meta()
 # ------------------------------------------------
 
+def clamp(value, min_val, max_val):
+    return max(min_val, min(max_val, value))
+
 def get_db_cursor():
     return conn.cursor()
 
@@ -244,9 +247,9 @@ def calculate_objectives_v3(current_price, history_rows):
 
     def solve(timeframe):
         config = {
-            "short": {"mult": 1.5, "min_rr": 2.0, "max_risk": 0.05, "p2": 20, "p5": 30},
-            "mid": {"mult": 2.0, "min_rr": 2.5, "max_risk": 0.10, "p2": 15, "p5": 25},
-            "long": {"mult": 3.0, "min_rr": 3.0, "max_risk": 0.15, "p2": 10, "p5": 20}
+            "short": {"mult": 1.5, "min_rr": 2.0, "max_risk": 0.05, "allowed_gap": 3.0, "p2": 20, "p5": 30},
+            "mid": {"mult": 2.0, "min_rr": 2.5, "max_risk": 0.10, "allowed_gap": 5.0, "p2": 15, "p5": 25},
+            "long": {"mult": 3.0, "min_rr": 3.0, "max_risk": 0.15, "allowed_gap": 8.0, "p2": 10, "p5": 20}
         }
         cfg = config[timeframe]
 
@@ -266,12 +269,17 @@ def calculate_objectives_v3(current_price, history_rows):
         vol_adj = 5 if vol_ratio < 3 else (-15 if vol_ratio > 8 else 0)
         base_score = 50 + trend_score + momentum_score + vol_adj
 
-        # Candidate Evaluation
-        valid_candidates = [s for s in clustered if s["price"] <= current_price * 1.01]
-        valid_candidates.sort(key=lambda x: x["strength"], reverse=True)
+        # 1. Support Filtering (0 <= gap_pct <= allowed_gap)
+        candidates = []
+        for s in clustered:
+            gap_pct = (current_price - s["price"]) / current_price * 100 if current_price > 0 else 100
+            if 0 <= gap_pct <= cfg["allowed_gap"]:
+                candidates.append(s)
+        
+        candidates.sort(key=lambda x: x["strength"], reverse=True)
 
         best = None
-        for sup in valid_candidates:
+        for sup in candidates:
             entry = sup["price"]
             
             # SL Protection
@@ -290,53 +298,50 @@ def calculate_objectives_v3(current_price, history_rows):
             if recent_high > entry and (recent_high - entry) < risk * 1.5:
                 target = recent_high
                 
-            rr = (target - entry) / risk
+            rr = (target - entry) / risk if risk > 0 else 0
             risk_pct = risk / entry if entry > 0 else 1.0
             if rr >= cfg["min_rr"] and risk_pct <= cfg["max_risk"]:
                 best = {"entry": entry, "stop": stop, "target": target, "rr": rr, "strength": sup["strength"]}
                 break
 
-        if not best:
+        status = "WAIT"
+        avoid_code = None
+        final_score = base_score
+        reason = "유효 지지선 부재 (눌림목 대기)"
+
+        if best:
+            # Distance Penalty
+            entry_price = best["entry"]
+            gap_pct = (current_price - entry_price) / current_price * 100 if current_price > 0 else 100
+            penalty = 0
+            if gap_pct > 5: penalty = cfg["p5"]
+            elif gap_pct > 2: penalty = ((gap_pct - 2) / 3) * cfg["p2"]
+            final_score = max(0, base_score - penalty)
+            
+            # Bounce Signature (Quantitative)
+            today_bar = history_rows[0]
+            c_range = today_bar["high"] - today_bar["low"]
+            upper_40 = today_bar["low"] + (c_range * 0.6)
+            l_wick = min(today_bar["open"], today_bar["close"]) - today_bar["low"]
+            body = abs(today_bar["close"] - today_bar["open"])
+            
+            is_bounce = (today_bar["close"] >= upper_40 and 
+                         l_wick >= 1.5 * body and 
+                         today_bar["low"] <= entry_price * 1.01)
+
+            if gap_pct <= 2 and final_score >= 70 and is_bounce:
+                status = "ACTIVE"
+                reason = f"강력한 지지 구간 반등 확인 (손익비: {best['rr']:.1f})."
+            else:
+                status = "WAIT"
+                if gap_pct <= 2: reason = "지지선 근처"
+                else: reason = "보수적 관망: 지지선 이격 과다"
+        else:
+            # No valid support
+            status = "WAIT"
             avoid_code = "NO_SUPPORT"
             if current_rsi > 70: avoid_code = "OVERBOUGHT"
             if ma20_val and ma60_val and ma20_val < ma60_val: avoid_code = "TREND_BREAK"
-            
-            return {
-                "status": "AVOID", "score": 0, "strategy": "NO_TRADE",
-                "confidenceFlags": [], "reason": "손익비 불충분 또는 구조적 지지선 부재.",
-                "avoid_code": avoid_code,
-                "entry": None, "stop": None, "target": None, "rr": 0
-            }
-
-        # Penalties & Status
-        entry_price = best["entry"]
-        gap_pct = (current_price - entry_price) / entry_price * 100 if entry_price > 0 else 100
-        penalty = 0
-        if gap_pct > 5: penalty = cfg["p5"]
-        elif gap_pct > 2: penalty = ((gap_pct - 2) / 3) * cfg["p2"]
-        
-        final_score = max(0, base_score - penalty)
-        
-        # Bounce Signature (Quantitative)
-        today_bar = history_rows[0]
-        c_range = today_bar["high"] - today_bar["low"]
-        upper_40 = today_bar["low"] + (c_range * 0.6)
-        l_wick = min(today_bar["open"], today_bar["close"]) - today_bar["low"]
-        body = abs(today_bar["close"] - today_bar["open"])
-        
-        is_bounce = (today_bar["close"] >= upper_40 and 
-                     l_wick >= 1.5 * body and 
-                     today_bar["low"] <= best["entry"] * 1.01)
-
-        if gap_pct <= 2 and final_score >= 70 and is_bounce:
-            status = "ACTIVE"
-            reason = f"강력한 지지 구간 반등 확인 (손익비: {best['rr']:.1f})."
-        elif gap_pct <= 5:
-            status = "WAIT"
-            reason = f"주요 지지선(₩{int(best['entry']):,}) 근처 진입 대기 중."
-        else:
-            status = "WAIT"
-            reason = f"보수적 관망: 지지선 이격 과다 (목표: ₩{int(best['entry']):,})."
 
         flags = []
         if ma20_val and ma60_val and ma120_val and ma20_val > ma60_val > ma120_val: flags.append("UPTREND_CONFIRMED")
@@ -346,17 +351,17 @@ def calculate_objectives_v3(current_price, history_rows):
 
         return {
             "status": status,
-            "score": int(round(final_score)),
+            "score": clamp(round(final_score), 0, 100),
             "strategy": "PULLBACK_TREND" if "UPTREND_CONFIRMED" in flags else ("MEAN_REVERSION" if "OVERSOLD" in flags else "NO_TRADE"),
             "confidenceFlags": flags,
             "reason": reason,
-            "avoid_code": None if status != "AVOID" else "NO_SUPPORT", # default
-            "entry": round(best["entry"], -1),
-            "stop": round(best["stop"], -1),
-            "target": round(best["target"], -1),
-            "target2": round(best["entry"] + (best["target"] - best["entry"]) * 1.5, -1),
-            "rr": best["rr"],
-            "strength": best["strength"]
+            "avoid_code": avoid_code,
+            "entry": round(best["entry"], -1) if best else None,
+            "stop": round(best["stop"], -1) if best else None,
+            "target": round(best["target"], -1) if best else None,
+            "target2": round(best["entry"] + (best["target"] - best["entry"]) * 1.5, -1) if best else None,
+            "rr": best["rr"] if best else 0,
+            "strength": best["strength"] if best else None
         }
 
     # We mainly use 'short' now, but populate others to avoid errors if referenced
