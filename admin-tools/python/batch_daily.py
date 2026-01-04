@@ -24,6 +24,15 @@ if today_dt.weekday() >= 5: # 5=Sat, 6=Sun
     
 TODAY = today_dt.strftime("%Y%m%d")
 
+def is_market_open(date_str):
+    """Checks if the market was open on a specific date using a proxy ticker."""
+    try:
+        # Using KODEX Leveraged (122630) as a proxy for KOSPI market activity
+        df = stock.get_market_ohlcv_by_date(date_str, date_str, "122630")
+        return not df.empty
+    except Exception:
+        return False
+
 def get_db_connection():
     return sqlite3.connect(DB_PATH)
 
@@ -103,6 +112,15 @@ def repair_supply_bulk(conn, start_date, end_date=None):
             # Fetch for the entire range for THIS ticker
             try:
                 df = stock.get_market_trading_value_by_date(start_date, end_date, code)
+            except ValueError as ve:
+                # pykrx sometimes raises ValueError: Length mismatch: Expected axis has 0 elements, new values have 6 elements
+                # This happens on holidays or when KRX returns unconventional empty results.
+                if "Length mismatch" in str(ve):
+                    # If this happens, it's very likely a holiday or no data at all for this range.
+                    # We skip the ticker.
+                    consecutive_failures += 1
+                    continue
+                raise ve
             except Exception as fetch_err:
                 # KRX sometimes returns malformed data on holidays causing pykrx to crash on column assignment
                 # Warning is enough, don't crash the script
@@ -359,10 +377,25 @@ if __name__ == "__main__":
     # 2. Choice of Sync Mode
     if args.repair_supply:
         start_date = args.start if args.start else START_DATE_LIMIT
-        repair_supply_bulk(conn, start_date, args.end)
+        end_date = args.end if args.end else TODAY
+        
+        # Holiday Check for repair
+        if start_date == end_date:
+            if not is_market_open(start_date):
+                print(f"📅 Skipping Supply Repair: Market is closed on {start_date}")
+                conn.close()
+                sys.exit(0)
+
+        repair_supply_bulk(conn, start_date, end_date)
     else:
         # NEW V2 Pipeline
         print("🚀 Running V2 Data Pipeline...")
+        
+        # Holiday Check for today
+        if not args.start and not is_market_open(TODAY):
+             print(f"📅 Skipping Daily Pipeline: Market is closed today ({TODAY})")
+             conn.close()
+             sys.exit(0)
         
         # 1. Price Sync (FDR)
         try:
