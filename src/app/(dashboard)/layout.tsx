@@ -41,6 +41,10 @@ export default async function DashboardLayout({
 
                 {/* Main Content */}
                 <main className="flex-1 overflow-auto">
+                    {/* Alpha Version Banner (Todo 6) */}
+                    <div className="bg-yellow-400 text-yellow-900 px-4 py-2 text-center text-xs font-bold uppercase tracking-widest sticky top-0 z-[60] shadow-sm">
+                        🚧 Alpha Version - Under Development (데이터 정확성 주의) 🚧
+                    </div>
                     <TopPanel role={profile?.role || 'user'} />
                     <div className="p-4 md:p-8">
                         {children}

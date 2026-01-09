@@ -153,7 +153,7 @@ export class NaverStockDataSource implements IMarketDataSource {
       const response = await this.httpClient.get<string>(url)
       const $ = cheerio.load(response.data)
 
-    // Extract stock name
+      // Extract stock name
       const name = $('.wrap_company h2 a').text().trim() || symbol
 
       // Extract current price
@@ -218,8 +218,8 @@ export class NaverStockDataSource implements IMarketDataSource {
       }
     }
 
-    return { 
-      data, 
+    return {
+      data,
       errors,
       source: this.name,
       fetchedAt: new Date().toISOString()
@@ -249,10 +249,10 @@ export class NaverStockDataSource implements IMarketDataSource {
 
     try {
       const response = await this.httpClient.get<string>(url)
-      
+
       // Parse JSON response from Naver chart API
       const jsonData = JSON.parse(response.data.slice(1)) // Remove first character
-      
+
       if (!Array.isArray(jsonData)) {
         throw this.createError('PARSE_ERROR', 'Invalid response format from Naver chart API')
       }
@@ -307,7 +307,7 @@ export class NaverStockDataSource implements IMarketDataSource {
 
     if (numSymbol >= 100000) return 'KOSDAQ'
     if (numSymbol >= 1 && numSymbol <= 99999) return 'KOSPI'
-    
+
     return 'GLOBAL'
   }
 
@@ -318,14 +318,22 @@ export class NaverStockDataSource implements IMarketDataSource {
     const changeElem = $('.no_exday')
     if (!changeElem.length) return { changePrice: 0, changePercent: 0 }
 
-    const isDown = changeElem.html()?.includes('nv_down') || changeElem.html()?.includes('ico_down')
-    
+    const html = changeElem.html() || ''
+    const text = changeElem.text()
+
+    // Check for various indicators of a price drop
+    const isDown = html.includes('nv_down') ||
+      html.includes('ico_down') ||
+      html.includes('no_down') ||
+      text.includes('하락') ||
+      html.includes('minus')
+
     const changeSpans = changeElem.find('span.blind')
     if (!changeSpans || changeSpans.length < 2) return { changePrice: 0, changePercent: 0 }
 
     const changePriceText = changeSpans.eq(0).text()
     const changePrice = this.parseNumber(changePriceText)
-    
+
     let changePercent = 0
     if (changeSpans.length >= 2) {
       const changePercentText = changeSpans.eq(1).text().replace('%', '')
@@ -443,7 +451,7 @@ export class NaverStockDataSource implements IMarketDataSource {
    */
   private getStartDate(timeframe: Timeframe, days: number): Date {
     const startDate = new Date()
-    
+
     switch (timeframe) {
       case '1d':
         startDate.setDate(startDate.getDate() - days)

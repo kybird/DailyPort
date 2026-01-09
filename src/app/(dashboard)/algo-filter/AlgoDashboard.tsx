@@ -6,7 +6,7 @@ import Link from 'next/link'
 import type { AlgoFilterResult } from '@/app/actions-analysis'
 import { getBacktestStats } from '@/app/backtest-actions'
 import type { BacktestResult } from '@/app/backtest-actions'
-import { ArrowRight, Trophy, DollarSign, Zap, Box, LineChart, AlertTriangle, TrendingUp, Activity, Calendar, PlayCircle } from 'lucide-react'
+import { ArrowRight, Trophy, DollarSign, Zap, Box, LineChart, AlertTriangle, TrendingUp, Activity, Calendar, PlayCircle, HelpCircle, ExternalLink } from 'lucide-react'
 import { getStockName } from '@/utils/stock-utils'
 
 // Types
@@ -66,8 +66,8 @@ const getSelectionReasons = (strategy: string, metrics: any) => {
         }
         if (metrics.flow_power) reasons.push(`수급 집중도 ${metrics.flow_power.toFixed(2)}%`)
     } else if (strategy === 'Foreigner_Accumulation') {
-        if (metrics.acc_density) reasons.push(`매집밀도 ${metrics.acc_density.toFixed(2)}%`)
-        if (metrics.box_range) reasons.push(`박스권 ${(metrics.box_range * 100).toFixed(1)}%`)
+        if (metrics.acc_density) reasons.push(`매집밀도 ${metrics.acc_density.toFixed(1)}%`)
+        if (metrics.box_range) reasons.push(`구간 변동률 ${(metrics.box_range * 100).toFixed(1)}%`)
     } else if (strategy === 'Trend_Following') {
         if (metrics.vol_power) reasons.push(`거래강도 ${metrics.vol_power.toFixed(1)}x`)
         if (metrics.ma_align) reasons.push(`${metrics.ma_align}`)
@@ -198,8 +198,8 @@ export default function AlgoDashboard({ initialResults }: AlgoDashboardProps) {
                                                 href={`/analysis/${ticker}?ref=algo`}
                                                 className="flex flex-col p-5 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl hover:shadow-lg hover:border-blue-500 dark:hover:border-blue-500 transition-all group relative"
                                             >
-                                                {/* Rank Badge */}
-                                                <div className="absolute top-4 right-4 flex flex-col items-end gap-1">
+                                                {/* Rank Badge - Re-positioned slightly to avoid overlap with button if needed, or just left aligned */}
+                                                <div className="absolute top-4 right-20 flex flex-col items-end gap-1">
                                                     <span className="text-xs font-black text-neutral-300 dark:text-neutral-700">#{rank}</span>
                                                     {isAvoid && <span className="px-2 py-0.5 bg-neutral-100 dark:bg-neutral-800 text-neutral-500 text-[10px] rounded font-bold">⚠️ 기술적 유의</span>}
                                                 </div>
@@ -212,6 +212,18 @@ export default function AlgoDashboard({ initialResults }: AlgoDashboardProps) {
                                                     <div className="text-sm text-neutral-500 mt-1 font-mono">
                                                         진입: @{candInfo?.price?.toLocaleString() || '-'}
                                                     </div>
+
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.preventDefault();
+                                                            e.stopPropagation();
+                                                            window.open(`https://finance.naver.com/item/main.naver?code=${ticker}`, '_blank');
+                                                        }}
+                                                        className="absolute top-4 right-4 text-[10px] font-bold text-neutral-400 hover:text-green-600 bg-neutral-50 hover:bg-green-50 px-2 py-1 rounded-md transition-colors flex items-center gap-1 border border-neutral-100 dark:border-neutral-800 dark:bg-neutral-800 dark:hover:text-green-400 dark:hover:bg-green-900/30"
+                                                        title="네이버 증권 새창열기"
+                                                    >
+                                                        Naver <ExternalLink size={10} />
+                                                    </button>
                                                 </div>
 
                                                 {/* Targets Display */}
@@ -230,12 +242,25 @@ export default function AlgoDashboard({ initialResults }: AlgoDashboardProps) {
                                                 )}
 
                                                 <div className="space-y-1.5 mt-auto">
-                                                    {reasons.map((r, idx) => (
-                                                        <div key={idx} className="text-xs text-neutral-600 dark:text-neutral-400 flex items-center gap-1.5">
-                                                            <div className="w-1 h-1 rounded-full bg-blue-500"></div>
-                                                            {r}
-                                                        </div>
-                                                    ))}
+                                                    {reasons.map((r, idx) => {
+                                                        let tooltip = ''
+                                                        if (r.includes('구간 변동률')) tooltip = '최근 20일간 최고가와 최저가의 차이 비율(Box Range)입니다. 이 수치가 낮을수록(15% 미만) 주가가 큰 등락 없이 에너지를 응축하고 있음을 의미합니다.'
+                                                        if (r.includes('매집밀도')) tooltip = '횡보 구간 내 전체 거래량 중 외국인/기관의 순매수 거래량이 차지하는 비율입니다.'
+
+                                                        return (
+                                                            <div key={idx} className="text-xs text-neutral-600 dark:text-neutral-400 flex items-center gap-1.5 group/tooltip relative w-fit">
+                                                                <div className="w-1 h-1 rounded-full bg-blue-500"></div>
+                                                                <span className={tooltip ? 'cursor-help decoration-dotted underline underline-offset-2' : ''}>{r}</span>
+                                                                {tooltip && <HelpCircle size={12} className="text-neutral-300" />}
+
+                                                                {tooltip && (
+                                                                    <div className="absolute bottom-full left-0 mb-2 hidden group-hover/tooltip:block z-[100] bg-neutral-800 text-white text-[10px] p-2 rounded shadow-lg whitespace-normal min-w-[200px] max-w-[250px]">
+                                                                        {tooltip}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        )
+                                                    })}
                                                 </div>
                                             </Link>
                                         )

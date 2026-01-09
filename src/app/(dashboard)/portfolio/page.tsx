@@ -3,6 +3,7 @@ import { createClient } from '@/utils/supabase/server'
 import PortfolioList from '@/components/PortfolioList'
 import { getPortfolio } from '@/app/actions'
 import { getMarketData, MarketData } from '@/utils/market-data'
+import { getPriceColor, formatChangeRate, formatChangePrice } from '@/utils/format-utils'
 
 interface PortfolioItem {
     id: string;
@@ -24,6 +25,17 @@ export default async function PortfolioPage() {
     // Fetch market data for all portfolio items
     const portfolioWithMarketData = await Promise.all(
         (portfolioItems || []).map(async (item: PortfolioItem) => {
+            if (item.ticker === '_CASH_') {
+                return {
+                    ...item,
+                    marketData: {
+                        ticker: '_CASH_',
+                        currentPrice: 1,
+                        changePrice: 0,
+                        changePercent: 0
+                    } as MarketData
+                }
+            }
             const marketData = await getMarketData(item.ticker)
             return { ...item, marketData }
         })
@@ -45,6 +57,16 @@ export default async function PortfolioPage() {
     const totalChange = portfolioWithMarketData.reduce((sum: number, item: PortfolioItem) => {
         const change = item.marketData?.changePrice || 0
         return sum + change * item.quantity
+    }, 0)
+
+    /**
+     * 현금 보유액 계산
+     */
+    const totalCash = portfolioWithMarketData.reduce((sum: number, item: PortfolioItem) => {
+        if (item.ticker === '_CASH_') {
+            return sum + item.quantity
+        }
+        return sum
     }, 0)
 
     const totalRealizedGain = portfolioWithMarketData.reduce((sum: number, item: PortfolioItem) => {
@@ -73,23 +95,25 @@ export default async function PortfolioPage() {
                 <div className="bg-white dark:bg-neutral-900/50 p-6 rounded-2xl border border-neutral-200/60 dark:border-white/5 shadow-md backdrop-blur-sm transition-colors">
                     <h3 className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">오늘의 변화</h3>
                     <div className="flex items-baseline gap-2 mt-2">
-                        <p className={`text-2xl font-black ${totalChange > 0 ? 'text-red-500' : totalChange < 0 ? 'text-blue-500' : 'text-neutral-400'}`}>
-                            {totalChange > 0 ? '+' : ''}{totalChange.toLocaleString()}
+                        <p className={`text-2xl font-black ${getPriceColor(totalChange)}`}>
+                            {formatChangePrice(totalChange)}
                         </p>
-                        <span className={`text-sm font-bold ${totalChange > 0 ? 'text-red-500' : totalChange < 0 ? 'text-blue-500' : 'text-zinc-400'}`}>
-                            ({totalChange > 0 ? '+' : ''}{changePercent.toFixed(2)}%)
+                        <span className={`text-sm font-bold ${getPriceColor(totalChange)}`}>
+                            ({formatChangeRate(changePercent)})
                         </span>
                     </div>
                 </div>
                 <div className="bg-white dark:bg-neutral-900/50 p-6 rounded-2xl border border-neutral-200/60 dark:border-white/5 shadow-md backdrop-blur-sm transition-colors">
                     <h3 className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">확정 실현손익</h3>
-                    <p className={`text-2xl font-black mt-2 ${totalRealizedGain > 0 ? 'text-red-500' : totalRealizedGain < 0 ? 'text-blue-500' : 'text-zinc-900 dark:text-white'}`}>
+                    <p className={`text-2xl font-black mt-2 ${getPriceColor(totalRealizedGain)}`}>
                         ₩ {totalRealizedGain.toLocaleString()}
                     </p>
                 </div>
                 <div className="bg-white dark:bg-neutral-900/50 p-6 rounded-2xl border border-neutral-200/60 dark:border-white/5 shadow-md backdrop-blur-sm transition-colors">
-                    <h3 className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">보유 종목수</h3>
-                    <p className="text-2xl font-black mt-2 text-neutral-900 dark:text-white">{portfolioItems?.length || 0}</p>
+                    <h3 className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">현금 보유액 (Cash)</h3>
+                    <p className="text-2xl font-black mt-2 text-yellow-600 dark:text-yellow-400">
+                        ₩ {totalCash.toLocaleString()}
+                    </p>
                 </div>
             </div>
 

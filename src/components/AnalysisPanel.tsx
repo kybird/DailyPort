@@ -9,7 +9,7 @@ import { getAnalysis, AnalysisReport, SupplyChartItem } from '@/app/actions-anal
 import { getStockName } from '@/utils/stock-utils'
 import { addToWatchlist, removeFromWatchlist, getWatchlist, sellTicker } from '@/app/actions'
 import { getSettings } from '@/app/actions-settings'
-import { formatKoreanUnit } from '@/utils/format-utils'
+import { formatKoreanUnit, formatChangeRate, getPriceColor } from '@/utils/format-utils'
 import TransactionDialog from './TransactionDialog'
 
 interface WatchlistItem {
@@ -131,10 +131,31 @@ export default function AnalysisPanel({ ticker, onClose, mode = 'portfolio', por
                             <span className="text-3xl font-black text-zinc-900 dark:text-white">
                                 {report.price.current.toLocaleString()}
                             </span>
-                            <span className={`text-lg font-bold flex items-center ${report.price.changePercent >= 0 ? 'text-rose-500' : 'text-blue-500'}`}>
+                            <span className={`text-lg font-bold flex items-center ${getPriceColor(report.price.changePercent)}`}>
                                 {report.price.changePercent > 0 ? <TrendingUp size={20} className="mr-1" /> : <TrendingDown size={20} className="mr-1" />}
-                                {report.price.changePercent.toFixed(2)}%
+                                {formatChangeRate(report.price.changePercent)}
                             </span>
+                        </div>
+
+                        {/* External Links (Todo 8) */}
+                        <div className="flex gap-3 text-[10px] font-bold text-zinc-400 pb-4 border-b border-zinc-100 dark:border-zinc-800">
+                            <a
+                                href={`https://finance.naver.com/item/main.naver?code=${ticker}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-1 hover:text-green-500 hover:underline transition-colors"
+                            >
+                                NAVER 증권 ↗
+                            </a>
+                            <span className="text-zinc-300 dark:text-zinc-700">|</span>
+                            <a
+                                href={`https://finance.yahoo.com/quote/${ticker}.KS`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-1 hover:text-purple-500 hover:underline transition-colors"
+                            >
+                                Yahoo Finance ↗
+                            </a>
                         </div>
 
                         {/* Portfolio Status (Only in Portfolio mode) */}
@@ -205,7 +226,7 @@ export default function AnalysisPanel({ ticker, onClose, mode = 'portfolio', por
                             <h3 className="font-bold text-zinc-700 dark:text-zinc-300 mb-3 text-sm">기술 지표</h3>
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="bg-stone-200 dark:bg-zinc-950 p-3 rounded-xl border border-zinc-100 dark:border-zinc-800">
-                                    <div className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase">RSI</div>
+                                    <div className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase cursor-help decoration-dotted underline underline-offset-2" title="Relative Strength Index (상대강도지수): 14일 기준. 70 이상은 과매수(매도 고려), 30 이하는 과매도(매수 고려) 구간을 의미합니다.">RSI ⓘ</div>
                                     <div className="font-black text-lg text-zinc-900 dark:text-white mt-1">
                                         {report.technical.rsi.value.toFixed(1)}
                                         <div className={`text-[10px] mt-1 inline-block px-2 py-0.5 rounded-full font-bold shadow-sm ${report.technical.rsi.status === 'OVERBOUGHT' ? 'bg-rose-500 text-white' :
@@ -216,7 +237,7 @@ export default function AnalysisPanel({ ticker, onClose, mode = 'portfolio', por
                                     </div>
                                 </div>
                                 <div className="bg-stone-200 dark:bg-zinc-950 p-3 rounded-xl border border-zinc-100 dark:border-zinc-800">
-                                    <div className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase">추세</div>
+                                    <div className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase cursor-help decoration-dotted underline underline-offset-2" title="이동평균선 배열 상태를 기반으로 한 추세 판단입니다. (정배열=상승세, 역배열=하락세)">추세 (TREND) ⓘ</div>
                                     <div className="font-black text-sm text-zinc-900 dark:text-white mt-2">
                                         {report.technical.trend.status}
                                     </div>

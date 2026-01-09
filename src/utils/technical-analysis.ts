@@ -181,7 +181,7 @@ export function calculateObjectives(currentPrice: number, candles: HistoricalBar
     const solve = (timeframe: 'short' | 'mid' | 'long'): ObjectiveV3 => {
         const flags: ConfidenceFlag[] = []
         const config = {
-            short: { multiplier: 1.5, minRR: 2.0, maxRisk: 0.05, allowedGap: 3.0, p2: 20, p5: 30 },
+            short: { multiplier: 1.5, minRR: 2.0, maxRisk: 0.05, allowedGap: 3.5, p2: 20, p5: 30 },
             mid: { multiplier: 2.0, minRR: 2.5, maxRisk: 0.10, allowedGap: 5.0, p2: 15, p5: 25 },
             long: { multiplier: 3.0, minRR: 3.0, maxRisk: 0.15, allowedGap: 8.0, p2: 10, p5: 20 }
         }
@@ -234,9 +234,8 @@ export function calculateObjectives(currentPrice: number, candles: HistoricalBar
 
             const last = candles[candles.length - 1];
             const cRange = last.high - last.low;
-            const isBounce = (last.close >= last.low + cRange * 0.6) &&
-                (Math.min(last.open, last.close) - last.low >= 1.5 * Math.abs(last.close - last.open)) &&
-                (last.low <= best.entry * 1.01);
+            const isBounce = (last.close >= last.open) || // Bullish candle
+                (Math.min(last.open, last.close) - last.low >= cRange * 0.4); // Lower tail > 40% of range
 
             if (gapPct <= 2 && finalScore >= 70 && isBounce) {
                 status = 'ACTIVE';
