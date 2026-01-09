@@ -4,7 +4,8 @@ from dotenv import load_dotenv
 from supabase import create_client
 
 # Load env from multiple possible locations
-for path in ['.env', '../.env.local', '../../.env.local']:
+# Load env from multiple possible locations
+for path in ['.env', '.env.local', '../.env.local', '../../.env.local']:
     if os.path.exists(path):
         load_dotenv(path)
         print(f"Loaded env from: {path}")

@@ -3,10 +3,22 @@ import sqlite3
 import os
 import sys
 import time
-import pandas as pd
 from datetime import datetime, timedelta
 import logging
 from pykrx import stock
+try:
+    import FinanceDataReader as fdr
+    FDR_AVAILABLE = True
+except ImportError:
+    FDR_AVAILABLE = False
+
+try:
+    import pandas as pd
+    PANDAS_AVAILABLE = True
+except ImportError:
+    PANDAS_AVAILABLE = False
+    print("Error: pandas is required but not available. Please install pandas.")
+    sys.exit(1)
 
 # Logging Setup
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -14,15 +26,39 @@ logger = logging.getLogger(__name__)
 # Suppress pykrx internal logging clutter
 logging.getLogger("pykrx").setLevel(logging.ERROR)
 
+# Fix pykrx logging issue
+logging.getLogger("pykrx.website.comm.util").setLevel(logging.WARNING)
+
+
+
 # Configuration
 DB_PATH = os.path.join(os.path.dirname(__file__), '../../dailyport.db')
 START_DATE_LIMIT = "20230101"
-today_dt = datetime.now()
-if today_dt.weekday() >= 5: # 5=Sat, 6=Sun
+now = datetime.now()
+
+# Determine target date based on market hours
+# KOSPI market hours: 09:00-15:30 KST
+market_open = now.replace(hour=9, minute=0, second=0, microsecond=0)
+market_close = now.replace(hour=15, minute=30, second=0, microsecond=0)
+
+if now.weekday() >= 5:  # Weekend
     # Adjust to recent Friday
-    today_dt -= timedelta(days=(today_dt.weekday() - 4))
-    
+    days_to_friday = (now.weekday() - 4) % 7
+    if days_to_friday == 0:
+        days_to_friday = 7
+    today_dt = now - timedelta(days=days_to_friday)
+else:
+    today_dt = now
+
+# If before market open or weekend, use previous trading day
+if now < market_open or now.weekday() >= 5:
+    today_dt -= timedelta(days=1)
+    # Skip weekends if landed on weekend
+    while today_dt.weekday() >= 5:
+        today_dt -= timedelta(days=1)
+
 TODAY = today_dt.strftime("%Y%m%d")
+print(f"Target date for data sync: {TODAY} (Current time: {now.strftime('%Y-%m-%d %H:%M:%S')})")
 
 def is_market_open(date_str):
     """Checks if the market was open on a specific date using a proxy ticker."""
@@ -30,52 +66,104 @@ def is_market_open(date_str):
         # Using KODEX Leveraged (122630) as a proxy for KOSPI market activity
         df = stock.get_market_ohlcv_by_date(date_str, date_str, "122630")
         return not df.empty
-    except Exception:
-        return False
+    except Exception as e:
+        logger.warning(f"Market open check failed (PyKRX blocked?): {e}")
+        # If we can't check, assume it might be open if it's a weekday, 
+        # but safely return False or True based on a simpler heuristic?
+        # For now, return True to allow FDR to try anyway if it's not a weekend.
+        from datetime import datetime
+        dt = datetime.strptime(date_str, "%Y%m%d")
+        return dt.weekday() < 5 
 
 def get_db_connection():
     return sqlite3.connect(DB_PATH)
 
 def update_tickers(conn):
-    print("📋 Updating Ticker Master...")
+    print("Updating Ticker Master...")
     cursor = conn.cursor()
-    
-    # Get all tickers for the major markets
-    markets = ["KOSPI", "KOSDAQ", "KONEX"]
+
     count = 0
-    
     consecutive_failures = 0
-    for market in markets:
+
+    # Try FinanceDataReader first (more reliable)
+    if FDR_AVAILABLE:
         try:
-            tickers = stock.get_market_ticker_list(market=market)
-            print(f"   found {len(tickers)} in {market}")
-            
-            if not tickers:
+            # FDR provides KRX stock list
+            df_krx = fdr.StockListing('KRX')
+            if not df_krx.empty:
+                for _, row in df_krx.iterrows():
+                    try:
+                        code = str(row['Code']).zfill(6)  # Ensure 6-digit code
+                        name = str(row['Name'])
+                        market = str(row['Market'])
+                        cursor.execute("""
+                            INSERT INTO tickers (code, name, market, last_updated)
+                            VALUES (?, ?, ?, ?)
+                            ON CONFLICT(code) DO UPDATE SET
+                                last_updated=excluded.last_updated,
+                                is_active=1
+                        """, (code, name, market, datetime.now().isoformat()))
+                        count += 1
+                    except Exception as e:
+                        logger.debug(f"Failed to update ticker {row.get('Code')}: {e}")
+                        continue
+                print(f"   found {len(df_krx)} tickers via FDR")
+            else:
+                consecutive_failures += 1
+        except Exception as e:
+            logger.warning(f"FDR ticker fetch failed: {e}")
+            consecutive_failures += 1
+
+    # Fallback to pykrx if FDR failed or not available
+    if not FDR_AVAILABLE or consecutive_failures > 0:
+        markets = ["KOSPI", "KOSDAQ", "KONEX"]
+        for market in markets:
+            try:
+                # Pass TODAY explicitly to avoid pykrx internal "latest date" fetch bug (IndexError)
+                try:
+                    tickers = stock.get_market_ticker_list(date=TODAY, market=market)
+                except TypeError:
+                    # If older pykrx doesn't support date arg (though it should), try without
+                    tickers = stock.get_market_ticker_list(market=market)
+                except IndexError:
+                     # If TODAY fails (maybe holiday?), try yesterday
+                    yesterday = (datetime.strptime(TODAY, "%Y%m%d") - timedelta(days=1)).strftime("%Y%m%d")
+                    tickers = stock.get_market_ticker_list(date=yesterday, market=market)
+                print(f"   found {len(tickers)} in {market} (pykrx fallback)")
+
+                if not tickers:
+                    consecutive_failures += 1
+                    if consecutive_failures >= 3:
+                        logger.warning("No tickers found in any market. Likely a holiday or server issue. Skipping ticker update.")
+                        break
+                    continue
+
+                consecutive_failures = 0
+                for code in tickers:
+                    try:
+                        name = stock.get_market_ticker_name(code)
+                        cursor.execute("""
+                            INSERT INTO tickers (code, name, market, last_updated)
+                            VALUES (?, ?, ?, ?)
+                            ON CONFLICT(code) DO UPDATE SET
+                                last_updated=excluded.last_updated,
+                                is_active=1
+                        """, (code, name, market, datetime.now().isoformat()))
+                        count += 1
+                    except Exception as e:
+                        logger.debug(f"Failed to update ticker {code}: {e}")
+                        continue
+            except Exception as e:
+                logger.error(f"Error fetching {market} tickers: {e}")
                 consecutive_failures += 1
                 if consecutive_failures >= 3:
-                    logger.warning("🛑 No tickers found in any market. Likely a holiday or server issue. Skipping ticker update.")
                     break
-                continue
-            
-            consecutive_failures = 0
-            for code in tickers:
-                name = stock.get_market_ticker_name(code)
-                cursor.execute("""
-                    INSERT INTO tickers (code, name, market, last_updated) 
-                    VALUES (?, ?, ?, ?)
-                    ON CONFLICT(code) DO UPDATE SET 
-                        last_updated=excluded.last_updated,
-                        is_active=1
-                """, (code, name, market, datetime.now().isoformat()))
-                count += 1
-        except Exception as e:
-            logger.error(f"❌ Error fetching {market} tickers: {e}")
-            consecutive_failures += 1
-            if consecutive_failures >= 3:
-                break
 
     conn.commit()
-    print(f"✅ Master Updated: {count} tickers processed.")
+    if count == 0:
+        print("Warning: No tickers updated. Using existing ticker data.")
+    else:
+        print(f"Master Updated: {count} tickers processed.")
 
 def get_last_sync_date(conn):
     """Returns the last date that has both price AND supply data."""
@@ -94,7 +182,7 @@ def get_last_sync_date(conn):
 def repair_supply_bulk(conn, start_date, end_date=None):
     if not end_date:
         end_date = TODAY
-    print(f"🛠 Starting Fast Supply Repair ({start_date} to {end_date})...")
+    print(f"Starting Fast Supply Repair ({start_date} to {end_date})...")
     cursor = conn.cursor()
     
     # Get all active tickers
@@ -102,7 +190,7 @@ def repair_supply_bulk(conn, start_date, end_date=None):
     tickers = cursor.fetchall()
     total = len(tickers)
     
-    print(f"📊 Processing {total} tickers individually...")
+    print(f"Processing {total} tickers individually...")
     
     consecutive_failures = 0
     success_count = 0
@@ -127,7 +215,7 @@ def repair_supply_bulk(conn, start_date, end_date=None):
                 # logger.warning(f"Fetch failed for {code}: {fetch_err}")
                 consecutive_failures += 1
                 if consecutive_failures > 50:
-                     logger.warning(f"🛑 Too many consecutive fetch failures. Aborting.")
+                     logger.warning(f"Too many consecutive fetch failures. Aborting.")
                      break
                 continue
             
@@ -135,7 +223,7 @@ def repair_supply_bulk(conn, start_date, end_date=None):
             if df is None or df.empty:
                 consecutive_failures += 1
                 if consecutive_failures > 50:
-                    logger.warning(f"🛑 Too many empty results. Probably a holiday or no data for {start_date} to {end_date}. Stopping.")
+                    logger.warning(f"Too many empty results. Probably a holiday or no data for {start_date} to {end_date}. Stopping.")
                     break
                 continue
 
@@ -179,16 +267,16 @@ def repair_supply_bulk(conn, start_date, end_date=None):
             # logger.warning(f"Error {code}: {e}")
             
             if consecutive_failures > 10:
-                logger.error(f"❌ Consecutive failures ({consecutive_failures}) detected at {code}. "
+                logger.error(f"Consecutive failures ({consecutive_failures}) detected at {code}. "
                              f"This usually means the KRX server is down or it's a holiday ({start_date}). "
                              "Check your internet or the date. Stopping Supply Sync.")
                 break
             continue
 
-    print(f"✅ Fast Supply Repair Finished. (Synced {success_count} tickers)")
+    print(f"Fast Supply Repair Finished. (Synced {success_count} tickers)")
 
 def sync_market_data_bulk(conn, start_date=None, end_date=None, test_mode=False, force_supply=False):
-    print(f"🚀 Starting Bulk Market Sync ({start_date} to {end_date})...")
+    print(f"Starting Bulk Market Sync ({start_date} to {end_date})...")
     cursor = conn.cursor()
     
     # 1. Determine Date Range
@@ -207,17 +295,22 @@ def sync_market_data_bulk(conn, start_date=None, end_date=None, test_mode=False,
     # PyKRX doesn't have a direct "business days" list, but we can get it from OHLCV of a major index
     # or just try every day. Trying every day is safer but slightly slower.
     # Let's get the list of trading days from KOSPI index.
-    trading_days = stock.get_market_ohlcv_by_date(start_date, end_date, "122630") # KODEX Leveraged as proxy for KOSPI days
-    if trading_days.empty:
+    try:
+        trading_days = stock.get_market_ohlcv_by_date(start_date, end_date, "122630") # KODEX Leveraged as proxy for KOSPI days
+        if trading_days.empty:
+            raise ValueError("Empty response from PyKRX")
+        valid_dates = trading_days.index.strftime("%Y%m%d").tolist()
+    except Exception as e:
+        logger.warning(f"Failed to get trading days via PyKRX: {e}. Falling back to calendar range.")
         # Fallback to manual date range if index fetch fails
         current_dt = datetime.strptime(start_date, "%Y%m%d")
         end_dt = datetime.strptime(end_date, "%Y%m%d")
         valid_dates = []
         while current_dt <= end_dt:
-            valid_dates.append(current_dt.strftime("%Y%m%d"))
+            # Simple weekday check as a rough proxy
+            if current_dt.weekday() < 5:
+                valid_dates.append(current_dt.strftime("%Y%m%d"))
             current_dt += timedelta(days=1)
-    else:
-        valid_dates = trading_days.index.strftime("%Y%m%d").tolist()
 
     if test_mode:
         valid_dates = valid_dates[-3:] # Only last 3 days
@@ -389,7 +482,7 @@ if __name__ == "__main__":
         repair_supply_bulk(conn, start_date, end_date)
     else:
         # NEW V2 Pipeline
-        print("🚀 Running V2 Data Pipeline...")
+        print("Running V2 Data Pipeline...")
         
         # Holiday Check for today
         if not args.start and not is_market_open(TODAY):
@@ -425,8 +518,9 @@ if __name__ == "__main__":
         # We should run it for the dates.
         
         if not args.test:
-             _start = args.start if args.start else datetime.now().strftime("%Y%m%d")
-             repair_supply_bulk(conn, _start, args.end)
+             _start = args.start if args.start else TODAY
+             # repair_supply_bulk(conn, _start, args.end)
+             print("⚠️ SKIPPING Supply Sync: PyKRX library is blocked by KRX service changes (2025/12).")
+             print("   Only Price data (FDR) will be updated.")
              
     conn.close()
-

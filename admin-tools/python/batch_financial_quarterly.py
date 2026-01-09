@@ -123,6 +123,7 @@ def fetch_and_update_financials(year, quarter, corp_code=None):
     
     total = len(target_corps)
     success = 0
+    not_found = 0
     consecutive_api_failures = 0
     
     for idx, row in target_corps.iterrows():
@@ -137,6 +138,9 @@ def fetch_and_update_financials(year, quarter, corp_code=None):
             df_fs = None
             for attempt in range(3):
                 try:
+                    # Log which ticker we are attempting (helpful to trace '013' errors)
+                    logger.info(f"Trying {s_code} (Corp: {c_code})...") 
+                    
                     df_fs = dart.finstate(c_code, year, reprt_code)
                     consecutive_api_failures = 0 # Reset on success
                     break # Success
@@ -153,6 +157,7 @@ def fetch_and_update_financials(year, quarter, corp_code=None):
                 break
 
             if df_fs is None or df_fs.empty:
+                not_found += 1
                 continue
             
             # Filter for Consolidated (CFS) first
@@ -254,7 +259,10 @@ def fetch_and_update_financials(year, quarter, corp_code=None):
 
     conn.commit()
     conn.close()
-    logger.info(f"✅ Finished Financial Sync for {year} Q{quarter}. Updated {success} tickers.")
+    logger.info(f"✅ Finished Financial Sync for {year} Q{quarter}.")
+    logger.info(f"   - Total Target: {total}")
+    logger.info(f"   - Successfully Updated: {success}")
+    logger.info(f"   - Reports Not Found (Status 013/Empty): {not_found}")
 
 def get_default_quarter():
     """
