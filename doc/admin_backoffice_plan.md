@@ -1,54 +1,54 @@
-# DailyPort SaaS Admin (Back-office) Functional Specification
+# DailyPort SaaS 관리자 (백오피스) 기능 명세
 
-This document outlines the requirements for the administration tools needed to operate DailyPort as a scalable SaaS platform.
+이 문서는 DailyPort를 확장 가능한 SaaS 플랫폼으로 운영하기 위해 필요한 관리 도구의 요구사항을 설명합니다.
 
-## 1. Dashboard (Health & KPIs)
-- **Financials**: MRR (Monthly Recurring Revenue), Churn Rate.
-- **Acquisition**: Total/New/Deleted users (Daily/Weekly).
-- **Conversion**: Free-to-Paid conversion ratio.
-- **System Health**: 
-    - Real-time status of Stock APIs and Crawlers.
-    - AI API (OpenAI/Claude) usage and cost monitoring to prevent budget overruns.
-- **Alerts**: Count of failed payments and unanswered support tickets.
+## 1. 대시보드 (헬스 및 KPI)
+- **재무**: MRR (월간 반복 수익), 이탈률.
+- **획득**: 총/신규/삭제 사용자 수 (일간/주간).
+- **전환**: 무료→유료 전환율.
+- **시스템 헬스**: 
+    - 주식 API 및 크롤러의 실시간 상태.
+    - AI API (OpenAI/Claude) 사용량 및 비용 모니터링으로 예산 초과 방지.
+- **알림**: 결제 실패 및 미응답 고객 문의 건수.
 
-## 2. User Management (RBAC)
-- **User List**: Searchable by Email/Name with filters for Join Date, Subscription Level (Free/Pro), and Last Login.
-- **User Detail**: 
-    - Account linkage (Social login provider).
-    - Asset status (No. of portfolios, linked brokerages).
-- **Admin Actions**: 
-    - **Ban/Unban**: Restrict malicious users.
-    - **Manual Reset**: Password resets or session terminations.
-    - **Admin Notes**: internal logs regarding user behavior (e.g., "Frequent refund requests").
+## 2. 사용자 관리 (RBAC)
+- **사용자 목록**: 이메일/이름으로 검색 가능, 가입일/구독 레벨(무료/Pro)/최근 로그인 필터.
+- **사용자 상세**: 
+    - 계정 연동 정보 (소셜 로그인 제공자).
+    - 자산 현황 (포트폴리오 수, 연결된 증권사).
+- **관리자 작업**: 
+    - **차단/해제**: 악성 사용자 제한.
+    - **수동 리셋**: 비밀번호 재설정 또는 세션 종료.
+    - **관리자 메모**: 사용자 행동 관련 내부 기록 (예: "잦은 환불 요청").
 
-## 3. Subscription & Billing
-- **Payment History**: Searchable logs for Transaction ID (TID), Amount, Method, and Status (Success/Failure/Pending).
-- **Refund Management**: Full and partial refund processing via integrated PG (PortOne/Stripe).
-- **Product Management**: Ability to create/edit subscription plans (Basic, Pro, Premium) and discount rates.
-- **Manual Grant**: Ability to grant free trial days for CS compensation or influencers.
+## 3. 구독 및 결제
+- **결제 이력**: 거래 ID(TID), 금액, 수단, 상태(성공/실패/대기) 검색 가능.
+- **환불 관리**: 통합 PG(PortOne/Stripe)를 통한 전액 및 부분 환불 처리.
+- **상품 관리**: 구독 플랜(Basic, Pro, Premium) 및 할인율 생성/수정 기능.
+- **수동 부여**: CS 보상 또는 인플루언서를 위한 무료 체험 기간 부여 기능.
 
-## 4. Operation & Analytics
-- **Batch Control**: Manual trigger buttons for daily stock updates and screening algorithms (for recovery).
-- **Communications**: 
-    - Management of in-app announcements/popups.
-    - Global push notification delivery (e.g., "Market Crash Alert!").
-- **Content Filter**: Blocklist/Slang management for community features.
+## 4. 운영 및 분석
+- **배치 제어**: 일일 주식 업데이트 및 스크리닝 알고리즘 수동 실행 버튼 (복구용).
+- **커뮤니케이션**: 
+    - 앱 내 공지/팝업 관리.
+    - 글로벌 푸시 알림 발송 (예: "시장 급락 경보!").
+- **콘텐츠 필터**: 커뮤니티 기능을 위한 차단 목록/비속어 관리.
 
-## 5. Customer Support (CS)
-- **1:1 Inquiry**: Ticketing system with status tracking (Pending/Answered/Resolved).
-- **FAQ Management**: CRUD interface for frequently asked questions.
+## 5. 고객 지원 (CS)
+- **1:1 문의**: 상태 추적이 가능한 티켓 시스템 (대기/응답완료/해결됨).
+- **FAQ 관리**: 자주 묻는 질문 CRUD 인터페이스.
 
-## 6. System & Security
-- **Role-Based Access Control (RBAC)**:
-    - **ROLE_SUPER_ADMIN**: Full access (Developer).
-    - **ROLE_ADMIN**: Operations and CS management.
-    - **ROLE_OPERATOR**: Read-only/Support restricted access.
-- **Audit Log**: Explicit logging of WHO performed WHAT action (e.g., "Admin X refunded User Y") to prevent internal fraud.
+## 6. 시스템 및 보안
+- **역할 기반 접근 제어 (RBAC)**:
+    - **ROLE_SUPER_ADMIN**: 전체 접근 권한 (개발자).
+    - **ROLE_ADMIN**: 운영 및 CS 관리.
+    - **ROLE_OPERATOR**: 읽기 전용/지원 제한 접근.
+- **감사 로그**: 누가 어떤 작업을 수행했는지 명시적 로깅 (예: "관리자 X가 사용자 Y에게 환불 처리") - 내부 부정 방지.
 
-## Implementation Tips
-- **Low-code Tools**: Consider using **Retool** for rapid back-office development instead of building from scratch.
-- **Payment Webhooks**: Ensure robust webhook implementation for payment providers to handle edge cases where users close windows before the 'success' redirect.
-- **Frameworks**: If custom-built, leverage **AdminJS** (Node.js) or **Django Admin** (Python) for rapid scaffolding.
+## 구현 팁
+- **로우코드 도구**: 처음부터 구축하는 대신 빠른 백오피스 개발을 위해 **Retool** 사용 고려.
+- **결제 웹훅**: 사용자가 '성공' 리다이렉트 전에 창을 닫는 엣지 케이스를 처리하기 위해 결제 제공자의 견고한 웹훅 구현 필수.
+- **프레임워크**: 커스텀 빌드 시 빠른 스캐폴딩을 위해 **AdminJS** (Node.js) 또는 **Django Admin** (Python) 활용.
 
 ---
-**Status**: Backlog / SaaS Readiness Plan 
+**상태**: 백로그 / SaaS 준비 계획 

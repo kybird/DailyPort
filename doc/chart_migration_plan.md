@@ -1,37 +1,37 @@
-# Chart Library Migration Plan: Lightweight-Charts to ECharts
+# 차트 라이브러리 마이그레이션 계획: Lightweight-Charts에서 ECharts로
 
-This document outlines the proposal to migrate the primary charting engine from `lightweight-charts` to `Apache ECharts`.
+이 문서는 주요 차트 엔진을 `lightweight-charts`에서 `Apache ECharts`로 마이그레이션하는 제안을 설명합니다.
 
-## Why Migrate?
+## 왜 마이그레이션하나요?
 
-1.  **Remove Branding**: `lightweight-charts` enforces TradingView branding/logo in the free version. ECharts is open-source (Apache License) and allows for a clean, brand-free UI.
-2.  **Advanced Aesthetics**: ECharts supports complex gradients, smoother animations, and rich interactivity that feels more "premium."
-3.  **Multi-Grid Architecture**: Instead of 3 synchronized instances, ECharts can handle multiple panes (Price, Foreigner, Institution) within a **single canvas**, which naturally simplifies synchronization of zoom, pan, and crosshairs.
-4.  **Flexible Tooling**: Native support for brush selection, data zooming tools, and more sophisticated tooltip layouts.
+1.  **브랜딩 제거**: `lightweight-charts`는 무료 버전에서 TradingView 브랜딩/로고를 강제합니다. ECharts는 오픈소스(아파치 라이선스)이며 깔끔하고 브랜드 없는 UI를 허용합니다.
+2.  **고급 미학**: ECharts는 복잡한 그라데이션, 부드러운 애니메이션, 더 "프리미엄"하게 느껴지는 풍부한 인터랙티비티를 지원합니다.
+3.  **멀티 그리드 아키텍처**: 동기화된 3개 인스턴스 대신, ECharts는 **단일 캔버스** 내에서 여러 패널(가격, 외국인, 기관)을 처리할 수 있어 줌, 팬, 크로스헤어 동기화를 자연스럽게 단순화합니다.
+4.  **유연한 도구**: 브러시 선택, 데이터 줌 도구 및 더 정교한 툴팁 레이아웃의 네이티브 지원.
 
-## Features to Carry Over
+## 이전해야 할 기능
 
-The migration must maintain or improve the following features currently implemented:
+마이그레이션은 현재 구현된 다음 기능을 유지하거나 개선해야 합니다:
 
-- [ ] **3-Pane Stacked Layout**: Price (Candle), Foreigner (Bar), Institution (Bar).
-- [ ] **Technical Indicators**:
-    - [ ] SMA (Configurable periods: 5/20/60).
-    - [ ] EMA (Configurable periods: 12/26).
-    - [ ] Bollinger Bands (Configurable: 20 period, 2 StdDev).
-- [ ] **Indicator Settings Dialog**: Interactive modal to customize colors, periods, and visibility.
-- [ ] **Strict Synchronization**: Shared `dataZoom` and `axisPointer` across all grids.
-- [ ] **Dark Mode Support**: Seamless transition between light and zinc-900 themes.
+- [ ] **3-패널 스택 레이아웃**: 가격(캔들), 외국인(바), 기관(바).
+- [ ] **기술적 지표**:
+    - [ ] SMA (설정 가능 기간: 5/20/60).
+    - [ ] EMA (설정 가능 기간: 12/26).
+    - [ ] 볼린저 밴드 (설정 가능: 20 기간, 2 표준편차).
+- [ ] **지표 설정 다이얼로그**: 색상, 기간, 가시성을 커스터마이즈하는 인터랙티브 모달.
+- [ ] **엄격한 동기화**: 모든 그리드에서 공유되는 `dataZoom` 및 `axisPointer`.
+- [ ] **다크 모드 지원**: 라이트 모드와 zinc-900 테마 간 원활한 전환.
 
-## Technical Strategy
+## 기술 전략
 
-1.  **Install Dependencies**: `npm install echarts echarts-for-react`.
-2.  **Logic Port**: Move existing calculation helpers (`calculateSMA`, `calculateEMA`, `calculateBollingerBands`) to a shared utility file if possible.
-3.  **Component Rewrite**:
-    - Replace the triple-ref setup with a single ECharts `option` structure.
-    - Map `priceData` and `supplyData` to ECharts `dataset` or `series`.
-4.  **Sync Logic**: Use `connect` or shared `dataZoom` index to align the X-axis of all three panes.
-5.  **Settings Integration**: Re-wire the existing `config` state to the ECharts `setOption` call.
+1.  **의존성 설치**: `npm install echarts echarts-for-react`.
+2.  **로직 이식**: 가능하면 기존 계산 헬퍼(`calculateSMA`, `calculateEMA`, `calculateBollingerBands`)를 공유 유틸리티 파일로 이동.
+3.  **컴포넌트 재작성**:
+    - 트리플 ref 설정을 단일 ECharts `option` 구조로 교체.
+    - `priceData` 및 `supplyData`를 ECharts `dataset` 또는 `series`로 매핑.
+4.  **동기화 로직**: 세 패널의 X축을 정렬하기 위해 `connect` 또는 공유 `dataZoom` 인덱스 사용.
+5.  **설정 통합**: 기존 `config` 상태를 ECharts `setOption` 호출에 재연결.
 
-## Estimated Difficulty
-- **Complexity**: Medium-High
-- **Effort**: ~4-8 targetted development steps.
+## 예상 난이도
+- **복잡도**: 중상
+- **노력**: ~4-8 집중 개발 단계.

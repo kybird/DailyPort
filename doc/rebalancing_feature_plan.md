@@ -1,40 +1,40 @@
-# Portfolio Rebalancing Feature Plan
+# 포트폴리오 리밸런싱 기능 계획
 
-This plan outlines the implementation of a target-weight-based portfolio rebalancing system.
+이 계획은 목표 비중 기반 포트폴리오 리밸런싱 시스템의 구현을 설명합니다.
 
-## 1. UI/UX: Flexible Target Weight Management
-Goal: Simplify the process of setting and maintaining an ideal asset allocation.
+## 1. UI/UX: 유연한 목표 비중 관리
+목표: 이상적인 자산 배분을 설정하고 유지하는 프로세스를 단순화.
 
-- **Manual Entry**: Users can input percentages directly or use a slider.
-- **Convenience Features**:
-    - **Equal Weight (1/N)**: A button to instantly distribute 100% equally across N stocks + Cash.
-    - **Market Cap Weight**: A button to automatically weight stocks based on their relative market capitalization (Beta).
-- **Validation**: Strict logic to ensure the total sum equals exactly 100% before saving.
+- **수동 입력**: 사용자가 직접 퍼센트를 입력하거나 슬라이더를 사용할 수 있습니다.
+- **편의 기능**:
+    - **동일 비중 (1/N)**: N개 종목 + 현금에 100%를 균등 배분하는 버튼.
+    - **시가총액 비중**: 상대적 시가총액을 기반으로 종목을 자동 가중하는 버튼 (베타).
+- **검증**: 저장 전 총합이 정확히 100%가 되도록 하는 엄격한 로직.
 
-## 2. Data Structure & Logic
-Add a `target_weight` column to the portfolio/holdings table.
+## 2. 데이터 구조 및 로직
+포트폴리오/보유 종목 테이블에 `target_weight` 컬럼을 추가합니다.
 
-| Asset | Value | Current % | Target % | Gap (Deviation) |
+| 자산 | 금액 | 현재 비중 | 목표 비중 | 갭 (편차) |
 | :--- | :--- | :--- | :--- | :--- |
-| **Cash (KRW)** | 2,000,000 | 20% | 20% | 0% (Healthy) |
-| Samsung Electronics | 5,000,000 | 50% | 40% | **+10% (Overweight)** |
-| SK Hynix | 3,000,000 | 30% | 40% | **-10% (Underweight)** |
+| **현금 (KRW)** | 2,000,000 | 20% | 20% | 0% (건강) |
+| 삼성전자 | 5,000,000 | 50% | 40% | **+10% (과대 비중)** |
+| SK하이닉스 | 3,000,000 | 30% | 40% | **-10% (과소 비중)** |
 
-- **Gap Calculation**: `Gap = Current_Weight - Target_Weight`
-- **Actionable Insight**: 
-    - positive Gap $\rightarrow$ Sell candidate.
-    - negative Gap $\rightarrow$ Buy candidate.
+- **갭 계산**: `갭 = 현재_비중 - 목표_비중`
+- **실행 가능한 인사이트**: 
+    - 양수 갭 $\rightarrow$ 매도 후보.
+    - 음수 갭 $\rightarrow$ 매수 후보.
 
-## 3. Cash as a First-Class Citizen (Crucial)
-"Cash" must be treated as a permanent entry in the portfolio list.
-- **Why?**: To enable tactical cash management (e.g., maintaining 20% cash for dip-buying).
-- **Implementation**: Fixed "Cash (KRW)" entry at the top of the portfolio UI.
+## 3. 현금을 일급 시민으로 (핵심)
+"현금"은 포트폴리오 목록의 영구 항목으로 취급되어야 합니다.
+- **이유**: 전술적 현금 관리 가능 (예: 저가 매수를 위해 20% 현금 유지).
+- **구현**: 포트폴리오 UI 상단에 고정된 "현금 (KRW)" 항목.
 
-## 4. Development Roadmap
-1.  **DB Update**: Add `target_weight` column to the relevant table (Supabase).
-2.  **Portfolio Settings UI**: Create a page/dialog for defining target weights with 100% sum validation.
-3.  **Analytics Layer**: Implement logic to calculate and display the 'Gap' for each holding.
-4.  **AI Advisor Integration**: Connect to GPT/Claude to analyze the 'Gap' and suggest if *now* is the optimal market timing for rebalancing.
+## 4. 개발 로드맵
+1.  **DB 업데이트**: 관련 테이블(Supabase)에 `target_weight` 컬럼 추가.
+2.  **포트폴리오 설정 UI**: 100% 합계 검증과 함께 목표 비중을 정의하는 페이지/다이얼로그 생성.
+3.  **분석 레이어**: 각 보유 종목에 대한 '갭'을 계산하고 표시하는 로직 구현.
+4.  **AI 어드바이저 통합**: GPT/Claude에 연결하여 '갭'을 분석하고 *지금*이 리밸런싱에 최적의 시장 타이밍인지 제안.
 
 ---
-**Status**: Backlog / Feature Todo
+**상태**: 백로그 / 기능 할 일

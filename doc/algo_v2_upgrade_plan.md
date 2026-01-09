@@ -1,50 +1,50 @@
-# DailyPort v2.0: Algorithm Quality Upgrade Plan
+# DailyPort v2.0: 알고리즘 품질 업그레이드 계획
 
-This plan outlines the transition from simple directional scanning to high-quality "Quality Filtering" to minimize "Value Traps" and low-liquidity noise.
+이 계획은 단순 방향성 스캐닝에서 "가치 함정"과 저유동성 노이즈를 최소화하는 고품질 "퀄리티 필터링"으로의 전환을 설명합니다.
 
-## 1. Value Picks (Low Multiple + High Quality)
-Goal: Identify stocks that are not just "cheap" but actively "profitable."
-- **Current**: $0 < PER < 12$ AND $0.3 < PBR < 1.1$
-- **v2.0 Logic**:
-    - **ROE (Return on Equity)**: $\ge 10\%$ (Filters out inefficient capital management).
-    - **Operating Margin**: $> 5\%$ (Ensures business profitability).
-    - **Dividend Yield**: $> 1\%$ (Optional: provides price floor/downside protection).
-- **Mantra**: "Undervalued (Low Multiple) but 확실하게 돈을 벌고 있는 (High Quality) 기업."
+## 1. 가치주 선별 (저배수 + 고품질)
+목표: 단순히 "저렴한" 것이 아닌, 적극적으로 "수익을 내는" 종목 식별.
+- **현재**: $0 < PER < 12$ AND $0.3 < PBR < 1.1$
+- **v2.0 로직**:
+    - **ROE (자기자본이익률)**: $\ge 10\%$ (비효율적 자본 관리 필터).
+    - **영업이익률**: $> 5\%$ (사업 수익성 확보).
+    - **배당수익률**: $> 1\%$ (선택: 가격 하한/하방 방어 제공).
+- **핵심**: "저평가(저배수)이면서 확실하게 돈을 벌고 있는(고품질) 기업."
 
-## 2. Twin Engines (Supply Intensity + Continuity)
-Goal: Distinguish "noise" buying from "aggressive institutional accumulation."
-- **Current**: Foreigner Net Buy $> 0$ AND Institutional Net Buy $> 0$
-- **v2.0 Logic**:
-    - **Supply Intensity**: $(Foreigner + Institutional Net Buy Amount) / Market Cap \ge 0.05\%$ (Requires meaningful relative volume).
-    - **Continuity**: Net combined buy in $\ge 2$ out of the last 3 days (Filters out one-day scalpers).
-    - **Entry Position**: Current Price $< 20MA + 10\%$ (Prevents chasing after a parabolic move).
-- **Mantra**: "Meaningful money (Intensity) is flowing in, and it's not too late to enter."
+## 2. 트윈 엔진 (수급 강도 + 연속성)
+목표: "노이즈" 매수와 "공격적 기관 매집"을 구분.
+- **현재**: 외국인 순매수 $> 0$ AND 기관 순매수 $> 0$
+- **v2.0 로직**:
+    - **수급 강도**: $(외국인 + 기관 순매수 금액) / 시가총액 \ge 0.05\%$ (의미 있는 상대적 거래량 요구).
+    - **연속성**: 최근 3일 중 $\ge 2$일 이상 순매수 합계 유지 (하루짜리 스캘퍼 필터).
+    - **진입 위치**: 현재가 $< 20MA + 10\%$ (파라볼릭 상승 후 추격 매수 방지).
+- **핵심**: "의미 있는 자금(강도)이 유입되고 있으며, 진입하기에 너무 늦지 않음."
 
-## 3. Foreigner Accumulation (Stealth Mode)
-Goal: Find the calm before the storm—energy compression with silent accumulation.
-- **Current**: 20-day Foreigner Accumulation $> 0$, 21st Range Trend $\le 12\%$
-- **v2.0 Logic**:
-    - **Box Compression**: $(20-day High - 20-day Low) / 20-day Low < 10\%$ (Tighter volatility means higher energy potential).
-    - **Price Support**: Current Price $>$ 60MA or 120MA (Maintains long-term uptrend context).
-    - **Volume Drying**: 5-day Avg Volume $<$ 20-day Avg Volume (Silent accumulation often happens on low volume).
-- **Mantra**: "Volume is drying up in a tight box, but Foreigner stake is silently rising."
+## 3. 외국인 매집 (스텔스 모드)
+목표: 폭풍 전 고요함 찾기—조용한 매집과 함께 에너지 압축.
+- **현재**: 20일 외국인 매집 $> 0$, 21일 변동폭 추세 $\le 12\%$
+- **v2.0 로직**:
+    - **박스권 압축**: $(20일 고가 - 20일 저가) / 20일 저가 < 10\%$ (타이트한 변동성 = 높은 에너지 잠재력).
+    - **가격 지지**: 현재가 $>$ 60MA 또는 120MA (장기 상승 추세 맥락 유지).
+    - **거래량 건조**: 5일 평균 거래량 $<$ 20일 평균 거래량 (조용한 매집은 종종 낮은 거래량에서 발생).
+- **핵심**: "타이트한 박스권에서 거래량이 마르고 있지만, 외국인 지분은 조용히 상승 중."
 
-## 4. Trend Following (Volume Breakout)
-Goal: Catch high-probability breakouts with real momentum.
-- **Current**: Bullish alignment (5/20/60/120 MA), near 120-day High.
-- **v2.0 Logic**:
-    - **Volume Power**: Today's Volume $> 20-day Avg Volume \times 1.5$ (Confirmed breakout strength).
-    - **RSI Overheat Filter**: $RSI(14) < 70$ (Ensures there is still room to run before becoming overbought).
-    - **Candle Integrity**: Upper Wick Length $<$ Body Length (Avoids 'fake' breakouts/selling pressure at peaks).
-- **Mantra**: "Breaking out with strong volume but not yet overextended (Overbought)."
+## 4. 추세 추종 (거래량 돌파)
+목표: 실제 모멘텀이 있는 고확률 돌파 포착.
+- **현재**: 강세 정배열 (5/20/60/120 MA), 120일 고점 근접.
+- **v2.0 로직**:
+    - **거래량 파워**: 금일 거래량 $> 20일 평균 거래량 \times 1.5$ (확정된 돌파 강도).
+    - **RSI 과열 필터**: $RSI(14) < 70$ (과매수 전 상승 여력 확보).
+    - **캔들 무결성**: 윗꼬리 길이 $<$ 몸통 길이 ('가짜' 돌파/고점 매도 압력 회피).
+- **핵심**: "강한 거래량으로 돌파하면서 아직 과열(과매수)되지 않음."
 
-## 5. Global Hygiene Filters (Common WHERE Clause)
-Applied to ALL algorithms to eliminate "junk" stocks.
-- **Market Cap**: Minimum 100 Billion KRW (Avoids pump-and-dump schemes).
-- **Admin/Suspended Stocks**: Explicitly excluded.
-- **Liquidity**: 5-day Avg Trading Amount $\ge$ 1 Billion KRW (Ensures entry/exit feasibility).
+## 5. 글로벌 위생 필터 (공통 WHERE 조건)
+"자잘" 종목을 제거하기 위해 모든 알고리즘에 적용.
+- **시가총액**: 최소 1,000억 원 (펌프앤덤프 회피).
+- **관리/거래정지 종목**: 명시적으로 제외.
+- **유동성**: 5일 평균 거래대금 $\ge$ 10억 원 (진입/청산 용이성 확보).
 
 ---
-**Next Steps**: 
-- Update `analyzer_daily.py` logic to incorporate these filters.
-- Add necessary financial data (ROE, Margin) to the Supabase sync process.
+**다음 단계**: 
+- `analyzer_daily.py` 로직에 이러한 필터 반영 업데이트.
+- Supabase 동기화 프로세스에 필요한 재무 데이터(ROE, 영업이익률) 추가.
